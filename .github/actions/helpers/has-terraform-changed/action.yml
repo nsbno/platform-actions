@@ -1,0 +1,47 @@
+name: Any Terraform Changes?
+
+inputs:
+  environment:
+    description: The current environment
+    required: true
+  aws-region:
+    description: The AWS region to use.
+    required: true
+  aws-account-id:
+    description: The AWS account ID for deployment.
+    required: true
+  deployment-role:
+    description: The AWS role to assume for deployment.
+    required: true
+
+outputs:
+  any_changed:
+    description: 'Whether any Terraform changes are pending.'
+    value: ${{ steps.terraform.outputs.exitcode == 2 }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Authenticate with AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: "arn:aws:iam::${{ inputs.aws-account-id }}:role/${{ inputs.deployment-role }}"
+
+    - id: folder_name
+      name: Get the correct folder name
+      shell: bash
+      run: |
+        string=${{ inputs.environment }}
+        echo "FOLDER_NAME=${string,,}" >> $GITHUB_ENV
+
+    - uses: ./.github/actions/tools/terraform
+      id: terraform
+      with:
+        directory: environments/${{ env.FOLDER_NAME }}
+        terraform_command: plan --refresh=false -detailed-exitcode
+        fail_on_exit_code: 'true'
+        always_run_init: 'true'

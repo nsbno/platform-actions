@@ -1,0 +1,63 @@
+name: Deploy Container via CodeDeploy
+
+inputs:
+  cluster_name:
+    description: "The name of the ECS Cluster"
+    required: true
+  ecs_service_name:
+    description: "The name of the ECS Service"
+    required: true
+  image_uri:
+    description: "The image to deploy"
+    required: true
+  application_name:
+    description: "The CodeDeploy Application Name"
+    required: true
+  deployment_group_name:
+    description: "The CodeDeploy Deployment Group Name"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create Amazon ECS task definition
+      id: render
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        container-name: ${{ inputs.ecs_service_name }}
+        task-definition-family: ${{ inputs.ecs_service_name }}
+        image: ${{ inputs.image_uri }}
+
+    - name: Generate AppSpec File
+      shell: bash
+      run: |
+        cat <<EOF > appspec.yml
+        version: 0.0
+        Resources:
+          - TargetService:
+              Type: "AWS::ECS::Service"
+              Properties:
+                TaskDefinition: "task:def:arn"
+                LoadBalancerInfo:
+                  ContainerName: ${{ inputs.ecs_service_name }}
+                  ContainerPort: 80
+        EOF
+
+    - name: Deploy new task definition
+      id: deploy
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        wait-for-service-stability: true
+        task-definition: ${{ steps.render.outputs.task-definition }}
+        service: ${{ inputs.ecs_service_name }}
+        cluster: ${{ inputs.cluster_name }}
+        codedeploy-application: ${{ inputs.application_name }}
+        codedeploy-deployment-group: ${{ inputs.deployment_group_name }}
+        codedeploy-appspec: ./appspec.yml
+
+    - name: Cancel CodeDeploy Deployment and Fail
+      if: cancelled()
+      shell: bash
+      run: |
+        aws deploy stop-deployment --deployment-id ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        exit 1

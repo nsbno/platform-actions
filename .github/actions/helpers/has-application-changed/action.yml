@@ -1,0 +1,52 @@
+name: Check if application has changed
+
+outputs:
+  any_changed:
+    description: 'Whether any application files have changed.'
+    value: ${{ steps.changed-application-files.outputs.any_changed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Get all changed application files
+      id: changed-application-files
+      uses: tj-actions/changed-files@v45
+      with:
+        since_last_remote_commit: true
+        files: |
+          **/*.java
+          **/*.kt
+          **/*.kts
+          gradle.properties
+          gradlew
+          gradlew.bat
+          settings.gradle.kts
+          
+          **/*.js
+          **/*.ts
+          **/*.jsx
+          **/*.tsx
+          package.json
+          package-lock.json
+          vite-env.d.ts
+          vite.config.ts
+          tsconfig.json
+          
+          **/*.py
+          pyproject.toml
+          poetry.lock
+          requirements.txt
+
+    - name: List all changed files
+      id: list-changed-files
+      shell: bash
+      if: steps.changed-application-files.outputs.any_changed == 'true'
+      env:
+        ALL_CHANGED_FILES: ${{ steps.changed-application-files.outputs.all_changed_files }}
+      run: |
+        for file in ${ALL_CHANGED_FILES}; do
+          echo "$file was changed"
+        done

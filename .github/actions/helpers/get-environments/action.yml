@@ -1,0 +1,18 @@
+name: Get All Environments in this repository
+
+outputs:
+  environments:
+    description: 'All environments in this repository.'
+    value: ${{ steps.get-environments.outputs.environments }}
+
+runs:
+  using: composite
+  steps:
+    - name: Get all environments for current repository
+      id: get-environments
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        environments=$(gh api --method GET -H "Accept: application/vnd.github+json" repos/${{ github.repository}}/environments | jq -c '[.environments[].name]')
+        echo "environments=${environments}" >> $GITHUB_OUTPUT

@@ -1,0 +1,118 @@
+on:
+  workflow_call:
+    inputs:
+      force-deploy:
+        description:  Makes sure that terraform deploy always happens
+        type: boolean
+        default: false
+        required: false
+
+    outputs:
+      # A list with names of which environments as changes
+      has-changes:
+        description: 'List of environments with changes'
+        value: ${{ jobs.create-terraform-changes-list.outputs.changes }}
+
+name: Find Terraform Changes
+
+# Needed to avoid conflicts with terraform state
+concurrency:
+  group: deploy-${{ inputs.environment }}
+
+jobs:
+  get-environments:
+    if: ${{ !inputs.force-deploy }}
+    name: Get all environments in repository
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/helpers/get-environments
+        id: envs
+
+  has-terraform-changed:
+    name: Any Terraform Changes?
+    needs: get-environments
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Terraform change check
+        uses: ./.github/actions/helpers/has-terraform-changed
+        id: changed-files
+        with:
+          environment: ${{ matrix.environment }}
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
+          deployment-role: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+
+      - name: Add notice
+        shell: bash
+        run: |
+          if ${{ steps.changed-files.outputs.any_changed }}; then
+            echo "::notice title=Changes to Terraform::${{ matrix.environment}} has changes and will be deployed 🚀"
+          else
+            echo "::notice title=Changes to Terraform::${{ matrix.environment}} has no changes, and will not be deployed 💤"
+          fi
+
+      - name: Set output
+        uses: cloudposse/github-action-matrix-outputs-write@v1
+        with:
+          matrix-step-name: ${{ github.job }}
+          matrix-key: ${{ matrix.environment }}
+          outputs: |
+            has-changes: ${{ steps.changed-files.outputs.any_changed }}
+
+  create-terraform-changes-list:
+    name: Aggregate Terraform changes
+    needs:
+      - has-terraform-changed
+    runs-on: ubuntu-latest
+    outputs:
+      changes: ${{ steps.aggregate.outputs.CHANGES }}
+    steps:
+      - name: Download changes artifact
+        id: read
+        uses: cloudposse/github-action-matrix-outputs-read@v1
+        with:
+          matrix-step-name: has-terraform-changed
+      - name: Aggregate environment changes
+        id: aggregate
+        run: |
+          changes=()
+
+          # Parse the JSON string directly from the output
+          result='${{ steps.read.outputs.result }}'
+
+          # Extract environment keys from the 'has-changes' object using `jq`
+          environments=$(echo "$result" | jq -r '.["has-changes"] | keys[]')
+
+          for env in $environments; do
+            # Check if the environment has changes
+            changed=$(echo "$result" | jq -r --arg env "$env" '.["has-changes"][$env]')
+            echo "Environment: $env, Changed: $changed"
+
+            if [[ "$changed" == "true" ]]; then
+              changes+=("$env")
+            fi
+          done
+
+          # Convert the array into a JSON list
+          if [ ${#changes[@]} -eq 0 ]; then
+            json_changes="[]"
+          else
+            json_changes=$(printf "%s\n" "${changes[@]}" | jq -R -s -c 'split("\n")[:-1]')
+          fi
+
+          echo "Following environments have changes: ${json_changes}"
+          echo "CHANGES=${json_changes}" >> $GITHUB_OUTPUT

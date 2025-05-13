@@ -1,0 +1,111 @@
+name: Terraform Action
+description: Run terraform
+
+inputs:
+  directory:
+    required: true
+    description: The directory where the Terraform configuration is located.
+  terraform_command:
+    required: true
+    description: The Terraform command to run
+  terraform_use_backend:
+    required: false
+    description: 'Whether to use a backend configuration for Terraform.'
+    default: "true"
+  terraform_options:
+    required: false
+    description: 'The options to use in the Terraform configuration.'
+    default: ""
+  enable_cache:
+    required: false
+    description: 'Whether to enable caching of Terraform providers.'
+    default: "false"
+  fail_on_exit_code:
+    required: false
+    description: 'Whether to fail the action if the Terraform command exits with a non-zero exit code.'
+    default: "true"
+  always_run_init:
+    required: false
+    description: 'Whether to always run terraform init.'
+    default: "false"
+
+outputs:
+  exitcode:
+    description: 'The exit code of the Terraform command.'
+    value: ${{ steps.terraform.outputs.exitcode }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        cache: 'false'  # There is no go.sum file, so the cache doesn't work.
+        go-version: '>=1.18'
+
+    - name: Cache Go module
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/go/bin
+          ~/.cache/go-build
+        key: go-${{ runner.os }}-
+
+    - name: Find Terraform version
+      shell: bash
+      run: |
+        which terraform-config-inspect || go install github.com/hashicorp/terraform-config-inspect@latest
+        version=$(terraform-config-inspect ${{ inputs.directory }} --json | jq -r '.required_core[0]')
+        echo "Terraform version: $version"
+        if [ "$version" != "null" ]; then
+          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
+          exit 0
+        fi
+        version=$(terraform-config-inspect ./infrastructure --json | jq -r '.required_core[0]')
+        echo "Terraform version: $version"
+        if [ "$version" != "null" ]; then
+          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
+          exit 0
+        fi
+        version=$(terraform-config-inspect ./terrraform/template --json | jq -r '.required_core[0]')
+        echo "Terraform version: $version"
+        if [ "$version" != "null" ]; then
+          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
+          exit 1
+        fi
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+    - name: Restore Terraform
+      id: restore-terraform
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ github.workspace }}/${{ inputs.directory }}/.terraform
+        key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
+
+    - name: Terraform Init
+      if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always_run_init == 'true'
+      shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: |
+        terraform init --backend=${{ inputs.terraform_use_backend }}
+
+    - name: Cache Terraform
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ github.workspace }}/${{ inputs.directory }}/.terraform
+        key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
+
+    - name: Terraform Command
+      continue-on-error: ${{ inputs.fail_on_exit_code == 'false' }}
+      working-directory: ${{ inputs.directory }}
+      id: terraform
+      shell: bash
+      run: terraform ${{ inputs.terraform_command }} ${{ inputs.terraform_options }}

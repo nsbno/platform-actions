@@ -1,0 +1,85 @@
+on:
+  workflow_call:
+    inputs:
+      application_name:
+        required: false
+        type: string
+        description: "Name of the S3 Folder to publish to."
+        default: ${{github.event.repository.name}}
+      artifact_name:
+        required: false
+        type: string
+        description: "Name of the artifact storing the build files."
+      artifact_path:
+        required: false
+        type: string
+        description: "Path to artifact files from previous workflow."
+      directory_to_zip:
+        required: false
+        type: string
+        description: "What directory to recursively zip."
+        default: './'
+      working_directory:
+        required: false
+        type: string
+        description: "Directory to run the zip-command from."
+        default: '.'
+
+name: Upload Deployable to S3
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  zip-and-upload-to-s3:
+    name: Zip and upload to S3
+    environment: Service
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts if specified
+        if: inputs.artifact_name != '' && inputs.artifact_path != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Get S3 bucket name
+        id: params
+        shell: bash
+        run: |
+          PARAM=$(aws ssm get-parameter --name /__deployment__/config/artifact-bucket --query "Parameter")
+          
+          VALUE=$(echo "$PARAM" | jq -r '.Value')
+          
+          echo "ARTIFACT_BUCKET=$VALUE"
+          echo "ARTIFACT_BUCKET=$VALUE" >> $GITHUB_OUTPUT
+
+      - name: Upload to S3
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          S3_BUCKET: ${{ steps.params.outputs.ARTIFACT_BUCKET }}
+          APPLICATION_NAME: ${{ inputs.application_name }}
+          DIRECTORY_TO_ZIP: ${{ inputs.directory_to_zip }}
+          ZIP_FILE_NAME: ${{ inputs.zip_file_name }}
+        run: |
+          BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
+          
+          ZIP_FILE_NAME=artifact.zip
+          
+          zip -r "$ZIP_FILE_NAME" "$DIRECTORY_TO_ZIP"
+          aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$SHORT_SHA.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"

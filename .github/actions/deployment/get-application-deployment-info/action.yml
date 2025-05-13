@@ -1,0 +1,51 @@
+name: Get Application Deployment Info
+description: Gets information about the deployable
+
+inputs:
+  application_name:
+    description: "The name of the application"
+
+outputs:
+  compute_target:
+    description: What kind of compute we are targeting (ECS or Lambda)
+    value: ${{ steps.params.outputs.compute_target }}
+  codedeploy_deployment_group:
+    description: The CodeDeploy Deployment Group
+    value: ${{ steps.params.outputs.codedeploy_deployment_group }}
+  codedeploy_application_name:
+    description: The CodeDeploy Applicaion Name
+    value: ${{ steps.params.outputs.codedeploy_application_name }}
+  ecs_cluster_name:
+    description: The ECS Cluster Name
+    value: ${{ steps.params.outputs.ecs_cluster_name }}
+  ecs_service_name:
+    description: The ECS Service Name
+    value: ${{ steps.params.outputs.ecs_service_name }}
+  ecr_image_base:
+    description: The Image Base URL
+    value: ${{ steps.params.outputs.ecr_image_base }}
+  lambda_function_name:
+    description: The name of the Lambda function
+    value: ${{ steps.params.outputs.lambda_function_name }}
+  lambda_s3_bucket:
+    description: The S3 Bucket Name
+    value: ${{ steps.params.outputs.lambda_s3_bucket }}
+  lambda_s3_folder:
+    description: The folder within the S3 Bucket
+    value: ${{ steps.params.outputs.lambda_s3_folder }}
+
+runs:
+  using: composite
+  steps:
+    - name: Get Parameters
+      id: params
+      shell: bash
+      run:  |
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.application_name }}/" --query "Parameters")
+        for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
+          NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
+          echo "NAME=$NAME"
+          VALUE=$(echo "$ROW" | jq -r '.Value')
+          echo "VALUE=$VALUE"
+          echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
+        done

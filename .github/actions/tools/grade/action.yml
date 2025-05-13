@@ -1,0 +1,48 @@
+name: Gradle
+description: Run Gradle Commands
+
+inputs:
+  gradle_operations:
+    required: true
+    description: "What gradle operations to execute."
+
+  java_version:
+    required: false
+    default: "17"
+    description: "What Java version to use."
+  java_distribution:
+    required: false
+    default: "temurin"
+    description: "What Java distribution to use. Default is temurin (By Adoptium)."
+
+  working_directory:
+    required: false
+    default: "."
+    description: "Where gradle will be run from."
+
+runs:
+  using:
+    composite
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Set Up Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java_version }}
+        distribution: ${{ inputs.java_distribution }}
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: false # enables caching on all branches, not just master
+
+    - name: Run Gradle Command
+      working-directory: ${{ inputs.working_directory }}
+      shell: bash
+      env:
+        repo: ${{ github.event.repository.name }}
+        gradle_operations: ${{ inputs.gradle_operations }}
+
+      run: |
+        ./gradlew ${{ inputs.gradle_operations }}

@@ -1,0 +1,105 @@
+name: Deploy to single environment
+
+on:
+  workflow_call:
+    inputs:
+      application_name:
+        description: Name of the application to deploy
+        type: string
+        required: true
+      environment:
+        description: Environment to deploy
+        type: string
+        required: true
+      deploy-terraform:
+        description: Should terraform be deployed
+        type: boolean
+        required: true
+      deploy-application:
+        description: Should application be deployed
+        type: boolean
+        required: true
+
+
+run-name: Deploy to ${{ inputs.environment }}
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+
+jobs:
+  deploy-terraform:
+    name: Deploy Terraform (${{ inputs.environment }}) 🚀
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    if: inputs.deploy-terraform
+    env:
+      environment_mapping: |
+        {
+          "Service": "service", 
+          "Test": "test", 
+          "Stage": "stage", 
+          "Production": "production"
+        }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+      - uses: ./.github/actions/tools/terraform
+        with:
+          directory: 'environments/${{ fromJSON(env.environment_mapping)[inputs.environment] }}'
+          terraform_command: 'apply'
+          terraform_options: '--auto-approve'
+          always_run_init: 'true'
+
+  deploy-applications:
+    name: Deploy Applications (${{ inputs.environment }}) 🚀
+    needs: deploy-terraform
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    if: |
+      inputs.deploy-application
+      && always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Get Application Deployment Information
+        id: deployment-info
+        uses: ./.github/actions/deployment/get-application-deployment-info
+        with:
+          application_name: ${{ inputs.application_name }}
+
+      - name: Deploy ECS
+        if: steps.deployment-info.outputs.compute_target == 'ecs'
+        uses: ./.github/actions/deployment/codedeploy/deploy-ecs
+        with:
+          application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
+          deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
+          cluster_name: ${{ steps.deployment-info.outputs.ecs_cluster_name }}
+          image_uri: "${{ steps.deployment-info.outputs.ecr_image_base }}:${{ github.sha }}"
+          ecs_service_name: ${{ steps.deployment-info.outputs.ecs_service_name }}
+
+      - name: Deploy Lambda
+        if: steps.deployment-info.outputs.compute_target == 'lambda'
+        uses: ./.github/actions/deployment/codedeploy/deploy-lambda
+        with:
+          application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
+          deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
+          function_name: ${{ steps.deployment-info.outputs.lambda_function_name }}
+          s3_bucket: ${{ steps.deployment-info.outputs.lambda_s3_bucket }}
+          s3_folder: ${{ steps.deployment-info.outputs.lambda_s3_folder }}

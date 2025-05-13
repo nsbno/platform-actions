@@ -1,0 +1,79 @@
+on:
+  workflow_call:
+    inputs:
+      application_name:
+        required: false
+        type: string
+        description: "Name of the ECR repository to publish to."
+        default: ${{github.event.repository.name}}
+      working_directory:
+        required: false
+        type: string
+        default: "."
+        description: "What working directory we are in"
+      dockerfile:
+        required: false
+        type: string
+        default: "Dockerfile"
+        description: "The dockerfile"
+      artifact_name:
+        type: string
+        default: ""
+        required: false
+      artifact_path:
+        type: string
+        default: ""
+        required: false
+
+name: Upload Deployable to ECR
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-upload-docker-image:
+    name: Upload docker image to ECR
+    environment: 'Service'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Artifact
+        if: inputs.artifact_name != '' && inputs.artifact_path != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build docker
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ecr_repository_name && inputs.ecr_repository_name || github.event.repository.name }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+        run: |
+          docker build -f $DOCKERFILE -t $ECR_REGISTRY/$ECR_REPOSITORY .
+
+      - name: Tag and push image to Amazon ECR
+        id: build-image
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.application_name }}
+        run: |
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY "${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_SHA}"
+          
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"

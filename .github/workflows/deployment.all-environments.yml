@@ -1,0 +1,98 @@
+name: Deploy All Environments
+
+on:
+  workflow_call:
+    inputs:
+      application_name:
+        description: The name of the application
+        type: string
+        required: true
+      has-application-changes:
+        description: All changes in application and infrastructure
+        type: boolean
+        required: false
+        default: true
+      terraform-changes:
+        type: string
+        required: true
+
+
+run-name: Deploy Environments
+
+
+jobs:
+  get-environments:
+    name: Get all environments in repository
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/helpers/get-environments
+        id: envs
+
+  # Service always needs to be deployed first.
+  deploy-service:
+    uses: ./.github/workflows/deployment.single-environment.yml
+    needs: get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Service')
+    with:
+      application_name: ${{ inputs.application_name }}
+      environment: Service
+      deploy-application: ${{ inputs.has-application-changes }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
+
+  deploy-test:
+    uses: ./.github/workflows/deployment.single-environment.yml
+    needs:
+      - deploy-service
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Test')
+    with:
+      application_name: ${{ inputs.application_name }}
+      environment: Test
+      deploy-application: ${{ inputs.has-application-changes }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
+
+  deploy-stage:
+    uses: ./.github/workflows/deployment.single-environment.yml
+    needs:
+      - deploy-service
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Stage')
+    with:
+      application_name: ${{ inputs.application_name }}
+      environment: Stage
+      deploy-application: ${{ inputs.has-application-changes }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
+
+  deploy-production:
+    uses: ./.github/workflows/deployment.single-environment.yml
+    needs:
+      - deploy-service
+      - deploy-test
+      - deploy-stage
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Production')
+    with:
+      application_name: ${{ inputs.application_name }}
+      environment: Production
+      deploy-application: ${{ inputs.has-application-changes }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}

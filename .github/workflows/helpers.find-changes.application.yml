@@ -1,0 +1,36 @@
+on:
+  workflow_call:
+    inputs:
+      force-deploy:
+        description: Makes sure that application deploy always happens
+        type: boolean
+        default: false
+        required: false
+
+    outputs:
+      # Just a boolean if there are application changes
+      has-changes:
+        description: 'If there are any changes in the application'
+        value: ${{ jobs.has-application-changed.outputs.any-changed }}
+
+name: Find Application Changes
+
+jobs:
+  has-application-changed:
+    name: Any Application Changes?
+    runs-on: ubuntu-latest
+    outputs:
+      any-changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/helpers/has-application-changed
+        id: changed-files
+      - name: Add notice
+        shell: bash
+        run: |
+          if ${{ steps.changed-files.outputs.any_changed }}; then
+            echo "::notice title=Changes to Application::THe application has changes and will be deployed 🚀"
+          else
+            echo "::notice title=Changes to Application::The application has no changes, and will not be deployed 💤"
+          fi

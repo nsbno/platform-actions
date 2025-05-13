@@ -1,0 +1,55 @@
+name: test.gradle.yml
+on:
+  workflow_call:
+    secrets:
+      NEXUS_USERNAME:
+        required: true
+        description: "Nexus login username."
+      NEXUS_PASSWORD:
+        required: true
+        description: "Nexus login password."
+
+    inputs:
+      java_version:
+        required: false
+        type: string
+        description: "What Java version to use."
+        default: "17"
+      java_distribution:
+        required: false
+        type: string
+        default: "temurin"
+        description: "What Java distribution to use. Default is temurin (By Adoptium)."
+      working_directory:
+        required: false
+        type: string
+        default: "."
+
+      artifact_name:
+        required: false
+        type: string
+        default: "application-build"
+      artifact_path:
+        required: false
+        type: string
+        default: "./build/libs"  # Default for Gradle.
+
+jobs:
+  build:
+    name: Gradle Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download artifact
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifact_path }}
+
+      - uses: ./.github/actions/tools/grade
+        with:
+          gradle_operations: 'test'
+          working_directory: ${{ inputs.working_directory }}
