@@ -49,7 +49,7 @@ jobs:
           name: ${{ inputs.artifact_name }}
           path: ${{ inputs.artifact_path }}
 
-      - uses: ./.github/actions/tools/grade
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@main
         with:
           gradle_operations: 'test'
           working_directory: ${{ inputs.working_directory }}

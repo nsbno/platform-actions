@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/tools/grade
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@main
         with:
           gradle_operations: 'build'
           working_directory: ${{ inputs.working_directory }}
