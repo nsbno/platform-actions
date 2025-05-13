@@ -35,8 +35,8 @@ on:
         default: "./build/libs"  # Default for Gradle.
 
 jobs:
-  build:
-    name: Gradle Build
+  test:
+    name: Gradle Test
     runs-on: ubuntu-latest
 
     steps:
