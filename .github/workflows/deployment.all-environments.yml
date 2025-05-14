@@ -34,7 +34,7 @@ jobs:
 
   # Service always needs to be deployed first.
   deploy-service:
-    uses: ./.github/workflows/deployment.single-environment.yml
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@main
     needs: get-environments
     if: |
       always()
@@ -48,7 +48,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
 
   deploy-test:
-    uses: ./.github/workflows/deployment.single-environment.yml
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@main
     needs:
       - deploy-service
       - get-environments

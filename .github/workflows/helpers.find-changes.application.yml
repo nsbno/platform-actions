@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/has-application-changed
+      - uses: nsbno/platform-actions/.github/actions/helpers/has-application-changed@main
         id: changed-files
       - name: Add notice
         shell: bash

@@ -86,7 +86,7 @@ jobs:
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute_target == 'ecs'
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs
+        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
         with:
           application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
           deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
@@ -96,7 +96,7 @@ jobs:
 
       - name: Deploy Lambda
         if: steps.deployment-info.outputs.compute_target == 'lambda'
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda
+        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda@main
         with:
           application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
           deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
