@@ -60,7 +60,7 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ inputs.ecr_repository_name && inputs.ecr_repository_name || github.event.repository.name }}
+          ECR_REPOSITORY: ${{ inputs.repo_name }}
           DOCKERFILE: ${{ inputs.dockerfile }}
         run: |
           docker build -f $DOCKERFILE -t $ECR_REGISTRY/$ECR_REPOSITORY .
