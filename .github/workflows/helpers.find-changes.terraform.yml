@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: ./.github/actions/helpers/get-environments
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments
         id: envs
 
   has-terraform-changed:
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Terraform change check
-        uses: ./.github/actions/helpers/has-terraform-changed
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed
         id: changed-files
         with:
           environment: ${{ matrix.environment }}
