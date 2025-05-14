@@ -64,7 +64,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
 
   deploy-stage:
-    uses: ./.github/workflows/deployment.single-environment.yml
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@main
     needs:
       - deploy-service
       - get-environments
@@ -80,7 +80,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
 
   deploy-production:
-    uses: ./.github/workflows/deployment.single-environment.yml
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@main
     needs:
       - deploy-service
       - deploy-test
