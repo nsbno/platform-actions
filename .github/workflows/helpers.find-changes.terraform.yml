@@ -17,7 +17,7 @@ name: Find Terraform Changes
 
 # Needed to avoid conflicts with terraform state
 concurrency:
-  group: deploy-${{ inputs.environment }}
+  group: deploy-get-environments
 
 jobs:
   get-environments:
