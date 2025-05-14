@@ -1,7 +1,7 @@
 on:
   workflow_call:
     inputs:
-      application_name:
+      repo_name:
         required: false
         type: string
         description: "Name of the ECR repository to publish to."
@@ -70,7 +70,7 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ inputs.application_name }}
+          ECR_REPOSITORY: ${{ inputs.repo_name }}
         run: |
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY "${ECR_REGISTRY}/${ECR_REPOSITORY}:${GITHUB_SHA}"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:${GITHUB_SHA}"
