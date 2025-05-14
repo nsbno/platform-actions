@@ -38,7 +38,7 @@ runs:
         string=${{ inputs.environment }}
         echo "FOLDER_NAME=${string,,}" >> $GITHUB_ENV
 
-    - uses: ./.github/actions/tools/terraform
+    - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
       id: terraform
       with:
         directory: environments/${{ env.FOLDER_NAME }}
