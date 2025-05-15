@@ -16,6 +16,9 @@ inputs:
   deployment_group_name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
+  ecs_container_port:
+    description: "The container port to use"
+    required: true
 
 runs:
   using: composite
@@ -40,7 +43,7 @@ runs:
                 TaskDefinition: "task:def:arn"
                 LoadBalancerInfo:
                   ContainerName: ${{ inputs.ecs_service_name }}
-                  ContainerPort: 80
+                  ContainerPort: ${{ inputs.ecs_container_port }}
         EOF
 
     - name: Deploy new task definition
