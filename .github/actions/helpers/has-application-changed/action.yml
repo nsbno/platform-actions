@@ -13,7 +13,7 @@ runs:
 
     - name: Get all changed application files
       id: changed-application-files
-      uses: tj-actions/changed-files@v45
+      uses: tj-actions/changed-files@v46
       with:
         since_last_remote_commit: true
         files: |
