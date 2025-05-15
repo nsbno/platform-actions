@@ -51,7 +51,7 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
-      - uses: ./.github/actions/tools/terraform
+      - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
         with:
           directory: 'environments/${{ fromJSON(env.environment_mapping)[inputs.environment] }}'
           terraform_command: 'apply'
@@ -80,7 +80,7 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: ./.github/actions/deployment/get-application-deployment-info
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
         with:
           application_name: ${{ inputs.application_name }}
 
