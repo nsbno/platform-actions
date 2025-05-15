@@ -104,8 +104,21 @@ runs:
         key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
 
     - name: Terraform Command
-      continue-on-error: ${{ inputs.fail_on_exit_code == 'false' }}
       working-directory: ${{ inputs.directory }}
       id: terraform
       shell: bash
       run: terraform ${{ inputs.terraform_command }} ${{ inputs.terraform_options }}
+
+    - name: Terraform Output
+      continue-on-error: ${{ inputs.fail_on_exit_code == 'false' }}
+      shell: bash
+      run: |
+        if [ "${{ steps.terraform.outputs.exitcode }}" = "0" ]; then
+          echo "Terraform succeeded with no changes."
+        elif [ "${{ steps.terraform.outputs.exitcode }}" = "1" ]; then
+          echo "Terraform failed with an error."
+        elif [ "${{ steps.terraform.outputs.exitcode }}" = "2" ]; then
+          echo "Terraform succeeded with changes present."
+        else
+          echo "Terraform exited with an unexpected code: ${{ steps.terraform.outputs.exitcode }}"
+        fi
