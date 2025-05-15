@@ -57,8 +57,8 @@ runs:
                     Properties:
                       Name: "${{ inputs.lambda_function_name }}"
                       Alias: "active"
-                      CurrentVersion: "${{ needs.publish-lambda.outputs.current_lambda_version }}"
-                      TargetVersion: "${{ needs.publish-lambda.outputs.new_lambda_version }}"
+                      CurrentVersion: "${{ steps.publish-lambda.outputs.current_lambda_version }}"
+                      TargetVersion: "${{ steps.publish-lambda.outputs.new_lambda_version }}"
         EOF
 
     - name: Trigger CodeDeploy
