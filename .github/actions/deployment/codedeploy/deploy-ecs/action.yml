@@ -53,7 +53,6 @@ runs:
       id: deploy
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
-        wait-for-service-stability: true
         task-definition: ${{ steps.render.outputs.task-definition }}
         service: ${{ inputs.ecs_service_name }}
         cluster: ${{ inputs.cluster_name }}
