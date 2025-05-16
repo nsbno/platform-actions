@@ -94,6 +94,7 @@ jobs:
           image_uri: "${{ steps.deployment-info.outputs.ecr_image_base }}:${{ github.sha }}"
           ecs_service_name: ${{ steps.deployment-info.outputs.ecs_service_name }}
           ecs_container_port: ${{ steps.deployment-info.outputs.ecs_container_port }}
+          aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Deploy Lambda
         if: steps.deployment-info.outputs.compute_target == 'lambda'

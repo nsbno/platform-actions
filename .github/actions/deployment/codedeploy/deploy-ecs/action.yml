@@ -19,6 +19,9 @@ inputs:
   ecs_container_port:
     description: "The container port to use"
     required: true
+  aws_account_id:
+    description: "The AWS Account ID"
+    required: true
 
 runs:
   using: composite
@@ -62,7 +65,7 @@ runs:
       id: output
       shell: bash
       run: |
-        REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ vars.AWS_ACCOUNT_ID }}&destination="
+        REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ inputs.aws_account_id}}&destination="
         DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
         CODEDEPLOY_URL="https://console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=eu-west-1"
         ENCODED_URL=$(python -c "import urllib.parse; print(urllib.parse.quote('${CODEDEPLOY_URL}', safe=''))")
