@@ -58,6 +58,16 @@ runs:
         codedeploy-deployment-group: ${{ inputs.deployment_group_name }}
         codedeploy-appspec: ./appspec.yml
 
+    - name: Output CodeDeploy URL with redirect
+      id: output
+      shell: bash
+      run: |
+        REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ vars.AWS_ACCOUNT_ID }}&destination="
+        DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
+        CODEDEPLOY_URL="https://console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=eu-west-1"
+        ENCODED_URL=$(python -c "import urllib.parse; print(urllib.parse.quote('${CODEDEPLOY_URL}', safe=''))")
+        echo "CodeDeploy URL: ${REDIRECT_URL}${ENCODED_URL}"
+
     - name: Monitor CodeDeploy Deployment Status
       shell: bash
       # language=bash
