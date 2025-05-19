@@ -44,7 +44,7 @@ jobs:
     with:
       application_name: ${{ inputs.application_name }}
       environment: Service
-      deploy-application: ${{ inputs.has-application-changes }}
+      deploy-application: false
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
 
   deploy-test:
