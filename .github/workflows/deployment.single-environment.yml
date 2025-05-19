@@ -42,7 +42,7 @@ jobs:
           "Service": "service", 
           "Test": "test", 
           "Stage": "stage", 
-          "Production": "production"
+          "Production": "prod"
         }
     steps:
       - uses: actions/checkout@v4
