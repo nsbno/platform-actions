@@ -67,8 +67,12 @@ runs:
         REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ inputs.aws_account_id}}&destination="
         DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
         CODEDEPLOY_URL="https://console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=eu-west-1"
-        ENCODED_URL=$(python -c "import urllib.parse; print(urllib.parse.quote('${CODEDEPLOY_URL}', safe=''))")
-        echo "CodeDeploy URL: ${REDIRECT_URL}${ENCODED_URL}"
+        ECS_URL="https://console.aws.amazon.com/ecs/v2/clusters/${{inputs.cluster_name}}/services/${{inputs.ecs_service_name}}/deployments?region=eu-west-1"
+        ENCODED_CODEDEPLOY_URL=$(jq -rn --arg v "$CODEDEPLOY_URL" '$v|@uri')
+        ENCODED_ECS_URL=$(jq -rn --arg v "$ECS_URL" '$v|@uri')
+        echo "--- URLs ---"
+        echo "CodeDeploy URL: ${REDIRECT_URL}${ENCODED_CODEDEPLOY_URL}"
+        echo "ECS URL: ${REDIRECT_URL}${ENCODED_ECS_URL}"
 
     - name: Monitor CodeDeploy Deployment Status
       shell: bash
