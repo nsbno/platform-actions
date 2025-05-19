@@ -34,9 +34,18 @@ runs:
     - id: folder_name
       name: Get the correct folder name
       shell: bash
+      env:
+        environment_mapping: |
+          {
+            "Service": "service", 
+            "Test": "test", 
+            "Stage": "stage", 
+            "Production": "prod"
+          }
       run: |
         string=${{ inputs.environment }}
-        echo "FOLDER_NAME=${string,,}" >> $GITHUB_ENV
+        folder_name=$(echo "$environment_mapping" | jq -r --arg env "$string" '.[$env]')
+        echo "FOLDER_NAME=${folder_name}" >> $GITHUB_ENV
 
     - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
       id: terraform
