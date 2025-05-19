@@ -16,9 +16,7 @@ on:
         type: string
         required: true
 
-
 run-name: Deploy Environments
-
 
 jobs:
   get-environments:

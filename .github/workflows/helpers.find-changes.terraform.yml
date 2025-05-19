@@ -33,7 +33,7 @@ jobs:
         id: envs
 
   has-terraform-changed:
-    name: Any Terraform Changes?
+    name: Any changes?
     needs: get-environments
     permissions:
       id-token: write
@@ -74,7 +74,7 @@ jobs:
             has-changes: ${{ steps.changed-files.outputs.any_changed }}
 
   create-terraform-changes-list:
-    name: Aggregate Terraform changes
+    name: Aggregate changes
     needs:
       - has-terraform-changed
     runs-on: ubuntu-latest

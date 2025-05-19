@@ -28,11 +28,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-${{ inputs.environment }}
+  group: ${{ inputs.environment }}-deploy
 
 jobs:
   deploy-terraform:
-    name: Deploy Terraform (${{ inputs.environment }}) 🚀
+    name: (${{ inputs.environment }}) Terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform
@@ -59,7 +59,7 @@ jobs:
           always_run_init: 'true'
 
   deploy-applications:
-    name: Deploy Applications (${{ inputs.environment }}) 🚀
+    name: (${{ inputs.environment }}) Application
     needs: deploy-terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
