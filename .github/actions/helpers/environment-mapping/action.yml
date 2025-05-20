@@ -1,0 +1,34 @@
+name: Get Environment Mapping
+description: Provides standardized environment mapping
+
+outputs:
+  directory:
+    description: 'Directory name for the specified environment'
+    value: ${{ steps.get-directory.outputs.directory }}
+
+inputs:
+  environment:
+    description: 'Environment name to get directory for'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - id: set-mapping
+      shell: bash
+      run: |
+        MAPPING='{
+          "Service": "service", 
+          "Test": "test", 
+          "Stage": "stage", 
+          "Production": "prod"
+        }'
+        echo "mapping=$MAPPING" >> $GITHUB_OUTPUT
+
+    - id: get-directory
+      if: inputs.environment != ''
+      shell: bash
+      run: |
+        MAPPING='${{ steps.set-mapping.outputs.mapping }}'
+        DIRECTORY=$(echo "$MAPPING" | jq -r --arg env "${{ inputs.environment }}" '.[$env]')
+        echo "directory=$DIRECTORY" >> $GITHUB_OUTPUT

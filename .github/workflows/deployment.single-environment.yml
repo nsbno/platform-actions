@@ -36,14 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform
-    env:
-      environment_mapping: |
-        {
-          "Service": "service", 
-          "Test": "test", 
-          "Stage": "stage", 
-          "Production": "prod"
-        }
     steps:
       - uses: actions/checkout@v4
       - name: Authenticate with AWS
@@ -51,9 +43,13 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+      - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@main
+        id: env-mapping
+        with:
+          environment: ${{ inputs.environment }}
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
         with:
-          directory: 'environments/${{ fromJSON(env.environment_mapping)[inputs.environment] }}'
+          directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
           terraform_command: 'apply'
           terraform_options: '--auto-approve'
           always_run_init: 'true'

@@ -83,12 +83,14 @@ runs:
       with:
         terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-    - name: Restore Terraform
-      id: restore-terraform
-      uses: actions/cache/restore@v4
+    - name: Cache Terraform
+      id: terraform-cache
+      uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/${{ inputs.directory }}/.terraform
         key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
+        restore-keys: |
+          ${{runner.os}}-${{ inputs.directory }}-terraform-
 
     - name: Terraform Init
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always_run_init == 'true'
@@ -96,12 +98,6 @@ runs:
       working-directory: ${{ inputs.directory }}
       run: |
         terraform init --backend=${{ inputs.terraform_use_backend }}
-
-    - name: Cache Terraform
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ github.workspace }}/${{ inputs.directory }}/.terraform
-        key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
 
     - name: Terraform Command
       working-directory: ${{ inputs.directory }}
