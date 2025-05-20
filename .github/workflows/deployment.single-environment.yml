@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   deploy-terraform:
-    name: ${{ inputs.environment != '' && format('({}) Terraform', inputs.environment) || 'Skipped' }}
+    name: (${{ inputs.environment }}) Terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform
@@ -59,7 +59,7 @@ jobs:
           always_run_init: 'true'
 
   deploy-applications:
-    name: ${{ inputs.environment != '' && format('({}) Application', inputs.environment) || 'Skipped' }}
+    name: (${{ inputs.environment }}) Application
     needs: deploy-terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
