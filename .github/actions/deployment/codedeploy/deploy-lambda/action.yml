@@ -22,7 +22,7 @@ runs:
       id: get_current_version
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.lambda_function_name }}"
+        LAMBDA_NAME="${{ inputs.function_name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
         echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
@@ -30,7 +30,7 @@ runs:
       id: publish
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.lambda_function_name }}"
+        LAMBDA_NAME="${{ inputs.function_name }}"
         S3_BUCKET="${{ inputs.s3_bucket }}"
         S3_FOLDER="${{ inputs.s3_folder }}"
         SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
@@ -55,10 +55,10 @@ runs:
                 - TargetService:
                     Type: "AWS::Lambda::Function"
                     Properties:
-                      Name: "${{ inputs.lambda_function_name }}"
+                      Name: "${{ inputs.function_name }}"
                       Alias: "active"
-                      CurrentVersion: "${{ steps.publish-lambda.outputs.current_lambda_version }}"
-                      TargetVersion: "${{ steps.publish-lambda.outputs.new_lambda_version }}"
+                      CurrentVersion: "${{ steps.publish.outputs.current_lambda_version }}"
+                      TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"
         EOF
 
     - name: Trigger CodeDeploy
