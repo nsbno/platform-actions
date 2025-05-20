@@ -42,17 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-        # Cache dependencies
-      - name: Set up Gradle cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       # Download artifact
       - name: Download Artifact
         uses: actions/download-artifact@v4
