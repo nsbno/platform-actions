@@ -70,9 +70,9 @@ runs:
         ECS_URL="https://console.aws.amazon.com/ecs/v2/clusters/${{inputs.cluster_name}}/services/${{inputs.ecs_service_name}}/deployments?region=eu-west-1"
         ENCODED_CODEDEPLOY_URL=$(jq -rn --arg v "$CODEDEPLOY_URL" '$v|@uri')
         ENCODED_ECS_URL=$(jq -rn --arg v "$ECS_URL" '$v|@uri')
-        echo "--- URLs ---"
-        echo "CodeDeploy URL: ${REDIRECT_URL}${ENCODED_CODEDEPLOY_URL}"
-        echo "ECS URL: ${REDIRECT_URL}${ENCODED_ECS_URL}"
+        echo "--- URLs to interact with AWS ---"
+        echo "CodeDeploy (to monitor rollback): ${REDIRECT_URL}${ENCODED_CODEDEPLOY_URL}"
+        echo "ECS console (to debug ECS errors): ${REDIRECT_URL}${ENCODED_ECS_URL}"
 
     - name: Monitor CodeDeploy Deployment Status
       shell: bash
@@ -92,7 +92,7 @@ runs:
         TERMINATION_WAIT_TIME=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID" \
           --query "deploymentInfo.blueGreenDeploymentConfiguration.terminateBlueInstancesOnDeploymentSuccess.terminationWaitTimeInMinutes" \
           --output text)
-        echo -e "${CYAN}Termination wait time configured: $TERMINATION_WAIT_TIME minutes"
+        echo -e "${CYAN}Rollback window configured: $TERMINATION_WAIT_TIME minutes"
 
         while true; do
           SERVICE=$(aws ecs describe-services --cluster ${{ inputs.cluster_name }} --services ${{ inputs.ecs_service_name }})
