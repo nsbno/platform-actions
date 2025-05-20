@@ -17,12 +17,7 @@ runs:
     - id: set-mapping
       shell: bash
       run: |
-        MAPPING='{
-          "Service": "service", 
-          "Test": "test", 
-          "Stage": "stage", 
-          "Production": "prod"
-        }'
+        MAPPING='{"Service":"service","Test":"test","Stage":"stage","Production":"prod"}'
         echo "mapping=$MAPPING" >> $GITHUB_OUTPUT
 
     - id: get-directory
