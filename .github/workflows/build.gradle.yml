@@ -44,7 +44,7 @@ on:
 jobs:
   build:
     name: Gradle Build
-    runs-on: Test
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
