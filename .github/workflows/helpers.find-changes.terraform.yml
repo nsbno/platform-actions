@@ -97,7 +97,7 @@ jobs:
         id: aggregate
         run: |
           # One-liner to create JSON array of environments with changes
-          CHANGES=$(grep -l "true" ./matrix-outputs/*.txt | sed -E 's/.*\/(.*)\.txt/\1/' | jq -R -s 'split("\n") | map(select(length > 0))')
+          CHANGES=$(grep -l "true" ./matrix-outputs/*.txt | sed -E 's/.*\/(.*)\.txt/\1/' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           
           echo "Following environments have changes: ${CHANGES}"
           echo "CHANGES=${CHANGES}" >> $GITHUB_OUTPUT
