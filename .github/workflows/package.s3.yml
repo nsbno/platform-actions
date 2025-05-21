@@ -14,11 +14,11 @@ on:
         required: false
         type: string
         description: "Path to artifact files from previous workflow."
-      directory_to_zip:
+      zip_file_name:
         required: false
         type: string
-        description: "What directory to recursively zip."
-        default: './'
+        description: "Name of the zip file to upload."
+        default: 'artifact.zip'
       working_directory:
         required: false
         type: string
@@ -32,8 +32,8 @@ permissions:
   contents: read
 
 jobs:
-  zip-and-upload-to-s3:
-    name: Zip and upload to S3
+  upload-zip-to-s3:
+    name: Upload zip to S3
     environment: Service
     runs-on: ubuntu-latest
     permissions:
@@ -72,14 +72,10 @@ jobs:
         env:
           S3_BUCKET: ${{ steps.params.outputs.ARTIFACT_BUCKET }}
           APPLICATION_NAME: ${{ inputs.application_name }}
-          DIRECTORY_TO_ZIP: ${{ inputs.directory_to_zip }}
           ZIP_FILE_NAME: ${{ inputs.zip_file_name }}
         run: |
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
           
-          ZIP_FILE_NAME=artifact.zip
-          
-          zip -r "$ZIP_FILE_NAME" "$DIRECTORY_TO_ZIP"
           aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$SHORT_SHA.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
           aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
