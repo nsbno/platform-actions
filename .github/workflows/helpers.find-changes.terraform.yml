@@ -90,28 +90,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: matrix-outputs-*
+          merge-multiple: true
           path: ./matrix-outputs
+
       - name: Aggregate environment changes
         id: aggregate
         run: |
-          changes=()
-
-          for file in ./matrix-outputs/*.txt; do
-            env=$(basename "$file" .txt)
-            changed=$(cat "$file")
-            echo "Environment: $env, Changed: $changed"
-
-            if [[ "$changed" == "true" ]]; then
-              changes+=("$env")
-            fi
-          done
-
-          # Convert the array into a JSON list
-          if [ ${#changes[@]} -eq 0 ]; then
-            json_changes="[]"
-          else
-            json_changes=$(printf "%s\n" "${changes[@]}" | jq -R -s -c 'split("\n")[:-1]')
-          fi
-
-          echo "Following environments have changes: ${json_changes}"
-          echo "CHANGES=${json_changes}" >> $GITHUB_OUTPUT
+          # One-liner to create JSON array of environments with changes
+          CHANGES=$(grep -l "true" ./matrix-outputs/*.txt | sed -E 's/.*\/(.*)\.txt/\1/' | jq -R -s 'split("\n") | map(select(length > 0))')
+          
+          echo "Following environments have changes: ${CHANGES}"
+          echo "CHANGES=${CHANGES}" >> $GITHUB_OUTPUT
