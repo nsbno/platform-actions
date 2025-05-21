@@ -52,7 +52,7 @@ jobs:
           uv build
           uv pip install dist/*.whl --target ./out
           find ./out/ -name "__pycache__" -type d -exec rm -rf {} +
-          zip -r ./artifact.zip ./out
+          cd out && zip -r ../artifact.zip ./*
 
       - name: Store build as Artifact
         uses: actions/upload-artifact@v4
