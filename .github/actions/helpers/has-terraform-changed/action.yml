@@ -31,26 +31,15 @@ runs:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: "arn:aws:iam::${{ inputs.aws-account-id }}:role/${{ inputs.deployment-role }}"
 
-    - id: folder_name
-      name: Get the correct folder name
-      shell: bash
-      env:
-        environment_mapping: |
-          {
-            "Service": "service", 
-            "Test": "test", 
-            "Stage": "stage", 
-            "Production": "prod"
-          }
-      run: |
-        string=${{ inputs.environment }}
-        folder_name=$(echo "$environment_mapping" | jq -r --arg env "$string" '.[$env]')
-        echo "FOLDER_NAME=${folder_name}" >> $GITHUB_ENV
+    - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@main
+      id: env-mapping
+      with:
+        environment: ${{ inputs.environment }}
 
     - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
       id: terraform
       with:
-        directory: environments/${{ env.FOLDER_NAME }}
+        directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
         terraform_command: plan --refresh=false -detailed-exitcode
         fail_on_exit_code: 'true'
         always_run_init: 'true'
