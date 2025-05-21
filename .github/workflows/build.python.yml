@@ -14,10 +14,10 @@ on:
       artifact_name:
         required: false
         type: string
-        default: "application-build"
+        default: "artifact"
       artifact_path:
         required: false
-        default: "./build"
+        default: "./artifact.zip"
         type: string
 
     outputs:
