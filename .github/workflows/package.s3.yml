@@ -76,15 +76,6 @@ jobs:
           echo "ARTIFACT_BUCKET=$VALUE"
           echo "ARTIFACT_BUCKET=$VALUE" >> $GITHUB_OUTPUT
 
-      - name: Verify file exists
-        working-directory: ${{ inputs.working_directory }}
-        run: |
-          if [ ! -f "${{ inputs.zip_file_name }}" ]; then
-            echo "Error: ${{ inputs.zip_file_name }} not found in $(pwd)"
-            ls -la
-            exit 1
-          fi
-
       - name: Upload to S3
         working-directory: ${{ inputs.working_directory }}
         env:
