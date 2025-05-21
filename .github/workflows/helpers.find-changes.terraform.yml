@@ -66,12 +66,17 @@ jobs:
           fi
 
       - name: Set output
-        uses: cloudposse/github-action-matrix-outputs-write@v1
+        shell: bash
+        run: |
+          mkdir -p ./matrix-outputs
+          echo "${{ steps.changed-files.outputs.any_changed }}" > ./matrix-outputs/${{ matrix.environment }}.txt
+
+      - name: Upload matrix outputs
+        uses: actions/upload-artifact@v4
         with:
-          matrix-step-name: ${{ github.job }}
-          matrix-key: ${{ matrix.environment }}
-          outputs: |
-            has-changes: ${{ steps.changed-files.outputs.any_changed }}
+          name: matrix-outputs-${{ matrix.environment }}
+          path: ./matrix-outputs
+          retention-days: 1
 
   create-terraform-changes-list:
     name: Aggregate changes
@@ -81,25 +86,19 @@ jobs:
     outputs:
       changes: ${{ steps.aggregate.outputs.CHANGES }}
     steps:
-      - name: Download changes artifact
-        id: read
-        uses: cloudposse/github-action-matrix-outputs-read@v1
+      - name: Download matrix outputs
+        uses: actions/download-artifact@v4
         with:
-          matrix-step-name: has-terraform-changed
+          pattern: matrix-outputs-*
+          path: ./matrix-outputs
       - name: Aggregate environment changes
         id: aggregate
         run: |
           changes=()
 
-          # Parse the JSON string directly from the output
-          result='${{ steps.read.outputs.result }}'
-
-          # Extract environment keys from the 'has-changes' object using `jq`
-          environments=$(echo "$result" | jq -r '.["has-changes"] | keys[]')
-
-          for env in $environments; do
-            # Check if the environment has changes
-            changed=$(echo "$result" | jq -r --arg env "$env" '.["has-changes"][$env]')
+          for file in ./matrix-outputs/*.txt; do
+            env=$(basename "$file" .txt)
+            changed=$(cat "$file")
             echo "Environment: $env, Changed: $changed"
 
             if [[ "$changed" == "true" ]]; then
