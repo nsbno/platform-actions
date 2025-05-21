@@ -48,7 +48,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.artifact_path }}
+          path: ${{ inputs.working_directory }}/${{ inputs.artifact_path }}
           merge-multiple: true # This prevents creating subdirectories
 
       - name: Authenticate with AWS
