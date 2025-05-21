@@ -67,6 +67,15 @@ jobs:
           echo "ARTIFACT_BUCKET=$VALUE"
           echo "ARTIFACT_BUCKET=$VALUE" >> $GITHUB_OUTPUT
 
+      - name: Verify file exists
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          if [ ! -f "${{ inputs.zip_file_name }}" ]; then
+            echo "Error: ${{ inputs.zip_file_name }} not found in $(pwd)"
+            ls -la
+            exit 1
+          fi
+
       - name: Upload to S3
         working-directory: ${{ inputs.working_directory }}
         env:
@@ -77,5 +86,5 @@ jobs:
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
           
-          aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$SHORT_SHA.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
-          aws s3 cp "$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$SHORT_SHA.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
