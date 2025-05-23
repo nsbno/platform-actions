@@ -55,6 +55,8 @@ jobs:
           java_distribution: ${{ inputs.java_distribution }}
           gradle_operations: 'build'
           working_directory: ${{ inputs.working_directory }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
       - name: Store built JAR as Artifact
         uses: actions/upload-artifact@v4

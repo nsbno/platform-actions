@@ -2,6 +2,13 @@ name: Gradle
 description: Run Gradle Commands
 
 inputs:
+  NEXUS_USERNAME:
+    required: true
+    description: "Nexus login username."
+  NEXUS_PASSWORD:
+    required: true
+    description: "Nexus login password."
+
   gradle_operations:
     required: true
     description: "What gradle operations to execute."
@@ -47,6 +54,7 @@ runs:
       env:
         repo: ${{ github.event.repository.name }}
         gradle_operations: ${{ inputs.gradle_operations }}
-
+        NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
+        NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
         ./gradlew ${{ inputs.gradle_operations }}
