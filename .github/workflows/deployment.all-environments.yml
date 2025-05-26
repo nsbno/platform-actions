@@ -33,7 +33,7 @@ jobs:
       - name: Parse application names
         id: parse-app-names
         run: |
-          APPS_JSON=$(echo '${{ inputs.application_names }}' | sed 's/\s*,\s*/,/g' | jq -R 'split(",") | map(select(length > 0))')
+          APPS_JSON=$(echo '${{ inputs.application_names }}' | jq -Rc 'split(",") | map(select(length > 0) | trim)')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
