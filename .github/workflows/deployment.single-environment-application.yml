@@ -11,10 +11,6 @@ on:
         description: Environment to deploy
         type: string
         required: true
-      deploy-terraform:
-        description: Should terraform be deployed
-        type: boolean
-        required: true
       deploy-application:
         description: Should application be deployed
         type: boolean
@@ -31,32 +27,8 @@ concurrency:
   group: ${{ inputs.environment }}-deploy
 
 jobs:
-  deploy-terraform:
-    name: (${{ inputs.environment }}) Terraform
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    if: inputs.deploy-terraform
-    steps:
-      - uses: actions/checkout@v4
-      - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
-      - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@main
-        id: env-mapping
-        with:
-          environment: ${{ inputs.environment }}
-      - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
-        with:
-          directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
-          terraform_command: 'apply'
-          terraform_options: '--auto-approve'
-          always_run_init: 'true'
-
   deploy-applications:
     name: (${{ inputs.environment }}) Application
-    needs: deploy-terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |
