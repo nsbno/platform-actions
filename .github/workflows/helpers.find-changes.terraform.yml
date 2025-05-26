@@ -22,7 +22,7 @@ concurrency:
 jobs:
   get-environments:
     if: ${{ !inputs.force-deploy }}
-    name: Get all environments in repository
+    name: Find Relevant GH Environments
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}
@@ -80,7 +80,7 @@ jobs:
           overwrite: true
 
   create-terraform-changes-list:
-    name: Aggregate changes
+    name: Aggregate Changes
     needs:
       - has-terraform-changed
     runs-on: ubuntu-latest

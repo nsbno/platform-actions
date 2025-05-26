@@ -20,7 +20,7 @@ run-name: Deploy Environments
 
 jobs:
   get-environments:
-    name: Get all environments in repository
+    name: Find Relevant GH Environments
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}

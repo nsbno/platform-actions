@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   deploy-terraform:
-    name: ${{ inputs.environment }} - Terraform
+    name: ${{ inputs.environment || 'Skipped' }} - Terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform

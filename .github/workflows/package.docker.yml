@@ -38,7 +38,7 @@ permissions:
 
 jobs:
   build-and-upload-docker-image:
-    name: Upload docker image to ECR
+    name: Upload Docker Image to ECR
     environment: 'Service'
     runs-on: ubuntu-latest
     steps:
