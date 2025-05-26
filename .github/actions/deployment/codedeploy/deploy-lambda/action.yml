@@ -1,17 +1,17 @@
 inputs:
-  function_name:
+  function-name:
     description: "The name of the Lambda Function"
     required: true
-  s3_bucket:
+  s3-bucket:
     description: "The bucket with the artifact"
     required: true
-  s3_folder:
+  s3-folder:
     description: "The path of the artifact"
     required: true
-  application_name:
+  codedeploy-application-name:
     description: "The CodeDeploy Application Name"
     required: true
-  deployment_group_name:
+  codedeploy-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
 
@@ -22,7 +22,7 @@ runs:
       id: get_current_version
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.function_name }}"
+        LAMBDA_NAME="${{ inputs.function-name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
         echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
@@ -30,9 +30,9 @@ runs:
       id: publish
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.function_name }}"
-        S3_BUCKET="${{ inputs.s3_bucket }}"
-        S3_FOLDER="${{ inputs.s3_folder }}"
+        LAMBDA_NAME="${{ inputs.function-name }}"
+        S3_BUCKET="${{ inputs.s3-bucket }}"
+        S3_FOLDER="${{ inputs.s3-folder }}"
         SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
         S3_KEY="${S3_FOLDER}/${SHORT_SHA}.zip"
         
@@ -44,8 +44,8 @@ runs:
       shell: bash
       run: |
         cat <<EOF > appspec.yml
-        applicationName: ${{ inputs.codedeploy_application_name }}
-        deploymentGroupName: ${{ inputs.codedeploy_deployment_group_name }}
+        applicationName: ${{ inputs.codedeploy-application-name }}
+        deploymentGroupName: ${{ inputs.codedeploy-group-name }}
         revision:
           revisionType: AppSpecContent
           appSpecContent:
@@ -55,7 +55,7 @@ runs:
                 - TargetService:
                     Type: "AWS::Lambda::Function"
                     Properties:
-                      Name: "${{ inputs.function_name }}"
+                      Name: "${{ inputs.function-name }}"
                       Alias: "active"
                       CurrentVersion: "${{ steps.publish.outputs.current_lambda_version }}"
                       TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"

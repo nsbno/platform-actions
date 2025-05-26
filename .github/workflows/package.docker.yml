@@ -1,12 +1,12 @@
 on:
   workflow_call:
     inputs:
-      repo_name:
+      repo-name:
         required: false
         type: string
         description: "Name of the ECR repository to publish to."
         default: ${{github.event.repository.name}}
-      working_directory:
+      working-directory:
         required: false
         type: string
         default: "."
@@ -16,15 +16,15 @@ on:
         type: string
         default: "Dockerfile"
         description: "The dockerfile"
-      artifact_name:
+      artifact-name:
         type: string
         default: ""
         required: false
-      artifact_path:
+      artifact-path:
         type: string
         default: ""
         required: false
-      lambda_compatible:
+      lambda-compatible:
         required: false
         type: boolean
         default: false
@@ -45,11 +45,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download Artifact
-        if: inputs.artifact_name != '' && inputs.artifact_path != ''
+        if: inputs.artifact-name != '' && inputs.artifact-path != ''
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.artifact_path }}
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -68,14 +68,14 @@ jobs:
         id: build-image
         uses: docker/build-push-action@v6
         with:
-          context: ${{ inputs.working_directory }}
-          file: ${{ inputs.working_directory }}/${{ inputs.dockerfile }}
+          context: ${{ inputs.working-directory }}
+          file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo_name }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo_name }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # provenance and sbom are not supported for lambda images
-          provenance: ${{ inputs.lambda_compatible == 'false' }}
-          sbom: ${{ inputs.lambda_compatible == 'false' }}
+          provenance: ${{ inputs.lambda-compatible == 'false' }}
+          sbom: ${{ inputs.lambda-compatible == 'false' }}

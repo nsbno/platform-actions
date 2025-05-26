@@ -3,7 +3,7 @@ name: Deploy to single environment
 on:
   workflow_call:
     inputs:
-      application_name:
+      application-name:
         description: Name of the application to deploy
         type: string
         required: true
@@ -24,12 +24,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy-${{ inputs.application_name }}
+  group: ${{ inputs.environment }}-deploy-${{ inputs.application-name }}
   cancel-in-progress: true
 
 jobs:
   deploy-applications:
-    name: ${{ inputs.application_name }} (${{ inputs.environment }})
+    name: ${{ inputs.application-name }} (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |
@@ -51,25 +51,25 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
         with:
-          application_name: ${{ inputs.application_name }}
+          application-name: ${{ inputs.application-name }}
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute_target == 'ecs'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
         with:
-          application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
-          deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
-          cluster_name: ${{ steps.deployment-info.outputs.ecs_cluster_name }}
-          image_uri: "${{ steps.deployment-info.outputs.ecr_image_base }}:${{ github.sha }}"
-          ecs_service_name: ${{ steps.deployment-info.outputs.ecs_service_name }}
-          ecs_container_port: ${{ steps.deployment-info.outputs.ecs_container_port }}
-          aws_account_id: ${{ vars.AWS_ACCOUNT_ID }}
+          application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
+          deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
+          cluster-name: ${{ steps.deployment-info.outputs.ecs_cluster-name }}
+          image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ github.sha }}"
+          ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
+          ecs-container-port: ${{ steps.deployment-info.outputs.ecs-container-port }}
+          aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Deploy Lambda
         if: steps.deployment-info.outputs.compute_target == 'lambda'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda-image@main
         with:
-          application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
-          deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
-          function_name: ${{ steps.deployment-info.outputs.lambda_function_name }}
-          image_uri: ${{ steps.deployment-info.outputs.lambda_image_uri }}
+          application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
+          deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
+          function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
+          image-uri: ${{ steps.deployment-info.outputs.lambda-image-uri }}

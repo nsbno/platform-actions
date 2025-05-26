@@ -2,41 +2,41 @@ name: Get Application Deployment Info
 description: Gets information about the deployable
 
 inputs:
-  application_name:
+  application-name:
     description: "The name of the application"
 
 outputs:
-  compute_target:
+  compute-target:
     description: What kind of compute we are targeting (ECS or Lambda)
     value: ${{ steps.params.outputs.compute_target }}
-  codedeploy_deployment_group:
+  codedeploy-deployment-group:
     description: The CodeDeploy Deployment Group
     value: ${{ steps.params.outputs.codedeploy_deployment_group }}
-  codedeploy_application_name:
+  codedeploy-application-name:
     description: The CodeDeploy Applicaion Name
     value: ${{ steps.params.outputs.codedeploy_application_name }}
-  ecs_cluster_name:
+  ecs-cluster-name:
     description: The ECS Cluster Name
     value: ${{ steps.params.outputs.ecs_cluster_name }}
-  ecs_service_name:
+  ecs-service-name:
     description: The ECS Service Name
     value: ${{ steps.params.outputs.ecs_service_name }}
-  ecr_image_base:
+  ecr-image-base:
     description: The Image Base URL
     value: ${{ steps.params.outputs.ecr_image_base }}
-  ecs_container_port:
+  ecs-container-port:
     description: The container port to use
     value: ${{ steps.params.outputs.ecs_container_port }}
-  lambda_function_name:
+  lambda-function-name:
     description: The name of the Lambda function
     value: ${{ steps.params.outputs.lambda_function_name }}
-  lambda_s3_bucket:
+  lambda-s3-bucket:
     description: The S3 Bucket Name
     value: ${{ steps.params.outputs.lambda_s3_bucket }}
-  lambda_s3_folder:
+  lambda-s3-folder:
     description: The folder within the S3 Bucket
     value: ${{ steps.params.outputs.lambda_s3_folder }}
-  lambda_image_uri:
+  lambda-image-uri:
     description: The ECR Image URI for the Lambda function
     value: ${{ steps.params.outputs.lambda_image_uri }}
 
@@ -47,7 +47,7 @@ runs:
       id: params
       shell: bash
       run: |
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.application_name }}/" --query "Parameters")
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.application-name }}/" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
           echo "NAME=$NAME"

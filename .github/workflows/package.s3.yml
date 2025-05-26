@@ -1,25 +1,25 @@
 on:
   workflow_call:
     inputs:
-      application_name:
+      application-name:
         required: false
         type: string
         description: "Name of the S3 Folder to publish to."
         default: ${{github.event.repository.name}}
-      artifact_name:
+      artifact-name:
         required: false
         type: string
         description: "Name of the artifact storing the build files."
-      artifact_path:
+      artifact-path:
         required: false
         type: string
         description: "Path to artifact files from previous workflow."
-      zip_file_name:
+      zip-file-name:
         required: false
         type: string
         description: "Name of the zip file to upload."
         default: 'artifact.zip'
-      working_directory:
+      working-directory:
         required: false
         type: string
         description: "Directory to run the zip-command from."
@@ -44,18 +44,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download artifacts if specified
-        if: inputs.artifact_name != '' && inputs.artifact_path != ''
+        if: inputs.artifact-name != '' && inputs.artifact-path != ''
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.working_directory }}/temp_artifact_dir
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.working-directory }}/temp_artifact_dir
 
       - name: Create zip file from downloaded artifact
-        if: inputs.artifact_name != '' && inputs.artifact_path != ''
-        working-directory: ${{ inputs.working_directory }}
+        if: inputs.artifact-name != '' && inputs.artifact-path != ''
+        working-directory: ${{ inputs.working-directory }}
         run: |
           cd temp_artifact_dir
-          zip -r ../${{ inputs.zip_file_name }} ./*
+          zip -r ../${{ inputs.zip-file-name }} ./*
           cd ..
           rm -rf temp_artifact_dir
 
@@ -77,11 +77,11 @@ jobs:
           echo "ARTIFACT_BUCKET=$VALUE" >> $GITHUB_OUTPUT
 
       - name: Upload to S3
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ inputs.working-directory }}
         env:
           S3_BUCKET: ${{ steps.params.outputs.ARTIFACT_BUCKET }}
-          APPLICATION_NAME: ${{ inputs.application_name }}
-          ZIP_FILE_NAME: ${{ inputs.zip_file_name }}
+          APPLICATION_NAME: ${{ inputs.application-name }}
+          ZIP_FILE_NAME: ${{ inputs.zip-file-name }}
         run: |
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)

@@ -1,25 +1,25 @@
 name: Deploy Container via CodeDeploy
 
 inputs:
-  cluster_name:
+  cluster-name:
     description: "The name of the ECS Cluster"
     required: true
-  ecs_service_name:
+  ecs-service-name:
     description: "The name of the ECS Service"
     required: true
-  image_uri:
+  image-uri:
     description: "The image to deploy"
     required: true
-  application_name:
+  application-name:
     description: "The CodeDeploy Application Name"
     required: true
-  deployment_group_name:
+  deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
-  ecs_container_port:
+  ecs-container-port:
     description: "The container port to use"
     required: true
-  aws_account_id:
+  aws-account-id:
     description: "The AWS Account ID"
     required: true
 
@@ -30,9 +30,9 @@ runs:
       id: render
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        container-name: ${{ inputs.ecs_service_name }}
-        task-definition-family: ${{ inputs.ecs_service_name }}
-        image: ${{ inputs.image_uri }}
+        container-name: ${{ inputs.ecs-service-name }}
+        task-definition-family: ${{ inputs.ecs-service-name }}
+        image: ${{ inputs.image-uri }}
 
     - name: Generate AppSpec File
       shell: bash
@@ -45,8 +45,8 @@ runs:
               Properties:
                 TaskDefinition: "task:def:arn"
                 LoadBalancerInfo:
-                  ContainerName: ${{ inputs.ecs_service_name }}
-                  ContainerPort: ${{ inputs.ecs_container_port }}
+                  ContainerName: ${{ inputs.ecs-service-name }}
+                  ContainerPort: ${{ inputs.ecs-container-port }}
         EOF
 
     - name: Deploy new task definition
@@ -54,20 +54,20 @@ runs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.render.outputs.task-definition }}
-        service: ${{ inputs.ecs_service_name }}
-        cluster: ${{ inputs.cluster_name }}
-        codedeploy-application: ${{ inputs.application_name }}
-        codedeploy-deployment-group: ${{ inputs.deployment_group_name }}
+        service: ${{ inputs.ecs-service-name }}
+        cluster: ${{ inputs.cluster-name }}
+        codedeploy-application: ${{ inputs.application-name }}
+        codedeploy-deployment-group: ${{ inputs.deployment-group-name }}
         codedeploy-appspec: ./appspec.yml
 
     - name: Output CodeDeploy URL with redirect
       id: output
       shell: bash
       run: |
-        REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ inputs.aws_account_id}}&destination="
+        REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ inputs.aws-account-id}}&destination="
         DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
         CODEDEPLOY_URL="https://console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=eu-west-1"
-        ECS_URL="https://console.aws.amazon.com/ecs/v2/clusters/${{inputs.cluster_name}}/services/${{inputs.ecs_service_name}}/deployments?region=eu-west-1"
+        ECS_URL="https://console.aws.amazon.com/ecs/v2/clusters/${{inputs.cluster-name}}/services/${{inputs.ecs-service-name}}/deployments?region=eu-west-1"
         ENCODED_CODEDEPLOY_URL=$(jq -rn --arg v "$CODEDEPLOY_URL" '$v|@uri')
         ENCODED_ECS_URL=$(jq -rn --arg v "$ECS_URL" '$v|@uri')
         echo "--- URLs to interact with AWS ---"
@@ -95,7 +95,7 @@ runs:
         echo -e "${CYAN}Rollback window configured: $TERMINATION_WAIT_TIME minutes"
 
         while true; do
-          SERVICE=$(aws ecs describe-services --cluster ${{ inputs.cluster_name }} --services ${{ inputs.ecs_service_name }})
+          SERVICE=$(aws ecs describe-services --cluster ${{ inputs.cluster-name }} --services ${{ inputs.ecs-service-name }})
           DEPLOYMENT_INFO=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID")
 
           DEPLOYMENT=$(echo "$SERVICE" | jq -r --arg deploymentId "$DEPLOYMENT_ID" '.services[0].taskSets[] | select(.externalId==$deploymentId)')
@@ -149,8 +149,8 @@ runs:
             echo -e "$TERMINATION_STATUS"
           fi
 
-          EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster_name }}" \
-            --services "${{ inputs.ecs_service_name }}" \
+          EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
+            --services "${{ inputs.ecs-service-name }}" \
             --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
             --output json)
 

@@ -9,19 +9,19 @@ inputs:
     required: true
     description: "Nexus login password."
 
-  gradle_operations:
+  gradle-operations:
     required: true
     description: "What gradle operations to execute."
 
-  java_version:
+  java-version:
     required: true
     description: "What Java version to use."
-  java_distribution:
+  java-distribution:
     required: false
     default: "temurin"
     description: "What Java distribution to use. Default is temurin (By Adoptium)."
 
-  working_directory:
+  working-directory:
     required: false
     default: "."
     description: "Where gradle will be run from."
@@ -35,13 +35,13 @@ runs:
     - name: Debug Java Version
       shell: bash
       run: | 
-        echo "Java version: ${{ inputs.java_version }}"
+        echo "Java version: ${{ inputs.java-version }}"
 
     - name: Set Up Java
       uses: actions/setup-java@v4
       with:
-        java-version: ${{ inputs.java_version }}
-        distribution: ${{ inputs.java_distribution }}
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.java-distribution }}
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
@@ -49,12 +49,12 @@ runs:
         cache-read-only: false # enables caching on all branches, not just master
 
     - name: Run Gradle Command
-      working-directory: ${{ inputs.working_directory }}
+      working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
         repo: ${{ github.event.repository.name }}
-        gradle_operations: ${{ inputs.gradle_operations }}
+        gradle-operations: ${{ inputs.gradle-operations }}
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
-        ./gradlew ${{ inputs.gradle_operations }}
+        ./gradlew ${{ inputs.gradle-operations }}

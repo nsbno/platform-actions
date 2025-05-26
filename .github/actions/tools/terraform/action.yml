@@ -5,26 +5,22 @@ inputs:
   directory:
     required: true
     description: The directory where the Terraform configuration is located.
-  terraform_command:
+  terraform-command:
     required: true
     description: The Terraform command to run
-  terraform_use_backend:
+  terraform-use-backend:
     required: false
     description: 'Whether to use a backend configuration for Terraform.'
     default: "true"
-  terraform_options:
+  terraform-options:
     required: false
     description: 'The options to use in the Terraform configuration.'
     default: ""
-  enable_cache:
-    required: false
-    description: 'Whether to enable caching of Terraform providers.'
-    default: "false"
-  fail_on_exit_code:
+  fail-on-exit-code:
     required: false
     description: 'Whether to fail the action if the Terraform command exits with a non-zero exit code.'
     default: "true"
-  always_run_init:
+  alway-run-init:
     required: false
     description: 'Whether to always run terraform init.'
     default: "false"
@@ -93,20 +89,20 @@ runs:
           ${{runner.os}}-${{ inputs.directory }}-terraform-
 
     - name: Terraform Init
-      if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always_run_init == 'true'
+      if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.alway-run-init == 'true'
       shell: bash
       working-directory: ${{ inputs.directory }}
       run: |
-        terraform init --backend=${{ inputs.terraform_use_backend }}
+        terraform init --backend=${{ inputs.terraform-use-backend }}
 
     - name: Terraform Command
       working-directory: ${{ inputs.directory }}
       id: terraform
       shell: bash
-      run: terraform ${{ inputs.terraform_command }} ${{ inputs.terraform_options }}
+      run: terraform ${{ inputs.terraform-command }} ${{ inputs.terraform-options }}
 
     - name: Terraform Output
-      continue-on-error: ${{ inputs.fail_on_exit_code == 'false' }}
+      continue-on-error: ${{ inputs.fail-on-exit-code == 'false' }}
       shell: bash
       run: |
         if [ "${{ steps.terraform.outputs.exitcode }}" = "1" ]; then

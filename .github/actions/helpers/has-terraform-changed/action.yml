@@ -15,7 +15,7 @@ inputs:
     required: true
 
 outputs:
-  any_changed:
+  any-changed:
     description: 'Whether any Terraform changes are pending.'
     value: ${{ steps.terraform.outputs.exitcode == 2 }}
 
@@ -40,6 +40,6 @@ runs:
       id: terraform
       with:
         directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
-        terraform_command: plan --refresh=false -detailed-exitcode
-        fail_on_exit_code: 'true'
-        always_run_init: 'true'
+        terraform-command: plan --refresh=false -detailed-exitcode
+        fail-on-exit-code: 'true'
+        always-run-init: 'true'

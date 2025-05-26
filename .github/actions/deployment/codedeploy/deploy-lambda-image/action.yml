@@ -1,14 +1,14 @@
 inputs:
-  function_name:
+  function-name:
     description: "The name of the Lambda Function"
     required: true
-  image_uri:
+  image-uri:
     description: "The ECR image URI to deploy"
     required: true
-  application_name:
+  application-name:
     description: "The CodeDeploy Application Name"
     required: true
-  deployment_group_name:
+  deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
 
@@ -19,7 +19,7 @@ runs:
       id: get_current_version
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.function_name }}"
+        LAMBDA_NAME="${{ inputs.function-name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
         echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
@@ -27,10 +27,10 @@ runs:
       id: publish
       shell: bash
       run: |
-        LAMBDA_NAME="${{ inputs.function_name }}"
-        IMAGE_URI="${{ inputs.image_uri }}"
+        LAMBDA_NAME="${{ inputs.function-name }}"
+        image-uri="${{ inputs.image-uri }}"
 
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $image-uri --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
@@ -38,8 +38,8 @@ runs:
       shell: bash
       run: |
         cat <<EOF > appspec.yml
-        applicationName: ${{ inputs.application_name }}
-        deploymentGroupName: ${{ inputs.deployment_group_name }}
+        applicationName: ${{ inputs.application-name }}
+        deploymentGroupName: ${{ inputs.deployment-group-name }}
         revision:
           revisionType: AppSpecContent
           appSpecContent:
@@ -49,7 +49,7 @@ runs:
                 - TargetService:
                     Type: "AWS::Lambda::Function"
                     Properties:
-                      Name: "${{ inputs.function_name }}"
+                      Name: "${{ inputs.function-name }}"
                       Alias: "active"
                       CurrentVersion: "${{ steps.get_current_version.outputs.current_lambda_version }}"
                       TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"

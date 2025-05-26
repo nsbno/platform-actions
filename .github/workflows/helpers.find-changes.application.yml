@@ -20,7 +20,7 @@ jobs:
     name: Any Application Changes?
     runs-on: ubuntu-latest
     outputs:
-      any-changed: ${{ steps.changed-files.outputs.any_changed }}
+      any-changed: ${{ steps.changed-files.outputs.any-changed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
       - name: Add notice
         shell: bash
         run: |
-          if ${{ steps.changed-files.outputs.any_changed }}; then
+          if ${{ steps.changed-files.outputs.any-changed }}; then
             echo "::notice title=Changes to Application::THe application has changes and will be deployed 🚀"
           else
             echo "::notice title=Changes to Application::The application has no changes, and will not be deployed 💤"

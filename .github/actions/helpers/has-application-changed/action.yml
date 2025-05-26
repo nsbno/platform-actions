@@ -1,7 +1,7 @@
 name: Check if application has changed
 
 outputs:
-  any_changed:
+  any-changed:
     description: 'Whether any application files have changed.'
     value: ${{ steps.changed-application-files.outputs.any_changed }}
 
