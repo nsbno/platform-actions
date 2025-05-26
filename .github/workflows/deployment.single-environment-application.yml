@@ -72,4 +72,4 @@ jobs:
           application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
           deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
           function_name: ${{ steps.deployment-info.outputs.lambda_function_name }}
-          image_uri: "${{ steps.deployment-info.outputs.ecr_image_base }}:${{ github.sha }}"
+          image_uri: ${{ steps.deployment-info.outputs.lambda_image_uri }}
