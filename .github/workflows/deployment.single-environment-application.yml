@@ -67,10 +67,9 @@ jobs:
 
       - name: Deploy Lambda
         if: steps.deployment-info.outputs.compute_target == 'lambda'
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda@main
+        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda-image@main
         with:
           application_name: ${{ steps.deployment-info.outputs.codedeploy_application_name }}
           deployment_group_name: ${{ steps.deployment-info.outputs.codedeploy_deployment_group }}
           function_name: ${{ steps.deployment-info.outputs.lambda_function_name }}
-          s3_bucket: ${{ steps.deployment-info.outputs.lambda_s3_bucket }}
-          s3_folder: ${{ steps.deployment-info.outputs.lambda_s3_folder }}
+          image_uri: "${{ steps.deployment-info.outputs.ecr_image_base }}:${{ github.sha }}"

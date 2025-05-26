@@ -1,0 +1,77 @@
+inputs:
+  function_name:
+    description: "The name of the Lambda Function"
+    required: true
+  image_uri:
+    description: "The ECR image URI to deploy"
+    required: true
+  application_name:
+    description: "The CodeDeploy Application Name"
+    required: true
+  deployment_group_name:
+    description: "The CodeDeploy Deployment Group Name"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Get Current Lambda Version
+      id: get_current_version
+      shell: bash
+      run: |
+        LAMBDA_NAME="${{ inputs.function_name }}"
+        CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
+        echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Publish Lambda Version
+      id: publish
+      shell: bash
+      run: |
+        LAMBDA_NAME="${{ inputs.function_name }}"
+        IMAGE_URI="${{ inputs.image_uri }}"
+
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --query 'Version' --publish --output text)
+
+        echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Generate AppSpec File
+      shell: bash
+      run: |
+        cat <<EOF > appspec.yml
+        applicationName: ${{ inputs.application_name }}
+        deploymentGroupName: ${{ inputs.deployment_group_name }}
+        revision:
+          revisionType: AppSpecContent
+          appSpecContent:
+            content: |
+              version: 0.0
+              Resources:
+                - TargetService:
+                    Type: "AWS::Lambda::Function"
+                    Properties:
+                      Name: "${{ inputs.function_name }}"
+                      Alias: "active"
+                      CurrentVersion: "${{ steps.get_current_version.outputs.current_lambda_version }}"
+                      TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"
+        EOF
+
+    - name: Trigger CodeDeploy
+      id: deploy
+      shell: bash
+      run: |
+        OUTPUT=$(aws deploy create-deployment --cli-input-yaml file://appspec.yml)
+        DEPLOYMENT_ID=$(echo $OUTPUT | jq -r '.deploymentId')
+
+        echo "DEPLOYMENT_ID=${DEPLOYMENT_ID}" >> $GITHUB_ENV
+
+    - name: Wait for stability
+      shell: bash
+      run: |
+        aws deploy wait deployment-successful --deployment-id ${{ env.DEPLOYMENT_ID }}
+
+    - name: Cancel CodeDeploy Deployment and Fail
+      if: cancelled()
+      shell: bash
+      run: |
+        aws deploy stop-deployment --deployment-id ${{ env.DEPLOYMENT_ID }}
+        exit 1
