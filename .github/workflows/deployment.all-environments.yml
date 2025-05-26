@@ -67,6 +67,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - test-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -97,6 +98,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - stage-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -129,6 +131,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
