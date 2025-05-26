@@ -24,7 +24,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy
+  group: ${{ inputs.environment }}-deploy-${{ inputs.application_name }}
+  cancel-in-progress: true
 
 jobs:
   deploy-applications:
