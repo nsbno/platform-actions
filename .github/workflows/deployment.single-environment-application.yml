@@ -54,7 +54,7 @@ jobs:
           application-name: ${{ inputs.application-name }}
 
       - name: Deploy ECS
-        if: steps.deployment-info.outputs.compute_target == 'ecs'
+        if: steps.deployment-info.outputs.compute-target == 'ecs'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
         with:
           application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
@@ -66,7 +66,7 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
       - name: Deploy Lambda
-        if: steps.deployment-info.outputs.compute_target == 'lambda'
+        if: steps.deployment-info.outputs.compute-target == 'lambda'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda-image@main
         with:
           application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
