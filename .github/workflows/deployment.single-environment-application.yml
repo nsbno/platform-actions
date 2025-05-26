@@ -59,7 +59,7 @@ jobs:
         with:
           application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
-          cluster-name: ${{ steps.deployment-info.outputs.ecs_cluster-name }}
+          cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ github.sha }}"
           ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecs-container-port: ${{ steps.deployment-info.outputs.ecs-container-port }}
