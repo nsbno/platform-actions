@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       application_names:
-        description: The name of the application
+        description: The name of the application in your Terraform configuration. Comma-separated.
         type: string
         required: true
       has-application-changes:
@@ -24,11 +24,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}
+      application_names: ${{ steps.parse-app-names.outputs.apps_json }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
         id: envs
+      - name: Parse application names
+        id: parse-app-names
+        run: |
+          # Comma-separated string to JSON array
+          APPS_JSON=$(echo '${{ inputs.application_names }}' | sed 's/\s*,\s*/,/g' | jq -R 'split(",") | map(select(length > 0)) | tojson')
+          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
@@ -67,7 +74,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Test')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(inputs.application_names) }}
+        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
     with:
       application_name: ${{ matrix.application_name }}
       environment: Test
@@ -97,7 +104,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Stage')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(inputs.application_names) }}
+        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
     with:
       application_name: ${{ matrix.application_name }}
       environment: Stage
@@ -129,7 +136,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(inputs.application_names) }}
+        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
     with:
       application_name: ${{ matrix.application_name }}
       environment: Production
