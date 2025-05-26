@@ -3,7 +3,7 @@ name: Deploy All Environments
 on:
   workflow_call:
     inputs:
-      application_names:
+      application-names:
         description: The name of the application in your Terraform configuration. Comma-separated.
         type: string
         required: true
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}
-      application_names: ${{ steps.parse-app-names.outputs.apps_json }}
+      application-names: ${{ steps.parse-app-names.outputs.apps_json }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +33,7 @@ jobs:
       - name: Parse application names
         id: parse-app-names
         run: |
-          APPS_JSON=$(echo '${{ inputs.application_names }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
+          APPS_JSON=$(echo '${{ inputs.application-names }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
@@ -76,9 +76,9 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Test')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
+        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application_name: ${{ matrix.application_name }}
+      application-name: ${{ matrix.application-name }}
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
 
@@ -109,9 +109,9 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Stage')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
+        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application_name: ${{ matrix.application_name }}
+      application-name: ${{ matrix.application-name }}
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
 
@@ -143,8 +143,8 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
       matrix:
-        application_name: ${{ fromJSON(needs.get-environments.outputs.application_names) }}
+        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application_name: ${{ matrix.application_name }}
+      application-name: ${{ matrix.application-name }}
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
