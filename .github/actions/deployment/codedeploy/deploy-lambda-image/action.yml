@@ -16,7 +16,7 @@ runs:
   using: composite
   steps:
     - name: Get Current Lambda Version
-      id: get_current_version
+      id: get-current-version
       shell: bash
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
@@ -28,9 +28,9 @@ runs:
       shell: bash
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
-        image-uri="${{ inputs.image-uri }}"
+        IMAGE_URI="${{ inputs.image-uri }}"
 
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $image-uri --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri IMAGE_URI --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
@@ -51,7 +51,7 @@ runs:
                     Properties:
                       Name: "${{ inputs.function-name }}"
                       Alias: "active"
-                      CurrentVersion: "${{ steps.get_current_version.outputs.current_lambda_version }}"
+                      CurrentVersion: "${{ steps.get-current-version.outputs.current_lambda_version }}"
                       TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"
         EOF
 

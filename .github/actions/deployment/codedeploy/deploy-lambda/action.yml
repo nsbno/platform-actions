@@ -19,7 +19,7 @@ runs:
   using: composite
   steps:
     - name: Get Current Lambda Version
-      id: get_current_version
+      id: get-current-version
       shell: bash
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
@@ -57,7 +57,7 @@ runs:
                     Properties:
                       Name: "${{ inputs.function-name }}"
                       Alias: "active"
-                      CurrentVersion: "${{ steps.publish.outputs.current_lambda_version }}"
+                      CurrentVersion: "${{ steps.get-current-version.outputs.current_lambda_version }}"
                       TargetVersion: "${{ steps.publish.outputs.new_lambda_version }}"
         EOF
 
