@@ -33,8 +33,7 @@ jobs:
       - name: Parse application names
         id: parse-app-names
         run: |
-          # Comma-separated string to JSON array
-          APPS_JSON=$(echo '${{ inputs.application_names }}' | sed 's/\s*,\s*/,/g' | jq -R 'split(",") | map(select(length > 0)) | tojson')
+          APPS_JSON=$(echo '${{ inputs.application_names }}' | sed 's/\s*,\s*/,/g' | jq -R 'split(",") | map(select(length > 0))')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
@@ -54,6 +53,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs: 
       - service-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -67,6 +67,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - test-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -85,6 +86,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - service-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -98,6 +100,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - stage-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
@@ -131,6 +134,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
+      - get-environments
     if: |
       always()
       && !cancelled()
