@@ -77,5 +77,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # provenance and sbom are not supported for lambda images
-          provenance: ${{ inputs.lambda == 'false' }}
-          sbom: ${{ inputs.lambda == 'false' }}
+          provenance: ${{ inputs.lambda_compatible == 'false' }}
+          sbom: ${{ inputs.lambda_compatible == 'false' }}
