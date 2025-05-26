@@ -26,6 +26,7 @@ concurrency:
 jobs:
   deploy-terraform:
     runs-on: ubuntu-latest
+    name: ${{ inputs.environment }} - Terraform
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform
     steps:
