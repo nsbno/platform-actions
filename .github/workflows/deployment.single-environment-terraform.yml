@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   deploy-terraform:
-    name: (${{ inputs.environment }}) Terraform
+    name: ${{ inputs.environment }} - Terraform
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: inputs.deploy-terraform
@@ -37,10 +37,12 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
       - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@main
+        name: Find Relevant Environment Directory
         id: env-mapping
         with:
           environment: ${{ inputs.environment }}
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
+        name: Terraform Apply
         with:
           directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
           terraform_command: 'apply'

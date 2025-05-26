@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   deploy-applications:
-    name: (${{ inputs.environment }}) Application
+    name: ${{ inputs.application_name }} (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |

@@ -33,7 +33,7 @@ jobs:
         id: envs
 
   has-terraform-changed:
-    name: Validate & Terraform Changes
+    name: Validate & Detect Changes
     needs: get-environments
     permissions:
       id-token: write

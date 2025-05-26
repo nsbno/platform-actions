@@ -8,7 +8,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Get all environments for current repository
+    - name: Get All Environments in Repository
       id: get-environments
       shell: bash
       env:
