@@ -20,7 +20,7 @@ inputs:
     required: false
     description: 'Whether to fail the action if the Terraform command exits with a non-zero exit code.'
     default: "true"
-  alway-run-init:
+  always-run-init:
     required: false
     description: 'Whether to always run terraform init.'
     default: "false"
@@ -89,7 +89,7 @@ runs:
           ${{runner.os}}-${{ inputs.directory }}-terraform-
 
     - name: Terraform Init
-      if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.alway-run-init == 'true'
+      if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'
       shell: bash
       working-directory: ${{ inputs.directory }}
       run: |
