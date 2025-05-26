@@ -21,7 +21,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy-terraform
+  group: ${{ inputs.environment }}-terraform
 
 jobs:
   deploy-terraform:
