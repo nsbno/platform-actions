@@ -24,6 +24,10 @@ inputs:
     required: false
     description: 'Whether to always run terraform init.'
     default: "false"
+  working-directory:
+    description: "Directory containing the project files"
+    required: false
+    default: "."
 
 outputs:
   exitcode:
@@ -61,13 +65,13 @@ runs:
           echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
           exit 0
         fi
-        version=$(terraform-config-inspect ./infrastructure --json | jq -r '.required_core[0]')
+        version=$(terraform-config-inspect ${{inputs.working-directory}}/infrastructure --json | jq -r '.required_core[0]')
         echo "Terraform version: $version"
         if [ "$version" != "null" ]; then
           echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
           exit 0
         fi
-        version=$(terraform-config-inspect ./terrraform/template --json | jq -r '.required_core[0]')
+        version=$(terraform-config-inspect ${{inputs.working-directory}}/terrraform/template --json | jq -r '.required_core[0]')
         echo "Terraform version: $version"
         if [ "$version" != "null" ]; then
           echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV

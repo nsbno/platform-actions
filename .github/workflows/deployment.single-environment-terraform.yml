@@ -55,6 +55,7 @@ jobs:
         name: Terraform Apply
         with:
           directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
+          working-directory: ${{ inputs.working-directory }}
           terraform-command: 'apply'
           terraform-options: '--auto-approve'
           always-run-init: 'true'
