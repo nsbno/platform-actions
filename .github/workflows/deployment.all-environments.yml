@@ -119,7 +119,9 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - stage-application
+      - stage-terraform
       - test-application
+      - test-terraform
     if: |
       always()
       && !cancelled()
@@ -138,8 +140,7 @@ jobs:
     if: |
       always()
       && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && needs.production-terraform.result != 'failure'
+      && success()
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
       matrix:
