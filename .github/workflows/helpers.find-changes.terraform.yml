@@ -6,6 +6,16 @@ on:
         type: boolean
         default: false
         required: false
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: 'environments'
 
     outputs:
       # A list with names of which environments as changes
@@ -55,6 +65,8 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           deployment-role: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+          working-directory: ${{ inputs.working-directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
 
       - name: Add notice
         shell: bash

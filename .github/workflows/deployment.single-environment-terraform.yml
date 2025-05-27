@@ -12,6 +12,16 @@ on:
         description: Should terraform be deployed
         type: boolean
         required: true
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: 'environments'
 
 
 run-name: Deploy Terraform to ${{ inputs.environment }}
@@ -44,7 +54,7 @@ jobs:
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
         name: Terraform Apply
         with:
-          directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
+          directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
           terraform-command: 'apply'
           terraform-options: '--auto-approve'
           always-run-init: 'true'

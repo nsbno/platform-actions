@@ -15,6 +15,17 @@ on:
       terraform-changes:
         type: string
         required: true
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: 'environments'
+
 
 run-name: Deploy Environments
 
@@ -48,6 +59,8 @@ jobs:
     with:
       environment: Service
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
 
   test-terraform:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
@@ -62,6 +75,8 @@ jobs:
     with:
       environment: Test
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
 
   test-application:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
@@ -95,6 +110,8 @@ jobs:
     with:
       environment: Stage
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
 
   stage-application:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
@@ -130,7 +147,8 @@ jobs:
     with:
       environment: Production
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
-
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
 
   production-application:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main

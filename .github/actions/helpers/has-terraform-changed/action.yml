@@ -13,6 +13,12 @@ inputs:
   deployment-role:
     description: The AWS role to assume for deployment.
     required: true
+  working-directory:
+    description: "Directory containing the project files"
+    required: true
+  terraform-directory:
+    description: Directory where Terraform environment directories are located
+    required: true
 
 outputs:
   any-changed:
@@ -39,7 +45,7 @@ runs:
     - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
       id: terraform
       with:
-        directory: 'environments/${{ steps.env-mapping.outputs.directory }}'
+        directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
         terraform-command: plan --refresh=false -detailed-exitcode
         fail-on-exit-code: 'true'
         always-run-init: 'true'
