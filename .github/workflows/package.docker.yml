@@ -29,6 +29,11 @@ on:
         type: boolean
         default: false
         description: "If set, the image will be built for lambda, disabling provenance and sbom."
+      platforms:
+        required: false
+        type: string
+        default: "linux/amd64"
+        description: "The platforms to build for. Valid values: linux/amd64 or linux/arm64 Defaults to linux/amd64."
 
 name: Upload Deployable to ECR
 
@@ -69,6 +74,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.working-directory }}
+          platforms: ${{ inputs.platforms }}
           file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
           push: true
           tags: |
