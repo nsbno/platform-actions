@@ -30,7 +30,7 @@ runs:
         LAMBDA_NAME="${{ inputs.function-name }}"
         IMAGE_URI="${{ inputs.image-uri }}"
 
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri IMAGE_URI --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
