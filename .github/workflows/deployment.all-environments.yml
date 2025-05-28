@@ -25,7 +25,11 @@ on:
         type: string
         required: false
         default: 'environments'
-
+      sha-to-deploy:
+        description: The SHA to deploy. If not provided, the current commit SHA will be used.
+        type: string
+        required: false
+        default: ${{ github.sha }}
 
 run-name: Deploy Environments
 
@@ -96,6 +100,7 @@ jobs:
       application-name: ${{ matrix.application-name }}
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   stage-terraform:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
@@ -131,6 +136,7 @@ jobs:
       application-name: ${{ matrix.application-name }}
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   production-terraform:
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
@@ -167,3 +173,4 @@ jobs:
       application-name: ${{ matrix.application-name }}
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}

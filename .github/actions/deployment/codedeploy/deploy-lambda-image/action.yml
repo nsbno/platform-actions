@@ -11,6 +11,9 @@ inputs:
   deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
+  sha-to-deploy:
+    description: "The SHA to deploy"
+    type: string
 
 runs:
   using: composite
@@ -23,14 +26,14 @@ runs:
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
         echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
-    - name: Publish Lambda Version
+    - name: Publish Lambda Version and Update Version Tag
       id: publish
       shell: bash
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         IMAGE_URI="${{ inputs.image-uri }}"
 
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --environment "Variables={DD_VERSION=${{sha-to-deploy}}}" --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 

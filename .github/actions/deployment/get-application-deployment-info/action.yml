@@ -36,9 +36,9 @@ outputs:
   lambda-s3-folder:
     description: The folder within the S3 Bucket
     value: ${{ steps.params.outputs.lambda_s3_folder }}
-  lambda-image-uri:
+  lambda_ecr_image_base:
     description: The ECR Image URI for the Lambda function
-    value: ${{ steps.params.outputs.lambda_image_uri }}
+    value: ${{ steps.params.outputs.lambda_ecr_image_base }}
 
 runs:
   using: composite

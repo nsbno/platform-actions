@@ -15,6 +15,11 @@ on:
         description: Should application be deployed
         type: boolean
         required: true
+      sha-to-deploy:
+        description: SHA to deploy, defaults to the current commit
+        type: string
+        required: false
+        default: ${{ github.sha }}
 
 
 run-name: Deploy to ${{ inputs.environment }}
@@ -47,6 +52,13 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
+      - name: Put Application Deployment Version
+        id: deployment-version
+        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@main
+        with:
+          application-name: ${{ inputs.application-name }}
+          sha-to-deploy: ${{ inputs.sha-to-deploy }}
+
       - name: Get Application Deployment Information
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
@@ -60,7 +72,7 @@ jobs:
           application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
-          image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ github.sha }}"
+          image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
           ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecs-container-port: ${{ steps.deployment-info.outputs.ecs-container-port }}
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
@@ -72,4 +84,5 @@ jobs:
           application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          image-uri: ${{ steps.deployment-info.outputs.lambda-image-uri }}
+          image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
+          sha-to-deploy: ${{ inputs.sha-to-deploy}}
