@@ -57,7 +57,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Terraform change check
+      - name: Run Terraform Plan
         uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@main
         id: changed-files
         with:
@@ -68,7 +68,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
 
-      - name: Add notice
+      - name: Notify about changes
         shell: bash
         run: |
           if ${{ steps.changed-files.outputs.any-changed }}; then
