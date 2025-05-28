@@ -85,4 +85,3 @@ jobs:
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
-          sha-to-deploy: ${{ inputs.sha-to-deploy}}
