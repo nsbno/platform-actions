@@ -36,6 +36,8 @@ runs:
         SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
         S3_KEY="${S3_FOLDER}/${SHORT_SHA}.zip"
         
+        aws lambda update-function-configuration --function-name $LAMBDA_NAME --environment "Variables={DD_VERSION=$GITHUB_SHA}"
+        aws lambda wait function-updated --function-name $LAMBDA_NAME
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key $S3_KEY --query 'Version' --publish --output text)
         
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT

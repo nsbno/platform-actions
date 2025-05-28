@@ -35,6 +35,7 @@ runs:
         SHA_TO_DEPLOY="${{ inputs.sha-to-deploy }}"
 
         aws lambda update-function-configuration --function-name $LAMBDA_NAME --environment "Variables={DD_VERSION=$SHA_TO_DEPLOY}"
+        aws lambda wait function-updated --function-name $LAMBDA_NAME
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
