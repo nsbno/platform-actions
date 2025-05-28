@@ -32,8 +32,9 @@ runs:
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         IMAGE_URI="${{ inputs.image-uri }}"
+        SHA_TO_DEPLOY="${{ inputs.sha-to-deploy }}"
 
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --environment "Variables={DD_VERSION=${{sha-to-deploy}}}" --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $IMAGE_URI --environment "Variables={DD_VERSION=$SHA_TO_DEPLOY}" --query 'Version' --publish --output text)
 
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
