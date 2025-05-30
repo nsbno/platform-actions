@@ -74,7 +74,7 @@ jobs:
           if ${{ steps.changed-files.outputs.any-changed }}; then
             echo "::notice title=Changes to Terraform::${{ matrix.environment}} has changes and will be deployed 🚀"
             echo "::group::Terraform Output for ${{ matrix.environment }}"
-            echo "${{ steps.changed-files.outputs.stdout }}"
+            printf "%s" "${{ steps.changed-files.outputs.stdout }}"
             echo "::endgroup::"
           else
             echo "::notice title=Changes to Terraform::${{ matrix.environment}} has no changes, and will not be deployed 💤"
