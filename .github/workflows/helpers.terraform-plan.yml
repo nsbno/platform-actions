@@ -1,13 +1,28 @@
 on: workflow_call
 
 jobs:
+  get-environments:
+    name: Find Relevant GH Environments
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
+        id: envs
+
   terraform-plan:
     name: Terraform Plan
+    needs: get-environments
     permissions:
       id-token: write
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
