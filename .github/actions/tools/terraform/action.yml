@@ -33,6 +33,9 @@ outputs:
   exitcode:
     description: 'The exit code of the Terraform command.'
     value: ${{ steps.terraform.outputs.exitcode }}
+  stdout:
+    description: 'The standard output of the Terraform command.'
+    value: ${{ steps.terraform.outputs.stdout }}
 
 runs:
   using: composite

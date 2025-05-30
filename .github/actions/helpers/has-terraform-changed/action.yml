@@ -24,6 +24,9 @@ outputs:
   any-changed:
     description: 'Whether any Terraform changes are pending.'
     value: ${{ steps.terraform.outputs.exitcode == 2 }}
+  stdout:
+    description: 'The standard output of the Terraform command.'
+    value: ${{ steps.terraform.outputs.stdout }}
 
 runs:
   using: 'composite'
