@@ -23,6 +23,7 @@ jobs:
     strategy:
       matrix:
         environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
+    environment: ${{ matrix.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
