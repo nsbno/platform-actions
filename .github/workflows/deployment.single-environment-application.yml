@@ -52,13 +52,6 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      - name: Put Application Deployment Version
-        id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@main
-        with:
-          application-name: ${{ inputs.application-name }}
-          sha-to-deploy: ${{ inputs.sha-to-deploy }}
-
       - name: Get Application Deployment Information
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
@@ -85,3 +78,10 @@ jobs:
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
+
+      - name: Put Application Deployment Version
+        id: deployment-version
+        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@main
+        with:
+          application-name: ${{ inputs.application-name }}
+          sha-to-deploy: ${{ inputs.sha-to-deploy }}
