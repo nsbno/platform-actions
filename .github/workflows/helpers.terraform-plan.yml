@@ -1,0 +1,57 @@
+on: pull_request
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Terraform Plan
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@main
+        id: changed-files
+        with:
+          environment: ${{ matrix.environment }}
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
+          deployment-role: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+          working-directory: ${{ inputs.working-directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
+
+      - name: Add Terraform Plan to PR
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ENVIRONMENT: ${{ matrix.environment }}
+        run: |
+          # Create a temporary file for the comment
+          COMMENT_FILE=$(mktemp)
+
+          # Write the comment content with proper formatting
+          cat << EOF > $COMMENT_FILE
+          ### Terraform Plan for ${ENVIRONMENT} 🔍
+
+          <details>
+          <summary>Show Plan</summary>
+
+          \`\`\`terraform
+          ${{ steps.changed-files.outputs.outcome }}
+          \`\`\`
+
+          </details>
+
+          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
+          EOF
+
+          # Post the comment to the PR
+          gh pr comment $PR_NUMBER --body-file $COMMENT_FILE
+
+          # Clean up
+          rm $COMMENT_FILE
