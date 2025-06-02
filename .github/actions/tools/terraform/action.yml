@@ -61,6 +61,7 @@ runs:
     - name: Find Terraform version
       shell: bash
       run: |
+        set -v
         which terraform-config-inspect || go install github.com/hashicorp/terraform-config-inspect@latest
         version=$(terraform-config-inspect ${{ inputs.directory }} --json | jq -r '.required_core[0]')
         echo "Terraform version: $version"
@@ -78,8 +79,9 @@ runs:
         echo "Terraform version: $version"
         if [ "$version" != "null" ]; then
           echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
-          exit 1
+          exit 0
         fi
+        exit 1
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
