@@ -58,30 +58,36 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ENVIRONMENT: ${{ matrix.environment }}
-          PLAN: "terraform\n${{ steps.changed-files.outputs.stdout }}"
         run: |
-          # Create a temporary file for the comment
+          PLAN_OUTPUT=$(cat << 'EOF'
+          ${{ steps.changed-files.outputs.stdout }}
+          EOF
+          )
+      
+          if echo "$PLAN_OUTPUT" | grep -q "Terraform used the selected providers"; then
+            PLAN_CONTENT=$(echo "$PLAN_OUTPUT" | sed -n '/Terraform used the selected providers/,$p')
+          else
+            PLAN_CONTENT="$PLAN_OUTPUT"
+          fi
+      
           COMMENT_FILE=$(mktemp)
-
-          # Write the comment content with proper formatting
-          cat << EOF > $COMMENT_FILE
+      
+          cat << EOF > "$COMMENT_FILE"
           ### Terraform Plan for ${ENVIRONMENT} 🔍
-
+      
           <details>
           <summary>Show Plan</summary>
-
-          \`\`\`ansi
-          ${PLAN}
+      
+          \`\`\`terraform
+          $PLAN_CONTENT
           \`\`\`
-
+      
           </details>
-
-          *For commit [${{ github.sha }}](${{ github.event.head_commit.message }})*
+      
+          *For commit ${{ github.sha }}*
           *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
           EOF
-
-          # Post the comment to the PR
-          gh pr comment $PR_NUMBER --body-file $COMMENT_FILE
-
-          # Clean up
-          rm $COMMENT_FILE
+      
+          gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
+      
+          rm "$COMMENT_FILE"
