@@ -64,10 +64,9 @@ jobs:
           ${{ steps.changed-files.outputs.stdout }}
           EOF
           )
-      
-          if echo "$PLAN_OUTPUT" | grep -q "Terraform used the selected providers"; then
-            PLAN_CONTENT=$(echo "$PLAN_OUTPUT" | sed -n '/Terraform used the selected providers/,$p')
-          else
+          
+          PLAN_CONTENT=$(echo "$PLAN_OUTPUT" | sed -n '/Terraform used the selected providers/,$p')
+          if [ -z "$PLAN_CONTENT" ]; then
             PLAN_CONTENT="$PLAN_OUTPUT"
           fi
       
