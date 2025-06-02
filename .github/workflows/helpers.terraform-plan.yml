@@ -51,37 +51,37 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
 
-      - name: Add Terraform Plan to PR
+      - uses: actions/github-script@v7
         if: github.event_name == 'pull_request' && steps.changed-files.outputs.any-changed == 'true'
-        shell: bash
+        name: Add Terraform Plan to PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           ENVIRONMENT: ${{ matrix.environment }}
           PLAN: "terraform\n${{ steps.changed-files.outputs.stdout }}"
-        run: |
-          # Create a temporary file for the comment
-          COMMENT_FILE=$(mktemp)
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const now = new Date();
+            const formattedDate = now.toISOString()
+              .replace('T', ' ')
+              .replace(/\.\d+Z$/, ' UTC');
+            
+            const output = `### Terraform Plan for ${process.env.ENVIRONMENT} 🔍
+  
+            <details>
+            <summary>Show Plan</summary>
 
-          # Write the comment content with proper formatting
-          cat << EOF > $COMMENT_FILE
-          ### Terraform Plan for ${ENVIRONMENT} 🔍
-
-          <details>
-          <summary>Show Plan</summary>
-
-          \`\`\`terraform
-          ${PLAN}
-          \`\`\`
-
-          </details>
-
-          *For commit [${{ github.sha }}](${{ github.event.head_commit.message }})*
-          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
-          EOF
-
-          # Post the comment to the PR
-          gh pr comment $PR_NUMBER --body-file $COMMENT_FILE
-
-          # Clean up
-          rm $COMMENT_FILE
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
+  
+            </details>
+  
+            *Commit ${{ github.sha }}*
+            *Plan generated at: ${formattedDate}*`;
+        
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
