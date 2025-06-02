@@ -70,11 +70,12 @@ jobs:
           <summary>Show Plan</summary>
 
           \`\`\`terraform
-          ${{ steps.changed-files.outputs.outcome }}
+          ${{ steps.changed-files.outputs.stdout }}
           \`\`\`
 
           </details>
 
+          *For commit [${{ github.sha }}](${{ github.event.head_commit.message }})*
           *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
           EOF
 
