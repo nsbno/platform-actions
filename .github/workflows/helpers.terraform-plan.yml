@@ -1,4 +1,16 @@
-on: workflow_call
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: 'environments'
 
 jobs:
   get-environments:
