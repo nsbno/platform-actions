@@ -50,6 +50,7 @@ jobs:
           deployment-role: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
+          terraform-options: '-no-color'
 
       - name: Add Terraform Plan to PR
         if: github.event_name == 'pull_request' && steps.changed-files.outputs.any-changed == 'true'

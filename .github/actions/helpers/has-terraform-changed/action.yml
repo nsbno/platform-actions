@@ -19,6 +19,10 @@ inputs:
   terraform-directory:
     description: Directory where Terraform environment directories are located
     required: true
+  terraform-options:
+    description: 'The options to use in the Terraform configuration.'
+    required: false
+    default: ''
 
 outputs:
   any-changed:
@@ -53,3 +57,4 @@ runs:
         terraform-command: plan --refresh=false -detailed-exitcode
         fail-on-exit-code: 'true'
         always-run-init: 'true'
+        terraform-options: ${{ inputs.terraform-options }}
