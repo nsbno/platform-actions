@@ -51,37 +51,37 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
 
-      - uses: actions/github-script@v7
+      - name: Add Terraform Plan to PR
         if: github.event_name == 'pull_request' && steps.changed-files.outputs.any-changed == 'true'
-        name: Add Terraform Plan to PR
+        shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           ENVIRONMENT: ${{ matrix.environment }}
           PLAN: "terraform\n${{ steps.changed-files.outputs.stdout }}"
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const now = new Date();
-            const formattedDate = now.toISOString()
-              .replace('T', ' ')
-              .replace(/\.\d+Z$/, ' UTC');
-            
-            const output = `### Terraform Plan for ${process.env.ENVIRONMENT} 🔍
-  
-            <details>
-            <summary>Show Plan</summary>
+        run: |
+          # Create a temporary file for the comment
+          COMMENT_FILE=$(mktemp)
 
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-  
-            </details>
-  
-            *Commit ${{ github.sha }}*
-            *Plan generated at: ${formattedDate}*`;
-        
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
+          # Write the comment content with proper formatting
+          cat << EOF > $COMMENT_FILE
+          ### Terraform Plan for ${ENVIRONMENT} 🔍
+
+          <details>
+          <summary>Show Plan</summary>
+
+          \`\`\`terraform
+          ${PLAN}
+          \`\`\`
+
+          </details>
+
+          *For commit [${{ github.sha }}](${{ github.event.head_commit.message }})*
+          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
+          EOF
+
+          # Post the comment to the PR
+          gh pr comment $PR_NUMBER --body-file $COMMENT_FILE
+
+          # Clean up
+          rm $COMMENT_FILE
