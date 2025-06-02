@@ -52,7 +52,7 @@ jobs:
           terraform-directory: ${{ inputs.terraform-directory }}
 
       - name: Add Terraform Plan to PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changed-files.outputs.any-changed == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
