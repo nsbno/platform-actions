@@ -58,6 +58,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ENVIRONMENT: ${{ matrix.environment }}
+          PLAN: "terraform\n${{ steps.changed-files.outputs.stdout }}"
         run: |
           # Create a temporary file for the comment
           COMMENT_FILE=$(mktemp)
@@ -70,7 +71,7 @@ jobs:
           <summary>Show Plan</summary>
 
           \`\`\`terraform
-          ${{ steps.changed-files.outputs.stdout }}
+          ${PLAN}
           \`\`\`
 
           </details>
