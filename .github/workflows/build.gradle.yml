@@ -34,7 +34,7 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "jar"
+        default: "assemble"
         description: "Gradle operations to run."
 
     outputs:
