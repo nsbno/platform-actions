@@ -3,7 +3,7 @@ name: Deploy All Environments
 on:
   workflow_call:
     inputs:
-      application-names:
+      applications:
         description: The name of the application in your Terraform configuration. Comma-separated.
         type: string
         required: true
@@ -48,7 +48,7 @@ jobs:
       - name: Parse application names
         id: parse-app-names
         run: |
-          APPS_JSON=$(echo '${{ inputs.application-names }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
+          APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
