@@ -23,7 +23,6 @@ on:
         required: false
         type: string
         default: "."
-
       artifact-name:
         required: false
         type: string
@@ -32,6 +31,11 @@ on:
         required: false
         type: string
         default: "./build/libs"  # Default for Gradle.
+      gradle-operations:
+        required: false
+        type: string
+        default: "jar"
+        description: "Gradle operations to run."
 
     outputs:
       artifact-name:
@@ -53,7 +57,7 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           java-distribution: ${{ inputs.java-distribution }}
-          gradle-operations: 'build'
+          gradle-operations: ${{ inputs.gradle-operations }}
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
