@@ -54,7 +54,7 @@ runs:
       with:
         directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
         working-directory: ${{ inputs.working-directory }}
-        terraform-command: plan --refresh=false -detailed-exitcode
+        terraform-command: plan -detailed-exitcode
         fail-on-exit-code: 'true'
         always-run-init: 'true'
         terraform-options: ${{ inputs.terraform-options }}
