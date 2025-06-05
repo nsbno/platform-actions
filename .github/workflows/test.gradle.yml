@@ -55,3 +55,5 @@ jobs:
           java-distribution: ${{ inputs.java-distribution }}
           gradle-operations: 'test'
           working-directory: ${{ inputs.working-directory }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
