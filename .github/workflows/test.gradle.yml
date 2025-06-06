@@ -50,6 +50,7 @@ jobs:
           path: ${{ inputs.artifact-path }}
 
       - uses: nsbno/platform-actions/.github/actions/tools/gradle@main
+        name: Gradle Test
         with:
           java-version: ${{ inputs.java-version }}
           java-distribution: ${{ inputs.java-distribution }}
