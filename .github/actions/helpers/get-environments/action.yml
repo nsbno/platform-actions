@@ -17,7 +17,7 @@ runs:
         set -e
         environments=$(gh api --method GET -H "Accept: application/vnd.github+json" repos/${{ github.repository}}/environments | jq -c '[.environments[].name]')
         if [ -z "$environments" ] || [ "$environments" = "[]" ]; then
-          echo "No environments found. Check if you have any GitHub environments configured."
+          echo "::error title=No environments found::Check if you have any GitHub environments configured."
           exit 1
         fi
         echo "environments=${environments}" >> $GITHUB_OUTPUT
