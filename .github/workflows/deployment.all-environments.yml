@@ -6,7 +6,7 @@ on:
       applications:
         description: The name of the application in your Terraform configuration. Comma-separated.
         type: string
-        required: true
+        required: false
       has-application-changes:
         description: All changes in application and infrastructure
         type: boolean
@@ -89,6 +89,7 @@ jobs:
       - get-environments
     if: |
       always()
+      && inputs.applications
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && needs.test-terraform.result != 'failure'
@@ -125,6 +126,7 @@ jobs:
       - get-environments
     if: |
       always()
+      && inputs.applications
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && needs.stage-terraform.result != 'failure'
@@ -163,6 +165,7 @@ jobs:
       - get-environments
     if: |
       always()
+      && inputs.applications
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
