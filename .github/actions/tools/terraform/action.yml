@@ -52,7 +52,9 @@ runs:
           "${{ inputs.working-directory }}/infrastructure"
           "${{ inputs.working-directory }}/terrraform/template"
         )
+        echo "Searching for Terraform version in directories: ${dirs[*]}"
         for dir in "${dirs[@]}"; do
+          echo "Checking directory: $dir"
           if [ -d "$dir" ]; then
             version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
             if [ -n "$version" ]; then
