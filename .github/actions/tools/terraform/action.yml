@@ -43,44 +43,25 @@ runs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        cache: 'false'  # There is no go.sum file, so the cache doesn't work.
-        go-version: '>=1.18'
-
-    - name: Cache Go module
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/go/pkg/mod
-          ~/go/bin
-          ~/.cache/go-build
-        key: go-${{ runner.os }}-
-
     - name: Find Terraform version
       shell: bash
       run: |
-        set -v
-        which terraform-config-inspect || go install github.com/hashicorp/terraform-config-inspect@latest
-        version=$(terraform-config-inspect ${{ inputs.directory }} --json | jq -r '.required_core[0]')
-        echo "Terraform version: $version"
-        if [ "$version" != "null" ]; then
-          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
-          exit 0
-        fi
-        version=$(terraform-config-inspect ${{inputs.working-directory}}/infrastructure --json | jq -r '.required_core[0]')
-        echo "Terraform version: $version"
-        if [ "$version" != "null" ]; then
-          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
-          exit 0
-        fi
-        version=$(terraform-config-inspect ${{inputs.working-directory}}/terrraform/template --json | jq -r '.required_core[0]')
-        echo "Terraform version: $version"
-        if [ "$version" != "null" ]; then
-          echo TERRAFORM_VERSION=${version} >> $GITHUB_ENV
-          exit 0
-        fi
+        set -e
+        dirs=(
+          "${{ inputs.directory }}"
+          "${{ inputs.working-directory }}/infrastructure"
+          "${{ inputs.working-directory }}/terrraform/template"
+        )
+        for dir in "${dirs[@]}"; do
+          if [ -d "$dir" ]; then
+            version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+            if [ -n "$version" ]; then
+              echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
+              exit 0
+            fi
+          fi
+        done
+        echo "::error title=Terraform version not found::Could not determine required Terraform version."
         exit 1
 
     - name: Setup Terraform
