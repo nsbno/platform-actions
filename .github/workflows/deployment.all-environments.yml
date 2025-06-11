@@ -53,6 +53,7 @@ jobs:
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
+    name: Service - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs: get-environments
     if: |
@@ -67,6 +68,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   test-terraform:
+    name: Test - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs: 
       - service-terraform
@@ -83,6 +85,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   test-application:
+    name: Test - Application
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - test-terraform
@@ -104,6 +107,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   stage-terraform:
+    name: Stage - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - service-terraform
@@ -120,6 +124,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   stage-application:
+    name: Stage - Application
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - stage-terraform
@@ -141,6 +146,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   production-terraform:
+    name: Production - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - stage-application
@@ -159,6 +165,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   production-application:
+    name: Production - Application
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
