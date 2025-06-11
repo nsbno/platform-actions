@@ -15,7 +15,8 @@ on:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: 'environments'
+        # Most team use a directory named terraform
+        default: 'terraform'
 
     outputs:
       # A list with names of which environments as changes
