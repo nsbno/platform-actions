@@ -57,11 +57,11 @@ runs:
         for dir in "${dirs[@]}"; do
           echo "Checking directory: $dir"
           if [ -d "$dir" ]; then
-            version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+            version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
             if [ -n "$version" ]; then
               echo "Found Terraform version: $version"
               echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
-              break
+              exit 0
             fi
           fi
         done
