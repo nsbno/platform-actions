@@ -61,8 +61,11 @@ jobs:
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Service')
+    strategy:
+      matrix:
+        environment: [Service]
     with:
-      environment: Service
+      environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
