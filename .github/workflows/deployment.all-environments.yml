@@ -158,7 +158,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   production-terraform:
-    name: Production - Terraform
+    name: Prod - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - stage-application
@@ -181,7 +181,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   production-application:
-    name: Production - Application
+    name: Prod - Application
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
