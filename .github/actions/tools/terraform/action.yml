@@ -50,7 +50,8 @@ runs:
         dirs=(
           "${{ inputs.directory }}"
           "${{ inputs.working-directory }}/infrastructure"
-          "${{ inputs.working-directory }}/terrraform/template"
+          "${{ inputs.working-directory }}/terraform/template"
+          "${{ inputs.working-directory }}/terraform"
         )
         echo "Searching for Terraform version in directories: ${dirs[*]}"
         for dir in "${dirs[@]}"; do
