@@ -54,19 +54,24 @@ runs:
           "${{ inputs.working-directory }}/terraform"
         )
         echo "Searching for Terraform version in directories: ${dirs[*]}"
+        found_version=""
         for dir in "${dirs[@]}"; do
           echo "Checking directory: $dir"
           if [ -d "$dir" ]; then
             version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
             if [ -n "$version" ]; then
-              echo "Found Terraform version: $version"
               echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
+              found_version="$version"
               break
             fi
           fi
         done
-        echo "::error title=Terraform version not found::Could not determine required Terraform version."
-        exit 1
+        if [ -z "$found_version" ]; then
+          echo "No Terraform version found in specified directories."
+          echo "TERRAFORM_VERSION=latest" >> $GITHUB_ENV
+        else
+          echo "Using Terraform version: $found_version"
+        fi
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
