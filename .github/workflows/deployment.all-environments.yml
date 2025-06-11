@@ -53,7 +53,7 @@ jobs:
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
-    name: Service - Terraform
+    name: Service
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs: get-environments
     if: |
@@ -68,7 +68,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   test-terraform:
-    name: Test - Terraform
+    name: Test
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs: 
       - service-terraform
@@ -107,7 +107,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   stage-terraform:
-    name: Stage - Terraform
+    name: Stage
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - service-terraform
@@ -146,7 +146,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   production-terraform:
-    name: Production - Terraform
+    name: Production
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - stage-application
