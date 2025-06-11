@@ -87,6 +87,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.directory }}
       run: |
+        set -e
         terraform init --backend=${{ inputs.terraform-use-backend }}
 
     - name: Terraform Command
