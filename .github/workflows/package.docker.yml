@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download Artifact
-        if: inputs.artifact-name != '' && inputs.artifact-path != ''
+        if: inputs.artifact-name != ''
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
