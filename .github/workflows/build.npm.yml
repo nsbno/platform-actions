@@ -46,15 +46,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: nsbno/platform-actions/.github/actions/tools/npm@main
-        name: npm install
-        with:
-          node-version: ${{ inputs.node-version }}
-          npm-operations: install
-          working-directory: ${{ inputs.working-directory }}
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-
-      - uses: nsbno/platform-actions/.github/actions/tools/npm@main
         name: npm Build
         with:
           node-version: ${{ inputs.node-version }}
