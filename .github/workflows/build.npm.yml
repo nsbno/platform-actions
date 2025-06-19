@@ -23,11 +23,11 @@ on:
       artifact-name:
         required: false
         type: string
-        default: "npm-artifact"
+        default: "node-artifact"
       artifact-path:
         required: false
         type: string
-        default: "build" # Path where the artifact will be stored from the build stage
+        default: "" # What to upload as artifact
 
     outputs:
       artifact-name:

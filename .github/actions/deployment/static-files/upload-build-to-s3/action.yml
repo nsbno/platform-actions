@@ -5,11 +5,11 @@ inputs:
   artifact-name:
     description: "Name of the artifact storing the build files."
     required: false
-    default: "npm-artifact"
+    default: "node-artifact"
   artifact-path:
     description: "Path to artifact files from previous workflow."
     required: false
-    default: "./build"
+    default: "build"
   s3-bucket-name:
     description: "Name of the bucket to upload static files to."
     required: true
