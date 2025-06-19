@@ -39,6 +39,9 @@ outputs:
   lambda-ecr-image-base:
     description: The ECR Image URI for the Lambda function
     value: ${{ steps.params.outputs.lambda_ecr_image_base }}
+  static-files-bucket-name:
+    description: The S3 Bucket Name for static files
+    value: ${{ steps.params.outputs.static_files_bucket_name }}
 
 runs:
   using: composite

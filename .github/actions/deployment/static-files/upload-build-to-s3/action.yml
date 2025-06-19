@@ -1,0 +1,35 @@
+name: Upload Build to S3 with SHA
+
+inputs:
+  # TODO: Need to decide whether it should be the hardcoded same artifact name and path as upload
+  artifact-name:
+    description: "Name of the artifact storing the build files."
+    required: false
+    default: "npm-artifact"
+  artifact-path:
+    description: "Path to artifact files from previous workflow."
+    required: false
+    default: "./npm-build"
+  s3-bucket-name:
+    description: "Name of the bucket to upload static files to."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+
+    - name: Authenticate with AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ vars.AWS_REGION }}
+        role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+    - name: Upload build files to S3
+      shell: bash
+      id: upload
+      run: |
+          aws s3 cp --recursive . s3://${{ inputs.s3-bucket-name }}/${{ github.sha }}

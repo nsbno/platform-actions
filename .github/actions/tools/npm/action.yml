@@ -1,0 +1,40 @@
+name: NPM Action
+
+inputs:
+  NEXUS_USERNAME:
+    required: true
+    description: "Nexus login username."
+  NEXUS_PASSWORD:
+    required: true
+    description: "Nexus login password."
+
+  node-version:
+    required: false
+    description: "What Node.js version to use."
+    default: "20"
+  npm-operations:
+    required: true
+    description: "NPM operations to run."
+  working-directory:
+    required: false
+    default: "."
+    description: "Where NPM will be run from."
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Run NPM Command
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        npm-operations: ${{ inputs.npm-operations }}
+        NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
+        NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
+      run: |
+        npm ${{ inputs.npm-operations }}
