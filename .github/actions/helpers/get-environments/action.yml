@@ -27,6 +27,6 @@ runs:
         fi
         if [ "${{ inputs.skip-service-environment }}" = "true" ]; then
           # Filter out the "service" case insensitive environment if it exists
-          environments=$(echo "$environments" | jq 'map(select(ascii_downcase(.) != "service"))')
+          environments=$(echo "$environments" | jq 'map(select(test("^service$"; "i") | not))')
         fi
-        echo "environments=${environments}" >> $GITHUB_OUTPUT
+        echo "environments=$(echo "$environments" | jq -c)" >> $GITHUB_OUTPUT
