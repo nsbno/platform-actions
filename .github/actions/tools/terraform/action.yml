@@ -49,6 +49,7 @@ runs:
         set -e
         dirs=(
           "${{ inputs.directory }}"
+          "$(dirname "${{ inputs.directory }}")/infrastructure"
           "${{ inputs.working-directory }}/infrastructure"
           "${{ inputs.working-directory }}/terraform/template"
           "${{ inputs.working-directory }}/terraform"
