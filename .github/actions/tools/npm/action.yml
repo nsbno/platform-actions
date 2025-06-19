@@ -37,4 +37,4 @@ runs:
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
-        npm ${{ inputs.npm-operations }}
+        npm run ${{ inputs.npm-operations }}
