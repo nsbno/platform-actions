@@ -30,6 +30,11 @@ on:
         type: string
         required: false
         default: ${{ github.sha }}
+      skip-service-environment:
+        description: Skip the service environment, if the repository does not deploy to the service environment.
+        type: boolean
+        default: false
+        required: false
 
 run-name: Deploy Environments
 
@@ -45,6 +50,8 @@ jobs:
         uses: actions/checkout@v4
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
         id: envs
+        with:
+          skip-service-environment: ${{ inputs.skip-service-environment }}
       - name: Parse application names
         id: parse-app-names
         run: |

@@ -17,6 +17,11 @@ on:
         required: false
         # Most team use a directory named terraform
         default: 'terraform'
+      skip-service-environment:
+        description: Skip the service environment, if the repository does not deploy to the service environment.
+        type: boolean
+        default: false
+        required: false
 
     outputs:
       # A list with names of which environments as changes
@@ -42,6 +47,8 @@ jobs:
         uses: actions/checkout@v4
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
         id: envs
+        with:
+          skip-service-environment: ${{ inputs.skip-service-environment }}
 
   has-terraform-changed:
     name: Detect Changes

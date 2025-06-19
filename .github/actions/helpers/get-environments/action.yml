@@ -1,5 +1,10 @@
 name: Get All Environments in this repository
 
+inputs:
+  skip-service-environment:
+    description: 'Skip deployment to the service environment. Use if the repository does not deploy to the service environment.'
+    required: true
+
 outputs:
   environments:
     description: 'All environments in this repository.'
@@ -19,5 +24,9 @@ runs:
         if [ -z "$environments" ] || [ "$environments" = "[]" ]; then
           echo "::error title=No environments found::Check if you have any GitHub environments configured."
           exit 1
+        fi
+        if [ "${{ inputs.skip-service-environment }}" = "true" ]; then
+          # Filter out the "service" case insensitive environment if it exists
+          environments=$(echo "$environments" | jq 'map(select(ascii_downcase(.) != "service"))')
         fi
         echo "environments=${environments}" >> $GITHUB_OUTPUT
