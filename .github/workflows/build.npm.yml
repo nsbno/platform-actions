@@ -27,7 +27,7 @@ on:
       artifact-path:
         required: false
         type: string
-        default: "./build" # Path where the artifact will be stored from the build stage
+        default: "build" # Path where the artifact will be stored from the build stage
 
     outputs:
       artifact-name:
