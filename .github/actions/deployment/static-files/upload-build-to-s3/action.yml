@@ -9,7 +9,7 @@ inputs:
   artifact-path:
     description: "Path to artifact files from previous workflow."
     required: false
-    default: "./npm-build"
+    default: "./build"
   s3-bucket-name:
     description: "Name of the bucket to upload static files to."
     required: true
