@@ -32,4 +32,4 @@ runs:
       shell: bash
       id: upload
       run: |
-          aws s3 cp --recursive . s3://${{ inputs.s3-bucket-name }}/${{ github.sha }}
+          aws s3 cp --recursive ${{ inputs.artifact-path }} s3://${{ inputs.s3-bucket-name }}/${{ github.sha }}
