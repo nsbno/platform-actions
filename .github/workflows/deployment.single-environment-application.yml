@@ -58,6 +58,13 @@ jobs:
         with:
           application-name: ${{ inputs.application-name }}
 
+      # Needs to be available before the frontend server deploys
+      - name: Deploy Static S3/Website
+        if: steps.deployment-info.outputs.static-files-bucket-name != ''
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
+        with:
+          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
+
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute-target == 'ecs'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
@@ -78,12 +85,6 @@ jobs:
           deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
-
-      - name: Deploy Static S3/Website
-        if: steps.deployment-info.outputs.static-files-bucket-name != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
-        with:
-          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
 
       - name: Put Application Deployment Version
         id: deployment-version
