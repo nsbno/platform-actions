@@ -20,7 +20,6 @@ runs:
     - uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
-        path: ${{ inputs.artifact-path }}
 
     - name: Upload build files to S3
       shell: bash
