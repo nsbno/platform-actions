@@ -29,7 +29,13 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Run NPM Command
+    - name: Set GIT_SHA for build (e.g. vite) config
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        echo "GIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+
+    - name: Run NPM Install
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
