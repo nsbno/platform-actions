@@ -21,6 +21,9 @@ outputs:
   ecs-service-name:
     description: The ECS Service Name
     value: ${{ steps.params.outputs.ecs_service_name }}
+  ecs-container-name:
+    description: The ECS Container Name
+    value: ${{ steps.params.outputs.ecs_container_name }}
   ecr-image-base:
     description: The Image Base URL
     value: ${{ steps.params.outputs.ecr_image_base }}

@@ -74,6 +74,7 @@ jobs:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
           ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
+          ecs-container-name: ${{ steps.deployment-info.outputs.ecs-container-name }}
           ecs-container-port: ${{ steps.deployment-info.outputs.ecs-container-port }}
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
 
