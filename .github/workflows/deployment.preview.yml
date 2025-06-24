@@ -110,8 +110,8 @@ jobs:
             --query "CustomDomains[?DomainName=='$DOMAIN_NAME'].CertificateValidationRecords[0]" \
             --output json)
 
-          CNAME_NAME=$(echo "$VALIDATION" | jq -r '.Name')
-          CNAME_VALUE=$(echo "$VALIDATION" | jq -r '.Value')
+          CNAME_NAME=$(echo "$VALIDATION" | jq -r '.[0].Name')
+          CNAME_VALUE=$(echo "$VALIDATION" | jq -r '.[0].Value')
 
           # Create CNAME in Route 53
           aws route53 change-resource-record-sets \
@@ -120,10 +120,10 @@ jobs:
               "Changes": [{
                 "Action": "UPSERT",
                 "ResourceRecordSet": {
-                  "Name": "'"$CNAME_NAME"'",
+                  "Name": "$CNAME_NAME",
                   "Type": "CNAME",
                   "TTL": 300,
-                  "ResourceRecords": [{"Value": "'"$CNAME_VALUE"'"}]
+                  "ResourceRecords": [{"Value": "$CNAME_VALUE"}]
                 }
               }]
             }'
