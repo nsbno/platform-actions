@@ -115,18 +115,18 @@ jobs:
 
           # Create CNAME in Route 53
           aws route53 change-resource-record-sets \
-            --hosted-zone-id "$HOSTED_ZONE_ID" \
-            --change-batch '{
-              "Changes": [{
-                "Action": "UPSERT",
-                "ResourceRecordSet": {
-                  "Name": "$CNAME_NAME",
-                  "Type": "CNAME",
-                  "TTL": 300,
-                  "ResourceRecords": [{"Value": "$CNAME_VALUE"}]
-                }
-              }]
-            }'
+          --hosted-zone-id "$HOSTED_ZONE_ID" \
+          --change-batch "{
+            \"Changes\": [{
+              \"Action\": \"UPSERT\",
+              \"ResourceRecordSet\": {
+                \"Name\": \"$CNAME_NAME\",
+                \"Type\": \"CNAME\",
+                \"TTL\": 300,
+                \"ResourceRecords\": [{\"Value\": \"$CNAME_VALUE\"}]
+              }
+            }]
+          }"
 
           # Wait for domain validation
           for i in {1..30}; do
