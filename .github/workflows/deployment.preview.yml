@@ -1,0 +1,136 @@
+name: deployment.preview.yml
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "The name of the service to deploy"
+      image-uri:
+        required: true
+        type: string
+        description: "The image URI to deploy"
+      access-role-arn:
+        required: true
+        type: string
+        description: "The ARN of the IAM role to access the image repository"
+      domain-name:
+        required: false
+        type: string
+        description: "The custom domain name to associate with the App Runner service"
+        default: ""
+      hosted-zone-id:
+        required: false
+        type: string
+        description: "The Route 53 hosted zone ID for the domain"
+        default: ""
+
+jobs:
+  build:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Deploy to App Runner Image
+        id: deploy-apprunner
+        shell: bash
+        run: |
+          aws apprunner create-service \
+          --service-name PR-${{ github.event.number }}-${{ inputs.service-name }} \
+          --source-configuration '{"ImageRepository":{"ImageIdentifier":${{ inputs.image-uri }},"ImageRepositoryType":"ECR","ImageConfiguration":{"Port":"3000"}},"AuthenticationConfiguration":{"AccessRoleArn":${{ inputs.access-role-arn }}}}' \
+          --region ${{ vars.AWS_REGION }}
+
+      - name: Wait for App Runner Service to be Active
+        shell: bash
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='PR-${{ github.event.number }}-${{ inputs.service-name }}'].ServiceArn" --output text)
+
+          for i in {1..30}; do
+            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
+              --query "Service.Status" --output text)
+            echo "Current status: $STATUS"
+            if [[ "$STATUS" == "RUNNING" ]]; then
+              echo "Service is running."
+              break
+            fi
+            sleep 20
+          done
+
+          if [[ "$STATUS" != "RUNNING" ]]; then
+            echo "Service did not reach RUNNING status."
+            exit 1
+          fi
+
+      - name: Link PR subdomain and validate with Route 53
+        if: github.event_name == 'pull_request' && inputs.domain-name != ''
+        shell: bash
+        env:
+          DOMAIN_NAME: pr-${{ github.event.pull_request.number }}.${{ inputs.domain-name }}
+          HOSTED_ZONE_ID: ${{ inputs.hosted-zone-id }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -e
+
+          # Get the App Runner service ARN
+          SERVICE_ARN=$(aws apprunner list-services --region "$AWS_REGION" \
+            --query "ServiceSummaryList[?ServiceName=='${{ inputs.service-name }}'].ServiceArn" --output text)
+
+          # Associate the PR subdomain
+          aws apprunner associate-custom-domain \
+            --service-arn "$SERVICE_ARN" \
+            --domain-name "$DOMAIN_NAME" \
+            --region "$AWS_REGION"
+
+          # Get DNS validation record
+          VALIDATION=$(aws apprunner describe-custom-domains \
+            --service-arn "$SERVICE_ARN" \
+            --region "$AWS_REGION" \
+            --query "CustomDomains[?DomainName=='$DOMAIN_NAME'].CertificateValidationRecords[0]" \
+            --output json)
+
+          CNAME_NAME=$(echo "$VALIDATION" | jq -r '.Name')
+          CNAME_VALUE=$(echo "$VALIDATION" | jq -r '.Value')
+
+          # Create CNAME in Route 53
+          aws route53 change-resource-record-sets \
+            --hosted-zone-id "$HOSTED_ZONE_ID" \
+            --change-batch '{
+              "Changes": [{
+                "Action": "UPSERT",
+                "ResourceRecordSet": {
+                  "Name": "'"$CNAME_NAME"'",
+                  "Type": "CNAME",
+                  "TTL": 300,
+                  "ResourceRecords": [{"Value": "'"$CNAME_VALUE"'"}]
+                }
+              }]
+            }'
+
+          # Wait for domain validation
+          for i in {1..30}; do
+            STATUS=$(aws apprunner describe-custom-domains \
+              --service-arn "$SERVICE_ARN" \
+              --region "$AWS_REGION" \
+              --query "CustomDomains[?DomainName=='$DOMAIN_NAME'].Status" \
+              --output text)
+            echo "Domain status: $STATUS"
+            if [[ "$STATUS" == "ACTIVE" ]]; then
+              echo "Domain validated and active."
+              break
+            fi
+            sleep 20
+          done
+
+          if [[ "$STATUS" != "ACTIVE" ]]; then
+            echo "Domain validation failed or timed out."
+            exit 1
+          fi
