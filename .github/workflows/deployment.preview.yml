@@ -49,7 +49,16 @@ jobs:
         run: |
           aws apprunner create-service \
           --service-name PR-${{ github.event.number }}-${{ inputs.service-name }} \
-          --source-configuration '{"ImageRepository":{"ImageIdentifier":${{ inputs.image-uri }},"ImageRepositoryType":"ECR","ImageConfiguration":{"Port":"3000"}},"AuthenticationConfiguration":{"AccessRoleArn":${{ inputs.access-role-arn }}}}' \
+          --source-configuration '{
+            "ImageRepository": {
+              "ImageIdentifier": "${{ inputs.image-uri }}",
+              "ImageRepositoryType": "ECR",
+              "ImageConfiguration": { "Port": "3000" }
+            },
+            "AuthenticationConfiguration": {
+              "AccessRoleArn": "'${{ inputs.access-role-arn }}'"
+            }
+          }' \
           --region ${{ vars.AWS_REGION }}
 
       - name: Wait for App Runner Service to be Active
@@ -86,7 +95,7 @@ jobs:
 
           # Get the App Runner service ARN
           SERVICE_ARN=$(aws apprunner list-services --region "$AWS_REGION" \
-            --query "ServiceSummaryList[?ServiceName=='${{ inputs.service-name }}'].ServiceArn" --output text)
+            --query "ServiceSummaryList[?ServiceName=='PR-${{ github.event.number }}-${{ inputs.service-name }}'].ServiceArn" --output text)
 
           # Associate the PR subdomain
           aws apprunner associate-custom-domain \
