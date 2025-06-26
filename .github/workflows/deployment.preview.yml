@@ -43,9 +43,69 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
+      - name: Set App Runner service name
+        id: set-service-name
+        run: echo "service_name=PR-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
+
+      - name: Check if App Runner service exists
+        id: check-service
+        shell: bash
+        run: |
+          # Define the service name
+          SERVICE_NAME="${{ steps.set-service-name.outputs.service_name }}"
+          
+          # Check if service already exists
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+          
+          if [ -n "$SERVICE_ARN" ]; then
+            echo "Service $SERVICE_NAME already exists with ARN: $SERVICE_ARN"
+            echo "service_exists=true" >> $GITHUB_OUTPUT
+            echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+          else
+            echo "Service $SERVICE_NAME does not exist"
+            echo "service_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare Environment Variables Configuration
+        id: prepare-env-vars
+        shell: bash
+        run: |
+          # Get all environment variables from GitHub environment
+          ENV_VARS=()
+          
+          # Process GitHub environment variables (vars)
+          for var in $(env | grep "^GITHUB_ENV_" | cut -d= -f1); do
+            value="${!var}"
+            key="${var#GITHUB_ENV_}"
+            ENV_VARS+=("{\"Name\":\"$key\",\"Value\":\"$value\"}")
+          done
+          
+          # Process GitHub environment secrets
+          for var in $(env | grep "^GITHUB_SECRET_" | cut -d= -f1); do
+            value="${!var}"
+            key="${var#GITHUB_SECRET_}"
+            ENV_VARS+=("{\"Name\":\"$key\",\"Value\":\"$value\"}")
+          done
+          
+          # Join environment variables with commas
+          ENV_VARS_JSON=$(IFS=,; echo "${ENV_VARS[*]}")
+          
+          if [ -z "$ENV_VARS_JSON" ]; then
+            ENV_VARS_CONFIG="[]"
+          else
+            ENV_VARS_CONFIG="[$ENV_VARS_JSON]"
+          fi
+          
+          # Save the environment variables configuration to an output
+          echo "env_vars_config=$ENV_VARS_CONFIG" >> $GITHUB_OUTPUT
+
       - name: Deploy to App Runner Image
+        if: steps.check-service.outputs.service_exists == 'false'
         id: deploy-apprunner
         shell: bash
+        env:
+          ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         run: |
           aws apprunner create-service \
           --service-name PR-${{ github.event.number }}-${{ inputs.service-name }} \
@@ -53,7 +113,10 @@ jobs:
             "ImageRepository": {
               "ImageIdentifier": "${{ inputs.image-uri }}",
               "ImageRepositoryType": "ECR",
-              "ImageConfiguration": { "Port": "3000" }
+              "ImageConfiguration": { 
+                "Port": "3000",
+                "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
+              }
             },
             "AuthenticationConfiguration": {
               "AccessRoleArn": "'${{ inputs.access-role-arn }}'"
@@ -61,11 +124,36 @@ jobs:
           }' \
           --region ${{ vars.AWS_REGION }}
 
+      - name: Update Existing App Runner Service
+        if: steps.check-service.outputs.service_exists == 'true'
+        id: update-service
+        shell: bash
+        env:
+          ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
+        run: |
+          # Update existing service
+          aws apprunner update-service \
+            --service-arn "${{ steps.check-service.outputs.service_arn }}" \
+            --source-configuration '{
+              "ImageRepository": {
+                "ImageIdentifier": "${{ inputs.image-uri }}",
+                "ImageRepositoryType": "ECR",
+                "ImageConfiguration": { 
+                  "Port": "3000",
+                  "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
+                }
+              },
+              "AuthenticationConfiguration": {
+                "AccessRoleArn": "'${{ inputs.access-role-arn }}'"
+              }
+            }' \
+            --region ${{ vars.AWS_REGION }}
+
       - name: Wait for App Runner Service to be Active
         shell: bash
         run: |
           SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
-            --query "ServiceSummaryList[?ServiceName=='PR-${{ github.event.number }}-${{ inputs.service-name }}'].ServiceArn" --output text)
+            --query "ServiceSummaryList[?ServiceName=='${{ steps.set-service-name.outputs.service_name }}'].ServiceArn" --output text)
 
           for i in {1..30}; do
             STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
