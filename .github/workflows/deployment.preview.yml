@@ -75,6 +75,10 @@ jobs:
               echo "Service is running."
               break
             fi
+            if [[ "$STATUS" == "CREATE_FAILED" ]]; then
+              echo "Service deployment failed."
+              break
+            fi
             sleep 20
           done
 
