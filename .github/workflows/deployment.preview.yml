@@ -71,15 +71,9 @@ jobs:
         id: prepare-env-vars
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VARS_JSON: ${{ toJSON(vars) }}
         run: |
-          ENVIRONMENT_NAME="Test"
-          OWNER="${{ github.repository_owner }}"
-          REPO="${{ github.event.repository.name }}"
-          ENV_VARS_JSON="{}"
-
-          VARS_JSON=$(gh api /repos/$OWNER/$REPO/environments/$ENVIRONMENT_NAME/variables | \
-            jq -r '[.variables[] | {(.name): .value}] | add')
+          echo "$VARS_JSON" | jq -r 'keys[] as $k | "\($k)=\(.[$k])"'
           echo "env_vars_config=$VARS_JSON" >> $GITHUB_OUTPUT
 
       - name: Deploy to App Runner Image
