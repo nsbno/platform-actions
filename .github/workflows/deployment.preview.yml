@@ -71,34 +71,17 @@ jobs:
         id: prepare-env-vars
         shell: bash
         run: |
-          # Get all environment variables from GitHub environment
-          ENV_VARS=()
-          
-          # Process GitHub environment variables (vars)
-          for var in $(env | grep "^GITHUB_ENV_" | cut -d= -f1); do
+          ENV_VARS_JSON="{}"
+
+          for var in $(env | grep -E "^GITHUB_ENV_" | cut -d= -f1); do
             value="${!var}"
             key="${var#GITHUB_ENV_}"
-            ENV_VARS+=("{\"Name\":\"$key\",\"Value\":\"$value\"}")
+            ENV_VARS_JSON=$(jq --arg k "$key" --arg v "$value" '. + {($k): $v}' <<< "$ENV_VARS_JSON")
           done
-          
-          # Process GitHub environment secrets
-          for var in $(env | grep "^GITHUB_SECRET_" | cut -d= -f1); do
-            value="${!var}"
-            key="${var#GITHUB_SECRET_}"
-            ENV_VARS+=("{\"Name\":\"$key\",\"Value\":\"$value\"}")
-          done
-          
-          # Join environment variables with commas
-          ENV_VARS_JSON=$(IFS=,; echo "${ENV_VARS[*]}")
-          
-          if [ -z "$ENV_VARS_JSON" ]; then
-            ENV_VARS_CONFIG="[]"
-          else
-            ENV_VARS_CONFIG="[$ENV_VARS_JSON]"
-          fi
-          
+          echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
+
           # Save the environment variables configuration to an output
-          echo "env_vars_config=$ENV_VARS_CONFIG" >> $GITHUB_OUTPUT
+          echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
 
       - name: Deploy to App Runner Image
         if: steps.check-service.outputs.service_exists == 'false'
