@@ -74,7 +74,7 @@ jobs:
           VARS_JSON: ${{ toJSON(vars) }}
         run: |
           echo "$VARS_JSON" | jq -r 'keys[] as $k | "\($k)=\(.[$k])"'
-          echo "env_vars_config=$VARS_JSON" >> $GITHUB_OUTPUT
+          echo "env_vars_config=$(echo "$VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
 
       - name: Deploy to App Runner Image
         if: steps.check-service.outputs.service_exists == 'false'
