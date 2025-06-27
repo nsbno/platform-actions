@@ -70,18 +70,17 @@ jobs:
       - name: Prepare Environment Variables Configuration
         id: prepare-env-vars
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          ENVIRONMENT_NAME="Test"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
           ENV_VARS_JSON="{}"
 
-          for var in $(env | grep -E "^GITHUB_ENV_" | cut -d= -f1); do
-            value="${!var}"
-            key="${var#GITHUB_ENV_}"
-            ENV_VARS_JSON=$(jq --arg k "$key" --arg v "$value" '. + {($k): $v}' <<< "$ENV_VARS_JSON")
-          done
-          echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
-
-          # Save the environment variables configuration to an output
-          echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
+          VARS_JSON=$(gh api /repos/$OWNER/$REPO/environments/$ENVIRONMENT_NAME/variables | \
+            jq -r '[.variables[] | {(.name): .value}] | add')
+          echo "env_vars_config=$VARS_JSON" >> $GITHUB_OUTPUT
 
       - name: Deploy to App Runner Image
         if: steps.check-service.outputs.service_exists == 'false'
