@@ -73,7 +73,10 @@ jobs:
         env:
           VARS_JSON: ${{ toJSON(vars) }}
         run: |
-          echo "$VARS_JSON" | jq -r 'keys[] as $k | "\($k)=\(.[$k])"'
+          # Filter out AWS-related environment variables used for the pipeline
+          FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
+
+          echo "$FILTERED_VARS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"'
           echo "env_vars_config=$(echo "$VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
 
       - name: Deploy to App Runner Image
