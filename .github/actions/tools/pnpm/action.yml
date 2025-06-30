@@ -11,6 +11,10 @@ inputs:
   node-version:
     required: true
     description: "What Node.js version to use."
+  pnpm-version:
+    required: false
+    default: "10"
+    description: "What pnpm version to use. Default is 10."
   pnpm-operations:
     required: true
     description: "pnpm operations to run."
@@ -24,9 +28,16 @@ runs:
   steps:
     - uses: actions/checkout@v4
 
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+        run_install: false
+
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
+        cache: 'pnpm'
 
     - name: Run pnpm Install
       working-directory: ${{ inputs.working-directory }}
