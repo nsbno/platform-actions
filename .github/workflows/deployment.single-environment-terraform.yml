@@ -17,6 +17,12 @@ on:
         required: false
         type: string
         default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: 'environments'
+
 
 run-name: Deploy Terraform to ${{ inputs.environment }}
 
@@ -35,17 +41,6 @@ jobs:
     if: inputs.deploy-terraform
     steps:
       - uses: actions/checkout@v4
-      - name: Determine Terraform directory
-        id: tf-dir
-        run: |
-          if [ -d "${{ inputs.working-directory }}/environments" ]; then
-            echo "dir=environments" >> $GITHUB_OUTPUT
-          elif [ -d "${{ inputs.working-directory }}/terraform" ]; then
-            echo "dir=terraform" >> $GITHUB_OUTPUT
-          else
-            echo "No valid Terraform directory found"
-            exit 1
-          fi
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -59,7 +54,7 @@ jobs:
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
         name: Terraform Apply
         with:
-          directory: '${{inputs.working-directory}}/${{steps.tf-dir.outputs.dir}}/${{ steps.env-mapping.outputs.directory }}'
+          directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
           working-directory: ${{ inputs.working-directory }}
           terraform-command: 'apply'
           terraform-options: '--auto-approve'
