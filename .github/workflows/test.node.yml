@@ -35,8 +35,8 @@ on:
         default: "" # What to upload as artifact
 
 jobs:
-  build:
-    name: node build
+  test:
+    name: node test
     runs-on: ubuntu-latest
 
     steps:
