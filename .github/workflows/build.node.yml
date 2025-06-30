@@ -16,6 +16,11 @@ on:
         type: string
         description: "What Node.js version to use."
         default: "20"
+      package-manager:
+        required: false
+        type: string
+        description: "Package manager to use. Default is pnpm."
+        default: "pnpm"
       working-directory:
         required: false
         type: string
@@ -39,17 +44,35 @@ on:
 
 jobs:
   build:
-    name: npm build
+    name: node build
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check package manager
+        run: |
+          if [[ "${{ inputs.package-manager }}" != "npm" && "${{ inputs.package-manager }}" != "pnpm" ]]; then
+            echo "Unsupported package manager: ${{ inputs.package-manager }}"
+            exit 1
+          fi
+
       - uses: nsbno/platform-actions/.github/actions/tools/npm@main
+        if: ${{ inputs.package-manager == 'npm' }}
         name: npm Build
         with:
           node-version: ${{ inputs.node-version }}
           npm-operations: build
+          working-directory: ${{ inputs.working-directory }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+
+      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@main
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        name: npm Build
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-operations: build
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}

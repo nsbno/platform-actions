@@ -1,4 +1,4 @@
-name: NPM Action
+name: PNPM Action
 
 inputs:
   NEXUS_USERNAME:
@@ -11,13 +11,13 @@ inputs:
   node-version:
     required: true
     description: "What Node.js version to use."
-  npm-operations:
+  pnpm-operations:
     required: true
-    description: "NPM operations to run."
+    description: "pnpm operations to run."
   working-directory:
     required: false
     default: "."
-    description: "Where NPM will be run from."
+    description: "Where pnpm will be run from."
 
 runs:
   using: composite
@@ -28,16 +28,16 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Run NPM Install
+    - name: Run pnpm Install
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
-        npm install
+        pnpm install
 
-    - name: Run NPM Command
+    - name: Run pnpm Command
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
@@ -46,4 +46,4 @@ runs:
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
         GIT_SHA: ${{ github.sha }}
       run: |
-        npm run ${{ inputs.npm-operations }}
+        pnpm run ${{ inputs.npm-operations }}
