@@ -52,9 +52,9 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
-        npm-operations: ${{ inputs.npm-operations }}
+        pnpm-operations: ${{ inputs.pnpm-operations }}
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
         GIT_SHA: ${{ github.sha }}
       run: |
-        pnpm run ${{ inputs.npm-operations }}
+        pnpm run ${{ inputs.pnpm-operations }}
