@@ -20,11 +20,6 @@ on:
         required: false
         type: string
         default: "."
-      terraform-directory:
-        description: Directory where Terraform environment directories are located
-        type: string
-        required: false
-        default: 'environments'
       sha-to-deploy:
         description: The SHA to deploy. If not provided, the current commit SHA will be used.
         type: string
@@ -76,7 +71,6 @@ jobs:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
 
   test-terraform:
     name: Test - Terraform
@@ -97,7 +91,6 @@ jobs:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
       working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
 
   test-application:
     name: Test - Application
@@ -140,7 +133,6 @@ jobs:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
       working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
 
   stage-application:
     name: Stage - Application
@@ -185,7 +177,6 @@ jobs:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
 
   production-application:
     name: Prod - Application
