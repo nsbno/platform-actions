@@ -52,7 +52,8 @@ runs:
     - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
       id: terraform
       with:
-        directory: '${{inputs.working-directory}}/${{inputs.terraform-directory}}/${{ steps.env-mapping.outputs.directory }}'
+        env-mapping-directory: ${{ steps.env-mapping.outputs.directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
         working-directory: ${{ inputs.working-directory }}
         terraform-command: plan -detailed-exitcode
         fail-on-exit-code: 'true'

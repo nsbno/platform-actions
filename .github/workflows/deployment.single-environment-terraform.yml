@@ -20,7 +20,8 @@ on:
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string
-        required: true
+        required: false
+        default: ''
 
 run-name: Deploy Terraform to ${{ inputs.environment }}
 
@@ -39,34 +40,24 @@ jobs:
     if: inputs.deploy-terraform
     steps:
       - uses: actions/checkout@v4
-      - name: Determine Terraform directory
-        id: tf-dir
-        run: |
-          echo "Working directory: ${{ inputs.working-directory }}"
-          if [[ -n "${{ inputs.terraform-directory }}" ]]; then
-            echo "dir=${{ inputs.terraform-directory }}" >> $GITHUB_OUTPUT
-          elif [ -d "${{ inputs.working-directory }}/environments" ]; then
-            echo "dir=environments" >> $GITHUB_OUTPUT
-          elif [ -d "${{ inputs.working-directory }}/terraform" ]; then
-            echo "dir=terraform" >> $GITHUB_OUTPUT
-          else
-            echo "No valid Terraform directory found"
-            exit 1
-          fi
+
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
       - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@main
         name: Find Relevant Environment Directory
         id: env-mapping
         with:
           environment: ${{ inputs.environment }}
+
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@main
         name: Terraform Apply
         with:
-          directory: '${{inputs.working-directory}}/${{steps.tf-dir.outputs.dir}}/${{ steps.env-mapping.outputs.directory }}'
+          env-mapping-directory: ${{ steps.env-mapping.outputs.directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
           working-directory: ${{ inputs.working-directory }}
           terraform-command: 'apply'
           terraform-options: '--auto-approve'

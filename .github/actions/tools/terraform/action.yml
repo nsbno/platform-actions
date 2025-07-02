@@ -2,9 +2,6 @@ name: Terraform Action
 description: Run terraform
 
 inputs:
-  directory:
-    required: true
-    description: The directory where the Terraform configuration is located.
   terraform-command:
     required: true
     description: The Terraform command to run
@@ -28,6 +25,12 @@ inputs:
     description: "Directory containing the project files"
     required: false
     default: "."
+  terraform-directory:
+    description: "Directory where Terraform environment directories are located"
+    required: true
+  env-mapping-directory:
+    description: "Which environment directory to use"
+    required: true
 
 outputs:
   exitcode:
@@ -43,12 +46,28 @@ runs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Determine Terraform directory (terraform or environment)
+      id: tf-dir
+      shell: bash
+      run: |
+        echo "Working directory: ${{ inputs.working-directory }}"
+        if [[ -n "${{inputs.working-directory}}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory}}" ]]; then
+          echo "dir=${{inputs.working-directory}}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
+        elif [ -d "${{ inputs.working-directory }}/environments/${{ inputs.env-mapping-directory }}" ]; then
+          echo "dir=${{inputs.working-directory}}/environments/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
+        elif [ -d "${{ inputs.working-directory }}/terraform/${{ inputs.env-mapping-directory }}" ]; then
+          echo "dir=${{inputs.working-directory}}/terraform/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
+        else
+          echo "No valid Terraform directory found"
+          exit 1
+        fi
+
     - name: Find Terraform version
       shell: bash
       run: |
         set -e
         dirs=(
-          "${{ inputs.directory }}"
+          "${{ steps.tf-dir.outputs.dir }}"
           "${{ inputs.working-directory }}/infrastructure"
           "${{ inputs.working-directory }}/terraform/template"
           "${{ inputs.working-directory }}/terraform"
@@ -77,21 +96,21 @@ runs:
       id: terraform-cache
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/${{ inputs.directory }}/.terraform
-        key: ${{runner.os}}-${{ inputs.directory }}-terraform-${{ github.sha }}
+        path: ${{ github.workspace }}/${{ steps.tf-dir.outputs.dir }}/.terraform
+        key: ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-${{ github.sha }}
         restore-keys: |
-          ${{runner.os}}-${{ inputs.directory }}-terraform-
+          ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-
 
     - name: Terraform Init
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'
       shell: bash
-      working-directory: ${{ inputs.directory }}
+      working-directory: ${{ steps.tf-dir.outputs.dir }}
       run: |
         set -e
         terraform init --backend=${{ inputs.terraform-use-backend }}
 
     - name: Terraform Command
-      working-directory: ${{ inputs.directory }}
+      working-directory: ${{ steps.tf-dir.outputs.dir }}
       id: terraform
       shell: bash
       run: terraform ${{ inputs.terraform-command }} ${{ inputs.terraform-options }}
