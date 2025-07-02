@@ -1,0 +1,61 @@
+name: deployment.only-test-environment.yml
+on:
+  workflow_call:
+    inputs:
+      applications:
+        description: The name of the application in your Terraform configuration. Comma-separated.
+        type: string
+        required: false
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: ''
+      sha-to-deploy:
+        description: The SHA to deploy. If not provided, the current commit SHA will be used.
+        type: string
+        required: false
+        default: ${{ github.sha }}
+
+
+jobs:
+  test-terraform:
+    name: Test - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+    strategy:
+      matrix:
+        # Matrix gives better visibility in GH UI
+        environment: [ Test ]
+    with:
+      environment: ${{ matrix.environment }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+      deploy-terraform: true
+
+  test-application:
+    name: Test - Application
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    if: |
+      always()
+      && inputs.applications
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && needs.test-terraform.result != 'failure'
+    strategy:
+      matrix:
+        # Needs to handle multiple applications later
+        application-name: ${{ inputs.applications }}
+    with:
+      application-name: ${{ inputs.applications }}
+      environment: Test
+      deploy-application: ${{ inputs.has-application-changes }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
