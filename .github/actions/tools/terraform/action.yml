@@ -51,7 +51,7 @@ runs:
       shell: bash
       run: |
         echo "Working directory: ${{ inputs.working-directory }}"
-        if [[ -n "${{inputs.working-directory}}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory}}" ]]; then
+        if [[ -n "${{ inputs.terraform-directory }}" ]]; then
           echo "dir=${{inputs.working-directory}}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
         elif [ -d "${{ inputs.working-directory }}/environments/${{ inputs.env-mapping-directory }}" ]; then
           echo "dir=${{inputs.working-directory}}/environments/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
