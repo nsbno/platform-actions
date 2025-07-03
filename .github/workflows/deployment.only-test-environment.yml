@@ -44,6 +44,7 @@ jobs:
   test-application:
     name: Test - Application
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    needs: test-terraform
     if: |
       always()
       && inputs.applications
