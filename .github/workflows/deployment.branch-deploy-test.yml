@@ -57,6 +57,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       deploy-terraform: true
+      sha-to-deploy: ${{ needs.trigger.outputs.sha }}
 
   test-application:
     name: Test - Application
@@ -89,7 +90,7 @@ jobs:
       # if a previous step failed, set a variable to use as the deployment status
       - name: set deployment status
         id: deploy-status
-        if: ${{ needs.trigger.result == 'failure' || needs.deploy.result == 'failure' }}
+        if: ${{ needs.trigger.result == 'failure' || !contains(needs.*.result, 'failure') }}
         run: |
           echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT
 

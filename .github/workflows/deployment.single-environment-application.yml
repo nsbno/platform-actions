@@ -45,6 +45,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
+          ref: ${{ inputs.sha-to-deploy }}
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
