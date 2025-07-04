@@ -33,6 +33,11 @@ on:
         required: false
         type: string
         default: "" # What to upload as artifact
+      git-sha:
+        required: false
+        type: string
+        description: "Git SHA to use for versioning"
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
 
     outputs:
       artifact-name:
@@ -66,6 +71,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          git-sha: ${{ inputs.git-sha }}
 
       - uses: nsbno/platform-actions/.github/actions/tools/pnpm@main
         if: ${{ inputs.package-manager == 'pnpm' }}
@@ -76,6 +82,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          git-sha: ${{ inputs.git-sha }}
 
       - name: Store build as Artifact
         uses: actions/upload-artifact@v4

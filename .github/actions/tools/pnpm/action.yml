@@ -23,15 +23,12 @@ inputs:
     default: "."
     description: "Where pnpm will be run from."
   git-sha:
-    required: false
+    required: true
     description: "Git SHA to use for versioning"
-    default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
-
     - name: Install pnpm
       uses: pnpm/action-setup@v4
       with:

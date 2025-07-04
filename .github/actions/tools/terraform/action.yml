@@ -32,9 +32,8 @@ inputs:
     description: "Which environment directory to use"
     required: true
   git-sha:
-    required: false
+    required: true
     description: "Git SHA to use for versioning"
-    default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 outputs:
   exitcode:
@@ -47,9 +46,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
     - name: Determine Terraform directory (terraform or environment)
       id: tf-dir
       shell: bash

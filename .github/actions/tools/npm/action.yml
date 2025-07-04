@@ -19,15 +19,12 @@ inputs:
     default: "."
     description: "Where NPM will be run from."
   git-sha:
-    required: false
+    required: true
     description: "Git SHA to use for versioning"
-    default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
-
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}

@@ -30,8 +30,6 @@ runs:
   using:
     composite
   steps:
-    - uses: actions/checkout@v4
-
     - name: Debug Java Version
       shell: bash
       run: | 

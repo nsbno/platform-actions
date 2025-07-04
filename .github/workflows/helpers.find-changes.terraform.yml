@@ -21,6 +21,11 @@ on:
         type: boolean
         default: false
         required: false
+      git-sha:
+        description: The SHA to find changes to. First try the current head of PR.
+        type: string
+        required: false
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
 
     outputs:
       # A list with names of which environments as changes
@@ -63,6 +68,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
+          ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
         uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@main
