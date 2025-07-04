@@ -96,7 +96,7 @@ jobs:
       # if a previous step failed, set a variable to use as the deployment status
       - name: set deployment status
         id: deploy-status
-        if: ${{ needs.trigger.result == 'failure' || !contains(needs.*.result, 'failure') }}
+        if: ${{ contains(needs.*.result, 'failure') }}
         run: |
           echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT
 
