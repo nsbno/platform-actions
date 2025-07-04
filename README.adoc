@@ -1,3 +1,34 @@
 = Common GitHub Action Workflows & Actions
 
 Here are shared GitHub Action actions and workflows that can be used for build and deploy!
+
+
+== Workflows
+
+Workflows are defined in `.github/workflows/` and can be used to automate tasks such as building, testing, packaging, and deploying code.
+
+=== Helpers
+These are helper workflows that can be used to simplify other workflows.
+Examples include workflows for finding changes in Terraform or running Terraform plan.
+
+=== Build and Test
+Workflows prefixed with build and test are meant to simplify the process of building and testing code.
+
+
+=== Package
+Workflows prefixed with package are meant to simplify the process of packaging code.
+Packaging workflows depend on build and test workflows, so they should be run after those workflows.
+
+Packaging in pull requests need to use `actions/checkout` with the PR head commit sha.
+This way, the correct tag will exist for the deploy stage.
+
+=== Deploy
+Workflows prefixed with deploy are meant to simplify the process of deploying code.
+
+There is an own workflow for deploying to "Test" in branches.
+It will need to use `actions/checkout` with the PR head commit sha, so that the correct code is deployed.
+
+== Note on Pull Requests
+In pull requests, the default Git sha being used is a temporary merge commit sha (e.g. in for `actions/checkout`).
+In workflows meant to be run in pull requests, we want to use the head commit sha of the pull request instead.
+Examples include, building in node for static files, deployments of branches and running Terraform plan.
