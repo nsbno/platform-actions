@@ -21,7 +21,7 @@ on:
 jobs:
   trigger:
     name: Trigger - Branch Deploy Test
-    if: ${{ github.event.issue.pull_request }} # only run on pull request comments
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.deploy')
     runs-on: ubuntu-latest
     outputs:
       continue: ${{ steps.branch-deploy.outputs.continue }}
