@@ -83,7 +83,7 @@ jobs:
           file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name }}:${{ github.event.pull_request.head.sha || github.sha }}
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

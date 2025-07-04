@@ -29,7 +29,7 @@ on:
         description: The SHA to deploy. If not provided, the current commit SHA will be used.
         type: string
         required: false
-        default: ${{ github.sha }}
+        default: ${{ github.sha }} # Assume this workflow is only run in main branches
       skip-service-environment:
         description: Skip the service environment, if the repository does not deploy to the service environment.
         type: boolean

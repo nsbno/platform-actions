@@ -22,6 +22,10 @@ inputs:
     required: false
     default: "."
     description: "Where pnpm will be run from."
+  git-sha:
+    required: false
+    description: "Git SHA to use for versioning"
+    default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 runs:
   using: composite
@@ -55,6 +59,6 @@ runs:
         pnpm-operations: ${{ inputs.pnpm-operations }}
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
-        GIT_SHA: ${{ github.sha }}
+        GIT_SHA: ${{ inputs.git-sha }}
       run: |
         pnpm run ${{ inputs.pnpm-operations }}

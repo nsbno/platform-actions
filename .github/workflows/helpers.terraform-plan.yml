@@ -91,7 +91,7 @@ jobs:
       
           </details>
       
-          *For commit ${{ github.sha }}*
+          *For commit ${{ github.event.pull_request.head.sha || github.sha }}*
           *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
           EOF
       

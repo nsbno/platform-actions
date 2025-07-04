@@ -19,7 +19,7 @@ on:
         description: SHA to deploy, defaults to the current commit
         type: string
         required: false
-        default: ${{ github.sha }}
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 
 run-name: Deploy to ${{ inputs.environment }}
