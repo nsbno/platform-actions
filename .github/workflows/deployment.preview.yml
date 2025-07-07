@@ -24,7 +24,7 @@ jobs:
   build:
     name: Deploy Preview
     runs-on: ubuntu-latest
-    environment: Test
+    environment: Preview # Use an own GitHub environment for preview deployments
     steps:
       - uses: actions/checkout@v4
         with:
