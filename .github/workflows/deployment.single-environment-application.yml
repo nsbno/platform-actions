@@ -99,6 +99,7 @@ jobs:
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
           s3-folder: ${{ steps.deployment-info.outputs.lambda-s3-folder }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Put Application Deployment Version
         id: deployment-version

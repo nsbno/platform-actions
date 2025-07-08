@@ -14,6 +14,10 @@ inputs:
   codedeploy-deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
+  aws-region:
+    description: "The AWS Region to use for the deployment"
+    required: true
+    default: "eu-west-1"
 
 runs:
   using: composite
@@ -22,7 +26,7 @@ runs:
       id: get-current-version
       shell: bash
       env:
-        AWS_REGION: ${{ vars.AWS_REGION }}
+        AWS_REGION: ${{ inputs.aws-region }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
@@ -32,7 +36,7 @@ runs:
       id: publish
       shell: bash
       env:
-        AWS_REGION: ${{ vars.AWS_REGION }}
+        AWS_REGION: ${{ inputs.aws-region }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         S3_BUCKET="${{ inputs.s3-bucket }}"
@@ -69,7 +73,7 @@ runs:
       id: deploy
       shell: bash
       env:
-        AWS_REGION: ${{ vars.AWS_REGION }}
+        AWS_REGION: ${{ inputs.aws-region }}
       run: |
         OUTPUT=$(aws deploy create-deployment --cli-input-yaml file://appspec.yml)
         DEPLOYMENT_ID=$(echo $OUTPUT | jq -r '.deploymentId')
@@ -79,7 +83,7 @@ runs:
     - name: Wait for stability
       shell: bash
       env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_REGION: ${{ inputs.aws-region }}
       run: |
         aws deploy wait deployment-successful --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
 
@@ -87,7 +91,7 @@ runs:
       if: cancelled()
       shell: bash
       env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_REGION: ${{ inputs.aws-region }}
       run: |
         aws deploy stop-deployment --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
         exit 1
