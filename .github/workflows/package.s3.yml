@@ -24,6 +24,16 @@ on:
         type: string
         description: "Directory to run the zip-command from."
         default: '.'
+      s3-bucket-name:
+        required: false
+        type: string
+        description: "Name of the S3 bucket to upload to."
+        default: "${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts"
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region to use."
+        default: 'eu-west-1'
 
 name: Upload Deployable to S3
 
@@ -62,13 +72,13 @@ jobs:
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
       - name: Upload to S3
         working-directory: ${{ inputs.working-directory }}
         env:
-          S3_BUCKET: "${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts"
+          S3_BUCKET: ${{ inputs.s3-bucket-name }}
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           APPLICATION_NAME: ${{ inputs.application-name }}
           ZIP_FILE_NAME: ${{ inputs.zip-file-name }}
