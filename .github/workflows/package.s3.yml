@@ -54,14 +54,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download artifacts if specified
-        if: inputs.artifact-name != '' && inputs.artifact-path != ''
+        if: inputs.artifact-name != ''
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{ inputs.working-directory }}/temp_artifact_dir
 
       - name: Create zip file from downloaded artifact
-        if: inputs.artifact-name != '' && inputs.artifact-path != ''
+        if: inputs.artifact-name != ''
         working-directory: ${{ inputs.working-directory }}
         run: |
           cd temp_artifact_dir
