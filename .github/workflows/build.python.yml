@@ -17,7 +17,7 @@ on:
         default: "artifact"
       artifact-path:
         required: false
-        default: "./artifact.zip"
+        default: "artifact.zip"
         type: string
 
     outputs:
