@@ -65,26 +65,14 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      - name: Get S3 bucket name
-        id: params
-        shell: bash
-        run: |
-          PARAM=$(aws ssm get-parameter --name /__deployment__/config/artifact-bucket --query "Parameter")
-          
-          VALUE=$(echo "$PARAM" | jq -r '.Value')
-          
-          echo "ARTIFACT_BUCKET=$VALUE"
-          echo "ARTIFACT_BUCKET=$VALUE" >> $GITHUB_OUTPUT
-
       - name: Upload to S3
         working-directory: ${{ inputs.working-directory }}
         env:
-          S3_BUCKET: ${{ steps.params.outputs.ARTIFACT_BUCKET }}
+          S3_BUCKET: "${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts"
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           APPLICATION_NAME: ${{ inputs.application-name }}
           ZIP_FILE_NAME: ${{ inputs.zip-file-name }}
         run: |
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
-          
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$SHORT_SHA.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://${{steps.params.outputs.ARTIFACT_BUCKET}}/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${SHORT_SHA}-SHA1\",\"${BRANCH}-branch\"]'"
+
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
