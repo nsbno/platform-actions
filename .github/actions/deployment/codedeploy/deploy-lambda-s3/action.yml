@@ -30,6 +30,10 @@ runs:
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
+        if [ "$CURRENT_LAMBDA_VERSION" == "" ]; then
+          echo "No active alias found for Lambda function $LAMBDA_NAME. Setting current version to 0."
+          CURRENT_LAMBDA_VERSION="0"
+        fi
         echo "current_lambda_version=$CURRENT_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
     - name: Publish Lambda Version
