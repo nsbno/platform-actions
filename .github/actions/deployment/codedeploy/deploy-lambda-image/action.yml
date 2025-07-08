@@ -5,10 +5,10 @@ inputs:
   image-uri:
     description: "The ECR image URI to deploy"
     required: true
-  application-name:
+  codedeploy-application-name:
     description: "The CodeDeploy Application Name"
     required: true
-  deployment-group-name:
+  codedeploy-deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
 
@@ -38,8 +38,8 @@ runs:
       shell: bash
       run: |
         cat <<EOF > appspec.yml
-        applicationName: ${{ inputs.application-name }}
-        deploymentGroupName: ${{ inputs.deployment-group-name }}
+        applicationName: ${{ inputs.codedeploy-application-name }}
+        deploymentGroupName: ${{ inputs.codedeploy-deployment-group-name }}
         revision:
           revisionType: AppSpecContent
           appSpecContent:
