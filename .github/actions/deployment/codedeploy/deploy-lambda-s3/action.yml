@@ -33,8 +33,8 @@ runs:
         LAMBDA_NAME="${{ inputs.function-name }}"
         S3_BUCKET="${{ inputs.s3-bucket }}"
         S3_FOLDER="${{ inputs.s3-folder }}"
-        SHORT_SHA=$(echo $GITHUB_SHA | cut -c 1-7)
-        S3_KEY="${S3_FOLDER}/${SHORT_SHA}.zip"
+        SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+        S3_KEY="${S3_FOLDER}/${SHA}.zip"
         
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key $S3_KEY --query 'Version' --publish --output text)
         
