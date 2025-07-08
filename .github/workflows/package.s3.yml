@@ -58,16 +58,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.working-directory }}/temp_artifact_dir
-
-      - name: Create zip file from downloaded artifact
-        if: inputs.artifact-name != ''
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          cd temp_artifact_dir
-          zip -r ../${{ inputs.zip-file-name }} ./*
-          cd ..
-          rm -rf temp_artifact_dir
+          path: ${{ inputs.working-directory }}
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
