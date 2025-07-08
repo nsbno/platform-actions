@@ -11,7 +11,7 @@ inputs:
   codedeploy-application-name:
     description: "The CodeDeploy Application Name"
     required: true
-  codedeploy-group-name:
+  codedeploy-deployment-group-name:
     description: "The CodeDeploy Deployment Group Name"
     required: true
 
@@ -21,6 +21,8 @@ runs:
     - name: Get Current Lambda Version
       id: get-current-version
       shell: bash
+      env:
+        AWS_REGION: ${{ vars.AWS_REGION }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         CURRENT_LAMBDA_VERSION=$(aws lambda get-alias --function-name $LAMBDA_NAME --name active --query 'FunctionVersion' --output text)
@@ -29,6 +31,8 @@ runs:
     - name: Publish Lambda Version
       id: publish
       shell: bash
+      env:
+        AWS_REGION: ${{ vars.AWS_REGION }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
         S3_BUCKET="${{ inputs.s3-bucket }}"
@@ -45,7 +49,7 @@ runs:
       run: |
         cat <<EOF > appspec.yml
         applicationName: ${{ inputs.codedeploy-application-name }}
-        deploymentGroupName: ${{ inputs.codedeploy-group-name }}
+        deploymentGroupName: ${{ inputs.codedeploy-deployment-group-name }}
         revision:
           revisionType: AppSpecContent
           appSpecContent:
@@ -64,6 +68,8 @@ runs:
     - name: Trigger CodeDeploy
       id: deploy
       shell: bash
+      env:
+        AWS_REGION: ${{ vars.AWS_REGION }}
       run: |
         OUTPUT=$(aws deploy create-deployment --cli-input-yaml file://appspec.yml)
         DEPLOYMENT_ID=$(echo $OUTPUT | jq -r '.deploymentId')
@@ -72,12 +78,16 @@ runs:
 
     - name: Wait for stability
       shell: bash
+      env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
       run: |
         aws deploy wait deployment-successful --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
 
     - name: Cancel CodeDeploy Deployment and Fail
       if: cancelled()
       shell: bash
+      env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
       run: |
         aws deploy stop-deployment --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
         exit 1
