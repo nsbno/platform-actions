@@ -86,7 +86,7 @@ runs:
       env:
           AWS_REGION: ${{ inputs.aws-region }}
       run: |
-        aws deploy wait deployment-successful --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
+        aws deploy wait deployment-successful --deployment-id ${{ env.DEPLOYMENT_ID }}
 
     - name: Cancel CodeDeploy Deployment and Fail
       if: cancelled()
@@ -94,5 +94,5 @@ runs:
       env:
           AWS_REGION: ${{ inputs.aws-region }}
       run: |
-        aws deploy stop-deployment --deployment-id ${{ steps.deploy.outputs.DEPLOYMENT_ID }}
+        aws deploy stop-deployment --deployment-id ${{ env.DEPLOYMENT_ID }}
         exit 1
