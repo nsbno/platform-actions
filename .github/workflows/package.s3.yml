@@ -77,3 +77,4 @@ jobs:
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
 
           aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
