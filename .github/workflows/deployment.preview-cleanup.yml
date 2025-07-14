@@ -1,0 +1,51 @@
+name: deployment.preview-cleanup.yml
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "The name of the service to deploy"
+      service-port:
+        required: false
+        type: string
+        default: "3000"
+        description: "The port the service is running on, default is 3000"
+      git-sha:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup:
+    name: Delete App Runner Service and Logs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Delete App Runner Service
+        shell: bash
+        run: |
+          SERVICE_NAME="pr-${{ github.event.number }}-${{ github.event.pull_request.head.repo.name }}"
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+          if [ -n "$SERVICE_ARN" ]; then
+            aws apprunner delete-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }}
+            echo "Deleted App Runner service: $SERVICE_NAME"
+          else
+            echo "No App Runner service found for: $SERVICE_NAME"
+          fi
+
+      - name: Delete CloudWatch Logs
+        shell: bash
+        run: |
+          LOG_GROUP="/aws/apprunner/${SERVICE_NAME}"
+          aws logs delete-log-group --log-group-name "$LOG_GROUP" --region ${{ vars.AWS_REGION }} || echo "Log group not found: $LOG_GROUP"

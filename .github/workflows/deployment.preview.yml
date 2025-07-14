@@ -54,9 +54,10 @@ jobs:
       - name: Set App Runner service variable
         id: set-service-variables
         run: |
-          echo "service_name=PR-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
+          echo "service_name=pr-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
           echo "image_uri=${{ steps.deployment-info.outputs.ecr-image-base }}:${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "access_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
+          echo "instance_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-instance-role'" >> $GITHUB_OUTPUT
 
       - name: Check if App Runner service exists
         id: check-service
@@ -97,7 +98,10 @@ jobs:
           ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         run: |
           aws apprunner create-service \
-          --service-name PR-${{ github.event.number }}-${{ inputs.service-name }} \
+          --service-name ${{ steps.set-service-variables.outputs.service_name }} \
+          --instance-configuration '{
+            "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}",
+          }' \
           --source-configuration '{
             "ImageRepository": {
               "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
