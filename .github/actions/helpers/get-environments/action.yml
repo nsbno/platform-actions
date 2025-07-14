@@ -29,4 +29,4 @@ runs:
           # Filter out the "service" case insensitive environment if it exists
           environments=$(echo "$environments" | jq 'map(select(test("^service$"; "i") | not))')
         fi
-        echo "environments=$(echo "$environments" | jq -c)" >> $GITHUB_OUTPUT
+        echo "environments=$(echo "$environments" | jq 'map(select(test("^preview$"; "i") | not))' | jq -c)" >> $GITHUB_OUTPUT
