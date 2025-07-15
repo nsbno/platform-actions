@@ -185,7 +185,6 @@ jobs:
           echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
 
       - name: Push Mapping to DynamoDB and Comment domain name
-        if: steps.deployment-info.outputs.dynamodb-table-arn != ''
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
         with:
           domain-name: ${{ steps.set-service-variables.outputs.service_name }}.${{ inputs.hosted-zone-name }}
