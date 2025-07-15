@@ -26,15 +26,14 @@ runs:
         --item '{
           "domain": {"S": "'${{ inputs.domain-name }}'"},
           "apprunner_host": {"S": "'${{ inputs.apprunner-host }}'"},
-          "timestamp": {"S": "'$(date -u -d "+7 days" +%Y-%m-%dT%H:%M:%SZ)'"}
+          "timestamp": {"N": "'$(date -u -d "+7 days" +%s)'"}
         }' \
         --region us-east-1
 
     - name: Comment on PR with Domain Name
       shell: bash
       run: |
-        DOMAIN_NAME="${{ inputs.domain-name }}"
-        APP_RUNNER_URL="https://${{ inputs.apprunner-host }}"
+        DOMAIN_NAME="https://${{ inputs.domain-name }}"
   
         # Create the comment body with proper JSON escaping
         COMMENT_BODY=$(cat <<EOF
@@ -42,8 +41,7 @@ runs:
     
           Your preview environment has been deployed successfully! 🚀
     
-          **Domain Name:** ${DOMAIN_NAME}
-          **App Runner URL:** ${APP_RUNNER_URL}
+          **Preview Domain Name:** ${DOMAIN_NAME}
         EOF
         )
         
