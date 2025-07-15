@@ -65,7 +65,7 @@ jobs:
         id: set-service-variables
         run: |
           echo "service_name=pr-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
-          echo "image_uri=${{ steps.deployment-info.outputs.ecr-image-base }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "image_uri=${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
           echo "access_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
           echo "instance_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-instance-role'" >> $GITHUB_OUTPUT
 
