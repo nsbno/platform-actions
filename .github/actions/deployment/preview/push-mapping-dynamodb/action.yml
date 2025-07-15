@@ -11,6 +11,9 @@ inputs:
   dynamodb-table-arn:
     description: "The name of the DynamoDB table to push the mapping to"
     required: true
+  github-token:
+    description: "GitHub token to use for commenting on the PR"
+    required: true
 
 runs:
   using: composite
@@ -51,4 +54,4 @@ runs:
           repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments \
           -f body="${COMMENT_BODY}"
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}

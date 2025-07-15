@@ -191,3 +191,4 @@ jobs:
           domain-name: ${{ steps.set-service-variables.outputs.service_name }}.${{ inputs.hosted-zone-name }}
           apprunner-host: ${{ steps.wait-for-service.outputs.service_url }}
           dynamodb-table-arn: ${{ inputs.dynamodb-table-arn }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
