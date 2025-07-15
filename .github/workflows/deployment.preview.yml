@@ -110,7 +110,7 @@ jobs:
           aws apprunner create-service \
           --service-name ${{ steps.set-service-variables.outputs.service_name }} \
           --instance-configuration '{
-            "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}",
+          "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}"
           }' \
           --source-configuration '{
             "ImageRepository": {
