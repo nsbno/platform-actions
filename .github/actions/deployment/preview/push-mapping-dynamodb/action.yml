@@ -1,0 +1,54 @@
+name: Push Mapping to DynamoDB
+description: Push mapping of preview URL to App Runner URL to DynamoDB
+
+inputs:
+  domain-name:
+    description: "The domain name to use for the service"
+    required: true
+  apprunner-host:
+    description: "The App Runner URL to map"
+    required: true
+  dynamodb-table-arn:
+    description: "The name of the DynamoDB table to push the mapping to"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Push mapping to DynamoDB
+      shell: bash
+      run: |
+        aws dynamodb put-item \
+        --table-name "${{ inputs.dynamodb-table-arn }}" \
+        --item '{
+          "domain_name": {"S": "'${{ inputs.domain-name }}'"},
+          "apprunner_host": {"S": "'${{ inputs.apprunner-host }}'"},
+          "timestamp": {"S": "'$(date -u -d "+7 days" +%Y-%m-%dT%H:%M:%SZ)'"}
+        }'
+
+    - name: Comment on PR with Domain Name
+      shell: bash
+      run: |
+        DOMAIN_NAME="${{ inputs.domain-name }}"
+        APP_RUNNER_URL="https://${{ inputs.apprunner-host }}"
+  
+        # Create the comment body with proper JSON escaping
+        COMMENT_BODY=$(cat <<EOF
+          ## Preview Deployment Information
+    
+          Your preview environment has been deployed successfully! 🚀
+    
+          **Domain Name:** ${DOMAIN_NAME}
+          **App Runner URL:** ${APP_RUNNER_URL}
+        EOF
+        )
+        
+        ISSUE_NUMBER="${{ github.event.pull_request.number }}"
+        GITHUB_REPOSITORY="${{ github.repository }}"
+
+        gh api \
+          --method POST \
+          repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}/comments \
+          -f body="${COMMENT_BODY}"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

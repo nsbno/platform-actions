@@ -15,10 +15,20 @@ on:
         required: false
         type: string
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      dynamodb-table-arn:
+        required: false
+        type: string
+        default: arn:aws:dynamodb:us-east-1:433462727137:table/platform-preview-url-mapper  # vydeployment-prod
+        description: "The name of the DynamoDB table to use for the domain mapping"
+      hosted-zone-name:
+        required: true
+        type: string
+        description: "The name of the hosted zone your service is deployed to, e.g. 'test.infrademo.vydev.io'"
 
 permissions:
   contents: read
   id-token: write
+  pull-requests: write
 
 jobs:
   build:
@@ -143,6 +153,7 @@ jobs:
             --region ${{ vars.AWS_REGION }}
 
       - name: Wait for App Runner Service to be Active
+        id: wait-for-service
         shell: bash
         run: |
           SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
@@ -167,3 +178,16 @@ jobs:
             echo "Service did not reach RUNNING status."
             exit 1
           fi
+          
+          # Get the service URL and set it as an output
+          SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
+            --query "Service.ServiceUrl" --output text)
+          echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+
+      - name: Push Mapping to DynamoDB and Comment domain name
+        if: steps.deployment-info.outputs.dynamodb-table-arn != ''
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
+        with:
+          domain-name: ${{ steps.set-service-variables.outputs.service_name }}.${{ inputs.hosted-zone-name }}
+          apprunner-host: ${{ steps.wait-for-service.outputs.service_url }}
+          dynamodb-table-arn: ${{ inputs.dynamodb-table-arn }}
