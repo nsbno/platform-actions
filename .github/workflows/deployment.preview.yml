@@ -187,7 +187,8 @@ jobs:
       - name: Push Mapping to DynamoDB and Comment domain name
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
         with:
-          domain-name: ${{ steps.set-service-variables.outputs.service_name }}.${{ inputs.hosted-zone-name }}
+          # The domain name is an assumption based on the PR number and service name, may need to be adjusted
+          domain-name: "pr-${{ github.event.number }}.${{inputs.service-name}}.${{ inputs.hosted-zone-name }}"
           apprunner-host: ${{ steps.wait-for-service.outputs.service_url }}
           dynamodb-table-arn: ${{ inputs.dynamodb-table-arn }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
