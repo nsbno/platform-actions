@@ -30,3 +30,4 @@ runs:
       id: upload
       run: |
           aws s3 cp --recursive ${{ inputs.artifact-path }} s3://${{ inputs.s3-bucket-name }}/static/${{ inputs.git-sha }}
+          aws s3 cp ${{ inputs.artifact-path }}/favicon.ico s3://${{ inputs.s3-bucket-name }} || true
