@@ -26,7 +26,7 @@ jobs:
       - name: Delete App Runner Service
         shell: bash
         run: |
-          SERVICE_NAME="pr-${{ github.event.number }}-${{ github.event.pull_request.head.repo.name }}"
+          SERVICE_NAME="pr-${{ github.event.number }}-${{ inputs.service-name }}"
           SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
             --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
           if [ -n "$SERVICE_ARN" ]; then
