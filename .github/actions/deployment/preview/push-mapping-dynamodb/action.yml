@@ -24,10 +24,11 @@ runs:
         aws dynamodb put-item \
         --table-name "${{ inputs.dynamodb-table-arn }}" \
         --item '{
-          "domain_name": {"S": "'${{ inputs.domain-name }}'"},
+          "domain": {"S": "'${{ inputs.domain-name }}'"},
           "apprunner_host": {"S": "'${{ inputs.apprunner-host }}'"},
           "timestamp": {"S": "'$(date -u -d "+7 days" +%Y-%m-%dT%H:%M:%SZ)'"}
-        }'
+        }' \
+        --region us-east-1
 
     - name: Comment on PR with Domain Name
       shell: bash
