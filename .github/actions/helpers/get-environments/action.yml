@@ -25,8 +25,12 @@ runs:
           echo "::error title=No environments found::Check if you have any GitHub environments configured."
           exit 1
         fi
+
+        environments=$(echo "$environments" | jq 'map(select(test("^preview$"; "i") | not))')
+        echo "environments=$environments"
+
         if [ "${{ inputs.skip-service-environment }}" = "true" ]; then
           # Filter out the "service" case insensitive environment if it exists
           environments=$(echo "$environments" | jq 'map(select(test("^service$"; "i") | not))')
         fi
-        echo "environments=$(echo "$environments" | jq 'map(select(test("^preview$"; "i") | not))' | jq -c)" >> $GITHUB_OUTPUT
+        echo "environments=$(echo "$environments" | jq -c)" >> $GITHUB_OUTPUT
