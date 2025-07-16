@@ -45,6 +45,12 @@ outputs:
   static-files-bucket-name:
     description: The S3 Bucket Name for static files
     value: ${{ steps.params.outputs.static_files_bucket_name }}
+  cloudfront-domain-name:
+    description: The CloudFront Domain Name for a web application
+    value: ${{ steps.params.outputs.cloudfront_domain_name }}
+  central-deployment-account-id:
+    description: The AWS Account ID to use for the central deployment account. Used for testing purposes
+    value: ${{ steps.params.outputs.central-deployment-account-id }}
 
 runs:
   using: composite

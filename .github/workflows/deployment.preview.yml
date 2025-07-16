@@ -15,15 +15,10 @@ on:
         required: false
         type: string
         default: ${{ github.event.pull_request.head.sha || github.sha }}
-      dynamodb-table-arn:
+      domain-name:
         required: false
         type: string
-        default: arn:aws:dynamodb:us-east-1:433462727137:table/platform-preview-url-mapper  # vydeployment-prod
-        description: "The name of the DynamoDB table to use for the domain mapping"
-      hosted-zone-name:
-        required: true
-        type: string
-        description: "The name of the hosted zone your service is deployed to, e.g. 'test.infrademo.vydev.io'"
+        default: ""
 
 permissions:
   contents: read
@@ -61,134 +56,20 @@ jobs:
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
 
-      - name: Set App Runner service variable
-        id: set-service-variables
-        run: |
-          echo "service_name=pr-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
-          echo "image_uri=${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
-          echo "access_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
-          echo "instance_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-instance-role'" >> $GITHUB_OUTPUT
-
-      - name: Check if App Runner service exists
-        id: check-service
-        shell: bash
-        run: |
-          # Define the service name
-          SERVICE_NAME="${{ steps.set-service-variables.outputs.service_name }}"
-          
-          # Check if service already exists
-          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
-            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
-          
-          if [ -n "$SERVICE_ARN" ]; then
-            echo "Service $SERVICE_NAME already exists with ARN: $SERVICE_ARN"
-            echo "service_exists=true" >> $GITHUB_OUTPUT
-            echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
-          else
-            echo "Service $SERVICE_NAME does not exist"
-            echo "service_exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Prepare Environment Variables Configuration
-        id: prepare-env-vars
-        shell: bash
-        env:
-          VARS_JSON: ${{ toJSON(vars) }}
-        run: |
-          # Filter out AWS-related environment variables used for the pipeline
-          FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
-
-          echo "env_vars_config=$(echo "$FILTERED_VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
-
-      - name: Deploy to App Runner Image
-        if: steps.check-service.outputs.service_exists == 'false'
-        id: deploy-apprunner
-        shell: bash
-        env:
-          ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
-        run: |
-          aws apprunner create-service \
-          --service-name ${{ steps.set-service-variables.outputs.service_name }} \
-          --instance-configuration '{
-          "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}"
-          }' \
-          --source-configuration '{
-            "ImageRepository": {
-              "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
-              "ImageRepositoryType": "ECR",
-              "ImageConfiguration": { 
-                "Port": "${{ inputs.service-port }}",
-                "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
-              }
-            },
-            "AuthenticationConfiguration": {
-              "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
-            }
-          }' \
-          --region ${{ vars.AWS_REGION }}
-
-      - name: Update Existing App Runner Service
-        if: steps.check-service.outputs.service_exists == 'true'
-        id: update-service
-        shell: bash
-        env:
-          ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
-        run: |
-          # Update existing service
-          aws apprunner update-service \
-            --service-arn "${{ steps.check-service.outputs.service_arn }}" \
-            --source-configuration '{
-              "ImageRepository": {
-                "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
-                "ImageRepositoryType": "ECR",
-                "ImageConfiguration": { 
-                  "Port": "${{ inputs.service-port }}",
-                  "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
-                }
-              },
-              "AuthenticationConfiguration": {
-                "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
-              }
-            }' \
-            --region ${{ vars.AWS_REGION }}
-
-      - name: Wait for App Runner Service to be Active
-        id: wait-for-service
-        shell: bash
-        run: |
-          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
-            --query "ServiceSummaryList[?ServiceName=='${{ steps.set-service-variables.outputs.service_name }}'].ServiceArn" --output text)
-
-          for i in {1..30}; do
-            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
-              --query "Service.Status" --output text)
-            echo "Current status: $STATUS"
-            if [[ "$STATUS" == "RUNNING" ]]; then
-              echo "Service is running."
-              break
-            fi
-            if [[ "$STATUS" == "CREATE_FAILED" ]]; then
-              echo "Service deployment failed."
-              break
-            fi
-            sleep 20
-          done
-
-          if [[ "$STATUS" != "RUNNING" ]]; then
-            echo "Service did not reach RUNNING status."
-            exit 1
-          fi
-          
-          # Get the service URL and set it as an output
-          SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
-            --query "Service.ServiceUrl" --output text)
-          echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+      - name: Deploy App Runner Preview Service
+        id: app-runner-deploy
+        uses: nsbno/platform-actions/.github/actions/deployment/apprunner/deploy-app-runner@main
+        with:
+          service-name: ${{ inputs.service-name }}
+          ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
+          git-sha: ${{ inputs.git-sha }}
+          service-port: ${{ inputs.service-port }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
-          domain-name: "pr-${{ github.event.number }}.${{inputs.service-name}}.${{ inputs.hosted-zone-name }}"
-          apprunner-host: ${{ steps.wait-for-service.outputs.service_url }}
-          dynamodb-table-arn: ${{ inputs.dynamodb-table-arn }}
+          domain-name: "pr-${{ github.event.number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"
+          apprunner-host: ${{ steps.app-runner-deploy.outputs.app-runner-url }}
+          dynamodb-table-arn: "arn:aws:dynamodb:us-east-1:${{ steps.deployment-info.outputs.central-deployment-account-id }}:table/platform-preview-url-mapper"
           github-token: ${{ secrets.GITHUB_TOKEN }}
