@@ -70,3 +70,4 @@ jobs:
           terraform-command: 'apply'
           terraform-options: '--auto-approve'
           always-run-init: 'true'
+          git-sha: ${{ inputs.sha-to-deploy }}

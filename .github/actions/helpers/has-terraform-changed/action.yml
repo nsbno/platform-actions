@@ -56,3 +56,4 @@ runs:
         fail-on-exit-code: 'true'
         always-run-init: 'true'
         terraform-options: ${{ inputs.terraform-options }}
+        git-sha: '${{ github.event.pull_request.head.sha || github.sha }}'
