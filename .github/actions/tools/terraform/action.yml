@@ -99,7 +99,7 @@ runs:
         path: ${{ github.workspace }}/${{ steps.tf-dir.outputs.dir }}/.terraform
         key: ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-${{ inputs.git-sha }}
         restore-keys: |
-          ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-
+          ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-${{ inputs.git-sha }}
 
     - name: Terraform Init
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'
