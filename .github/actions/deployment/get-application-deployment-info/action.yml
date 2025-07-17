@@ -50,7 +50,7 @@ outputs:
     value: ${{ steps.params.outputs.cloudfront_domain_name }}
   central-deployment-account-id:
     description: The AWS Account ID to use for the central deployment account. Used for testing purposes
-    value: ${{ steps.params.outputs.central-deployment-account-id }}
+    value: ${{ steps.central-account.outputs.central_deployment_account_id }}
 
 runs:
   using: composite
@@ -67,3 +67,10 @@ runs:
           echo "VALUE=$VALUE"
           echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
         done
+
+    - name: Get central deployment account ID
+      id: central-account
+      shell: bash
+      run: |
+        CENTRAL_DEPLOYMENT_ACCOUNT_ID=$(aws ssm get-parameter --name "/__deployment__/applications/preview-url-mapper/central-deployment-account-id" --query "Parameter.Value" --output text)
+        echo "central_deployment_account_id=$CENTRAL_DEPLOYMENT_ACCOUNT_ID" >> $GITHUB_OUTPUT
