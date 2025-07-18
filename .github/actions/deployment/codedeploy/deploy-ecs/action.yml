@@ -62,7 +62,8 @@ runs:
 
         CURRENT_TIME=$(date +%s)
         START_TIME=$((CURRENT_TIME - 300)) # 5 minutes ago
-        LAST_EVENT_DATE=$(date +%s)
+        # ISO8601 date
+        LAST_EVENT_DATE=$(date -u -d "@$CURRENT_TIME" +"%Y-%m-%dT%H:%M:%SZ")
         DEADLOCK_COUNTER=0;
         POLLING_INTERVAL=15 # seconds
         MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
@@ -97,15 +98,15 @@ runs:
         
           read -r STATUS LIFECYCLE_STAGE STATUS_REASON CREATED_AT <<< \
             $(jq -r '[.status, .lifecycleStage, .statusReason, .createdAt] | join(" ")' <<< "$DEPLOYMENT")
+  
           TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
           
           read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
             $(jq -r '[.requestedTaskCount // 0, .runningTaskCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
           
-          LIFECYCLE_STAGE_FORMATTED=$(date -d "$LIFECYCLE_STAGE" "+%Y-%m-%d %H:%M")
           echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
-          echo -e "Lifecycle Stage: $LIFECYCLE_STAGE_FORMATTED"
+          echo -e "Lifecycle Stage: $LIFECYCLE_STAGE"
           
           if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
             echo -e "Status reason: $STATUS_REASON"
@@ -115,7 +116,7 @@ runs:
           ROLLBACK_REASON=$(jq -r '.reason // ""' <<< "$ROLLBACK")
           if [ -n "$ROLLBACK_REASON" ] && [ "$ROLLBACK_REASON" != "null" ]; then
             ROLLBACK_STARTED=$(jq -r '.startedAt // 0' <<< "$ROLLBACK")
-            ROLLBACK_TIME=$(date -d "$ROLLBACK_STARTED" "+%Y-%m-%d %H:%M:%S UTC")
+            ROLLBACK_TIME=$(date -u -d "@$ROLLBACK_STARTED" "+%Y-%m-%d %H:%M:%S")
             echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
           fi
         
