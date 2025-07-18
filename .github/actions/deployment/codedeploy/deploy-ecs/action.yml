@@ -99,9 +99,10 @@ runs:
             --service-deployment-arns "$DEPLOYMENT_ARN")
           DEPLOYMENT=$(echo "$DEPLOYMENT_INFO" | jq -r '.serviceDeployments[0]')
         
-          read -r STATUS LIFECYCLE_STAGE STATUS_REASON CREATED_AT <<< \
-            $(jq -r '[.status, .lifecycleStage, .statusReason, .createdAt] | join(" ")' <<< "$DEPLOYMENT")
-  
+          STATUS=$(jq -r '.status' <<< "$DEPLOYMENT")
+          LIFECYCLE_STAGE=$(jq -r '.lifecycleStage // "UNKNOWN"' <<< "$DEPLOYMENT")
+          STATUS_REASON=$(jq -r '.statusReason // ""' <<< "$DEPLOYMENT")
+          CREATED_AT=$(jq -r '.createdAt' <<< "$DEPLOYMENT")
           TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
           
           read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
@@ -135,24 +136,25 @@ runs:
             echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}"
           fi
 
-        EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
-          --services "${{ inputs.ecs-service-name }}" \
-          --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
-          --output json)
-        
-        # Update LAST_EVENT_DATE to the timestamp of the most recent event (if any)
-        TEMP_LAST_EVENT_DATE=$(echo "$EVENTS_RESPONSE" | jq -r '.[][0].createdAt // empty')
-        
-        if [ -n "$TEMP_LAST_EVENT_DATE" ]; then
-          LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
-        fi
-        
-        EVENT_COUNT=$(echo "$EVENTS_RESPONSE" | jq -r '.[][] | length')
-        if [ -n "$EVENT_COUNT" ] && [ "$EVENT_COUNT" -gt 0 ]; then
-          echo -e "\n${CYAN}Recent Service Events:${NC}"
-          echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
-        fi
-
+          EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
+            --services "${{ inputs.ecs-service-name }}" \
+            --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
+            --output json)
+          
+          # Update LAST_EVENT_DATE to the timestamp of the most recent event (if any)
+          TEMP_LAST_EVENT_DATE=$(echo "$EVENTS_RESPONSE" | jq -r '.[][0].createdAt // empty')
+          
+          if [ -n "$TEMP_LAST_EVENT_DATE" ]; then
+            LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
+          fi
+          
+          EVENT_COUNT=$(echo "$EVENTS_RESPONSE" | jq -r '.[][] | length')
+          if [ -n "$EVENT_COUNT" ] && [ "$EVENT_COUNT" -gt 0 ]; then
+            echo -e "\n${CYAN}Recent Service Events:${NC}"
+            echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
+          fi
+          
+          echo ""
           sleep $POLLING_INTERVAL
         done
         
