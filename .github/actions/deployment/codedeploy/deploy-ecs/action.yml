@@ -98,7 +98,8 @@ runs:
           DEPLOYMENT_INFO=$(aws ecs describe-service-deployments \
             --service-deployment-arns "$DEPLOYMENT_ARN")
           DEPLOYMENT=$(echo "$DEPLOYMENT_INFO" | jq -r '.serviceDeployments[0]')
-        
+          echo "DEBUG: Full deployment info:"
+          echo "$DEPLOYMENT" | jq '.'
           STATUS=$(jq -r '.status' <<< "$DEPLOYMENT")
           LIFECYCLE_STAGE=$(jq -r '.lifecycleStage // "UNKNOWN"' <<< "$DEPLOYMENT")
           STATUS_REASON=$(jq -r '.statusReason // ""' <<< "$DEPLOYMENT")
@@ -108,7 +109,7 @@ runs:
           read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
             $(jq -r '[.requestedTaskCount // 0, .runningTaskCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
           
-          echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
+          echo -e "Deploy in progress. Refreshing in ${POLLING_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
           echo -e "Lifecycle Stage: $LIFECYCLE_STAGE"
           
