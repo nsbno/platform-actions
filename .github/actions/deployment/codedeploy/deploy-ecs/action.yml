@@ -51,6 +51,7 @@ runs:
 
     - name: Monitor ECS Deployment Status
       shell: bash
+      id: monitor
       # language=bash
       run: |
         GREEN='\033[0;32m'
@@ -58,105 +59,71 @@ runs:
         BLUE='\033[0;34m'
         CYAN='\033[0;36m'
         NC='\033[0m' # No Color
-    
-        echo "Monitoring ECS deployment..."
-        LAST_EVENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+
+        CURRENT_TIME=$(date +%s)
+        START_TIME=$((CURRENT_TIME - 1800)) # 30 minutes ago
         deadlockCounter=0;
+        POLLING_INTERVAL=15 # seconds
         
         while true; do
-          SERVICE=$(aws ecs describe-services --cluster ${{ inputs.cluster-name }} --services ${{ inputs.ecs-service-name }})
-          
-          # Check if we're using blue/green deployment (taskSets will be present)
-          TASK_SETS_COUNT=$(echo "$SERVICE" | jq -r '.services[0].taskSets | length')
-          
-          if [ "$TASK_SETS_COUNT" -gt 0 ]; then
-            # Blue/Green deployment - use taskSets
-            echo "Blue/Green deployment detected (using taskSets)"
-            
-            # Get the primary task set (usually the one with the highest scale value)
-            PRIMARY_TASK_SET=$(echo "$SERVICE" | jq -r '.services[0].taskSets | sort_by(.scale.value) | reverse | .[0]')
-            COMPUTED_DESIRED_COUNT=$(echo "$PRIMARY_TASK_SET" | jq -r '.computedDesiredCount // 0')
-            RUNNING_COUNT=$(echo "$PRIMARY_TASK_SET" | jq -r '.runningCount // 0')
-            PENDING_COUNT=$(echo "$PRIMARY_TASK_SET" | jq -r '.pendingCount // 0')
-            STABILITY_STATUS=$(echo "$PRIMARY_TASK_SET" | jq -r '.stabilityStatus // "UNKNOWN"')
-            TASK_SET_ID=$(echo "$PRIMARY_TASK_SET" | jq -r '.id // "UNKNOWN"')
-            EXTERNAL_ID=$(echo "$PRIMARY_TASK_SET" | jq -r '.externalId // "NONE"')
-            
-            echo -e "Deploy in progress. Refreshing in 15 seconds. (Try $((++deadlockCounter)))${NC}"
-            echo -e "${BLUE}Computed Desired Count: $COMPUTED_DESIRED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
-            echo -e "Task Set ID: $TASK_SET_ID, External ID: $EXTERNAL_ID"
-            echo -e "Stability Status: $STABILITY_STATUS"
-            
-          # Check all task sets to see if there are multiple active ones during transition
-          if [ "$TASK_SETS_COUNT" -gt 1 ]; then
-            echo -e "${CYAN}Multiple task sets detected (Blue/Green deployment in progress)${NC}"
-            echo "$SERVICE" | jq -r '.services[0].taskSets[] | "Task Set: \(.id) - Status: \(.status) - Stability: \(.stabilityStatus) - Running: \(.runningCount)/\(.computedDesiredCount)"'
-          fi
-          else
-            # Standard deployment - use deployments as before
-            PRIMARY_DEPLOYMENT=$(echo "$SERVICE" | jq -r '.services[0].deployments[] | select(.status=="PRIMARY")')
-            DESIRED_COUNT=$(echo "$PRIMARY_DEPLOYMENT" | jq -r '.desiredCount // 0')
-            RUNNING_COUNT=$(echo "$PRIMARY_DEPLOYMENT" | jq -r '.runningCount // 0')
-            PENDING_COUNT=$(echo "$PRIMARY_DEPLOYMENT" | jq -r '.pendingCount // 0')
-            DEPLOYMENT_STATUS=$(echo "$PRIMARY_DEPLOYMENT" | jq -r '.rolloutState // "UNKNOWN"')
-            DEPLOYMENT_REASON=$(echo "$PRIMARY_DEPLOYMENT" | jq -r '.rolloutStateReason // "No reason provided"')
-            
-            echo -e "Deploy in progress. Refreshing in 15 seconds. (Try $((++deadlockCounter)))${NC}"
-            echo -e "${BLUE}Desired Count: $DESIRED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
-            echo -e "Deployment status: $DEPLOYMENT_STATUS"
-              
-            if [ -n "$DEPLOYMENT_REASON" ] && [ "$DEPLOYMENT_REASON" != "No reason provided" ]; then
-              echo -e "Deployment reason: $DEPLOYMENT_REASON"
-            fi
+        DEPLOYMENTS=$(aws ecs list-service-deployments \
+          --cluster "${{ inputs.cluster-name }}" \
+          --service "${{ inputs.ecs-service-name }}" \
+          --created-at "{ \"after\": ${START_TIME} }" \
+          --max-results 10)
+        
+          DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeploymentArns[0] // ""')
+          echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
+      
+          if [ -z "$DEPLOYMENT_ARN" ]; then
+            echo -e "${RED}❌ No deployments found for service ${{ inputs.ecs-service-name }} in cluster ${{ inputs.cluster-name }}.${NC}"
+            exit 1
           fi
           
-          # Get and display events regardless of deployment type
-          EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
-            --services "${{ inputs.ecs-service-name }}" \
-            --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
-            --output json)
+          DEPLOYMENT_INFO=$(aws ecs describe-service-deployments \
+            --service-deployment-arns "$DEPLOYMENT_ARN")
+          DEPLOYMENT=$(echo "$DEPLOYMENT_INFO" | jq -r '.serviceDeployments[0]')
+        
+          read -r STATUS LIFECYCLE_STAGE STATUS_REASON CREATED_AT <<< \
+            $(jq -r '[.status, .lifecycleStage, .statusReason, .createdAt] | join(" ")' <<< "$DEPLOYMENT")
+          TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
           
-          TEMP_LAST_EVENT_DATE=$(echo "$EVENTS_RESPONSE" | jq -r '.[][0].createdAt // empty')
+          read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
+            $(jq -r '[.requestedTaskCount // 0, .runningCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
           
-          if [ -n "$TEMP_LAST_EVENT_DATE" ]; then
-           LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
+          CREATED_TIME=$(date -d "@$CREATED_AT" "+%Y-%m-%d %H:%M:%S UTC")
+        
+          echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++deadlockCounter)))${NC}"
+          echo -e "Deployment created at: ${CREATED_TIME}"
+          echo -e "${BLUE}Requested Count: $REQUESTED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
+          echo -e "Deployment status: $STATUS, Lifecycle Stage: $LIFECYCLE_STAGE"
+          
+          if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
+            echo -e "Status reason: $STATUS_REASON"
           fi
-          
-          echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
-          
-          # Check deployment status based on deployment type
-          if [ "$TASK_SETS_COUNT" -gt 0 ]; then
-            # For Blue/Green deployment
-            if [[ "$STABILITY_STATUS" == "STEADY_STATE" ]]; then
-              echo -e "${GREEN}✅ ECS Blue/Green Deployment reached STEADY_STATE!${NC}"
-              break
-            elif [[ "$STABILITY_STATUS" == "STABILIZING" ]]; then
-              echo -e "${YELLOW}⏳ ECS Blue/Green Deployment is stabilizing...${NC}"
-            elif [[ "$STABILITY_STATUS" == "FAILED" ]]; then
-              echo -e "${RED}❌ ECS Blue/Green Deployment failed!${NC}"
-              exit 1
-            elif [[ "$RUNNING_COUNT" == "$COMPUTED_DESIRED_COUNT" && "$PENDING_COUNT" == "0" ]]; then
-              # Additional check in case stabilityStatus is not reliable
-              echo -e "${GREEN}✅ ECS Blue/Green Deployment appears to be complete. All tasks are running.${NC}"
-              break
-            fi
-          else
-          # For standard deployment
-            if [[ "$DEPLOYMENT_STATUS" == "COMPLETED" ]]; then
-              echo -e "${GREEN}✅ ECS Deployment completed successfully!${NC}"
-              break
-            elif [[ "$DEPLOYMENT_STATUS" == "FAILED" ]]; then
-              echo -e "${RED}❌ ECS Deployment failed!${NC}"
-              echo -e "Reason: $DEPLOYMENT_REASON"
-              exit 1
-            elif [[ "$RUNNING_COUNT" == "$DESIRED_COUNT" && "$PENDING_COUNT" == "0" ]]; then
-              # Additional check in case rolloutState is not reliable
-              echo -e "${GREEN}✅ ECS Deployment appears to be complete. All tasks are running.${NC}"
+        
+          ROLLBACK=$(jq -r '.rollback // {}' <<< "$DEPLOYMENT")
+          ROLLBACK_REASON=$(jq -r '.reason // ""' <<< "$ROLLBACK")
+          if [ -n "$ROLLBACK_REASON" ] && [ "$ROLLBACK_REASON" != "null" ]; then
+            ROLLBACK_STARTED=$(jq -r '.startedAt // 0' <<< "$ROLLBACK")
+            ROLLBACK_TIME=$(date -d "@$ROLLBACK_STARTED" "+%Y-%m-%d %H:%M:%S UTC")
+            echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
+          fi
+        
+          if [[ "$STATUS" == "COMPLETED" ]]; then
+            echo -e "${GREEN}✅ ECS Deployment completed successfully!${NC}"
             break
-            fi
+          elif [[ "$STATUS" == "FAILED" ]]; then
+            echo -e "${RED}❌ ECS Deployment failed!${NC}"
+            echo -e "Reason: $STATUS_REASON"
+            exit 1
+          elif [[ "$STATUS" == "STOPPED" ]]; then
+            echo -e "${RED}⚠️ ECS Deployment was stopped!${NC}"
+            echo -e "Reason: $STATUS_REASON"
+            exit 1
           fi
-          
-          sleep 15
+        
+          sleep $POLLING_INTERVAL
         done
 
     - name: Cancel CodeDeploy Deployment and Fail
@@ -164,6 +131,6 @@ runs:
       shell: bash
       run: |
         aws ecs stop-service-deployment \ 
-          --service-deployment-arn ${{ steps.deploy.outputs.codedeploy-deployment-id }} \
+          --service-deployment-arn ${{ steps.monitor.outputs.DEPLOYMENT_ARN }} \
           --stop-type "ROLLBACK"
         exit 1
