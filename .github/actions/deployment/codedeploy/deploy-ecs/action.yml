@@ -62,6 +62,7 @@ runs:
 
         CURRENT_TIME=$(date +%s)
         START_TIME=$((CURRENT_TIME - 1800)) # 30 minutes ago
+        LAST_EVENT_DATE=$(date +%s)
         DEADLOCK_COUNTER=0;
         POLLING_INTERVAL=15 # seconds
         MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
@@ -127,6 +128,26 @@ runs:
             # For all other statuses (IN_PROGRESS, PENDING, etc.), continue monitoring
             echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}"
           fi
+
+        echo -e "\n${CYAN}Recent Service Events:${NC}"
+        EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
+          --services "${{ inputs.ecs-service-name }}" \
+          --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
+          --output json)
+        
+        # Update LAST_EVENT_DATE to the timestamp of the most recent event (if any)
+        TEMP_LAST_EVENT_DATE=$(echo "$EVENTS_RESPONSE" | jq -r '.[][0].createdAt // empty')
+        
+        if [ -n "$TEMP_LAST_EVENT_DATE" ]; then
+          LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
+        fi
+        
+        # Display the events
+        echo "$EVENTS_RESPONSE" | jq -r '.[][].message' | while read -r EVENT; do
+          if [ -n "$EVENT" ]; then
+            echo -e "${CYAN}•${NC} $EVENT"
+          fi
+        done
 
           sleep $POLLING_INTERVAL
         done
