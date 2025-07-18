@@ -67,6 +67,7 @@ jobs:
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
+          git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute-target == 'ecs'

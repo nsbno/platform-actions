@@ -14,9 +14,8 @@ inputs:
     description: "Name of the bucket to upload static files to."
     required: true
   git-sha:
-    required: false
+    required: true
     description: "Git SHA to use for versioning"
-    default: ${{ github.event.pull_request.head.sha || github.sha }}
 
 runs:
   using: composite
