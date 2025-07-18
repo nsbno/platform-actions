@@ -68,28 +68,31 @@ runs:
         POLLING_INTERVAL=15 # seconds
         MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
         FIND_DEPLOYMENT_COUNTER=0
+        DEPLOYMENT_ARN=""
         
         while true; do
-          DEPLOYMENTS=$(aws ecs list-service-deployments \
-            --cluster "${{ inputs.cluster-name }}" \
-            --service "${{ inputs.ecs-service-name }}" \
-            --created-at "{ \"after\": ${START_TIME} }" \
-            --max-results 5 \
-            --status "IN_PROGRESS" "PENDING" 
-          )
-        
-          DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeployments[0].serviceDeploymentArn // ""')
-          echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
-      
           if [ -z "$DEPLOYMENT_ARN" ]; then
-            echo -e "${YELLOW}No recent deployments found. Waiting...${NC}"
-            FIND_DEPLOYMENT_COUNTER=$((FIND_DEPLOYMENT_COUNTER + 1))
-            if [ "$FIND_DEPLOYMENT_COUNTER" -ge "$MAX_TRIES" ]; then
-              echo -e "${RED}❌ No deployments found after $MAX_TRIES attempts. Exiting...${NC}"
-              exit 1
+            DEPLOYMENTS=$(aws ecs list-service-deployments \
+              --cluster "${{ inputs.cluster-name }}" \
+              --service "${{ inputs.ecs-service-name }}" \
+              --created-at "{ \"after\": ${START_TIME} }" \
+              --max-results 5 \
+              --status "IN_PROGRESS" "PENDING" 
+            )
+          
+            DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeployments[0].serviceDeploymentArn // ""')
+            echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
+        
+            if [ -z "$DEPLOYMENT_ARN" ]; then
+              echo -e "${YELLOW}No recent deployments found. Waiting...${NC}"
+              FIND_DEPLOYMENT_COUNTER=$((FIND_DEPLOYMENT_COUNTER + 1))
+              if [ "$FIND_DEPLOYMENT_COUNTER" -ge "$MAX_TRIES" ]; then
+                echo -e "${RED}❌ No deployments found after $MAX_TRIES attempts. Exiting...${NC}"
+                exit 1
+              fi
+              sleep $POLLING_INTERVAL
+              continue
             fi
-            sleep $POLLING_INTERVAL
-            continue
           fi
           
           DEPLOYMENT_INFO=$(aws ecs describe-service-deployments \
@@ -132,7 +135,6 @@ runs:
             echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}"
           fi
 
-        echo -e "\n${CYAN}Recent Service Events:${NC}"
         EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
           --services "${{ inputs.ecs-service-name }}" \
           --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
@@ -145,12 +147,11 @@ runs:
           LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
         fi
         
-        # Display the events
-        echo "$EVENTS_RESPONSE" | jq -r '.[][].message' | while read -r EVENT; do
-          if [ -n "$EVENT" ]; then
-            echo -e "${CYAN}•${NC} $EVENT"
-          fi
-        done
+        EVENT_COUNT=$(echo "$EVENTS_RESPONSE" | jq -r '.[][] | length')
+        if [ -n "$EVENT_COUNT" ] && [ "$EVENT_COUNT" -gt 0 ]; then
+          echo -e "\n${CYAN}Recent Service Events:${NC}"
+          echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
+        fi
 
           sleep $POLLING_INTERVAL
         done
