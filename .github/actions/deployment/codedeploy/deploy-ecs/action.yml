@@ -62,22 +62,31 @@ runs:
 
         CURRENT_TIME=$(date +%s)
         START_TIME=$((CURRENT_TIME - 1800)) # 30 minutes ago
-        deadlockCounter=0;
+        DEADLOCK_COUNTER=0;
         POLLING_INTERVAL=15 # seconds
+        MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
         
         while true; do
-        DEPLOYMENTS=$(aws ecs list-service-deployments \
-          --cluster "${{ inputs.cluster-name }}" \
-          --service "${{ inputs.ecs-service-name }}" \
-          --created-at "{ \"after\": ${START_TIME} }" \
-          --max-results 10)
+          # Initial wait time since deployment might not be immediately available
+          sleep 1
+
+          DEPLOYMENTS=$(aws ecs list-service-deployments \
+            --cluster "${{ inputs.cluster-name }}" \
+            --service "${{ inputs.ecs-service-name }}" \
+            --created-at "{ \"after\": ${START_TIME} }" \
+            --max-results 10)
         
           DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeploymentArns[0] // ""')
           echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
       
           if [ -z "$DEPLOYMENT_ARN" ]; then
-            echo -e "${RED}❌ No deployments found for service ${{ inputs.ecs-service-name }} in cluster ${{ inputs.cluster-name }}.${NC}"
-            exit 1
+            echo -e "${YELLOW}No recent deployments found. Waiting...${NC}"
+            if [ "$DEADLOCK_COUNTER" -ge "$MAX_TRIES" ]; then
+              echo -e "${RED}❌ No deployments found after $MAX_TRIES attempts. Exiting...${NC}"
+              exit 1
+            fi
+            sleep $POLLING_INTERVAL
+            continue
           fi
           
           DEPLOYMENT_INFO=$(aws ecs describe-service-deployments \
@@ -93,7 +102,7 @@ runs:
           
           CREATED_TIME=$(date -d "@$CREATED_AT" "+%Y-%m-%d %H:%M:%S UTC")
         
-          echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++deadlockCounter)))${NC}"
+          echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "Deployment created at: ${CREATED_TIME}"
           echo -e "${BLUE}Requested Count: $REQUESTED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
           echo -e "Deployment status: $STATUS, Lifecycle Stage: $LIFECYCLE_STAGE"
@@ -125,7 +134,7 @@ runs:
         
           sleep $POLLING_INTERVAL
         done
-
+        
     - name: Cancel CodeDeploy Deployment and Fail
       if: cancelled()
       shell: bash
