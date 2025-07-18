@@ -72,5 +72,6 @@ runs:
       id: central-account
       shell: bash
       run: |
+        set +e
         CENTRAL_DEPLOYMENT_ACCOUNT_ID=$(aws ssm get-parameter --name "/__deployment__/applications/preview-url-mapper/central-deployment-account-id" --query "Parameter.Value" --output text)
         echo "central_deployment_account_id=$CENTRAL_DEPLOYMENT_ACCOUNT_ID" >> $GITHUB_OUTPUT
