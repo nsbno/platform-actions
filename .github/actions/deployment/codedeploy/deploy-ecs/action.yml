@@ -61,7 +61,7 @@ runs:
         NC='\033[0m' # No Color
 
         CURRENT_TIME=$(date +%s)
-        START_TIME=$((CURRENT_TIME - 1800)) # 30 minutes ago
+        START_TIME=$((CURRENT_TIME - 300)) # 5 minutes ago
         LAST_EVENT_DATE=$(date +%s)
         DEADLOCK_COUNTER=0;
         POLLING_INTERVAL=15 # seconds
@@ -73,7 +73,9 @@ runs:
             --cluster "${{ inputs.cluster-name }}" \
             --service "${{ inputs.ecs-service-name }}" \
             --created-at "{ \"after\": ${START_TIME} }" \
-            --max-results 10)
+            --max-results 5 \
+            --status "IN_PROGRESS" "PENDING" 
+          )
         
           DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeployments[0].serviceDeploymentArn // ""')
           echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
@@ -103,7 +105,7 @@ runs:
           LIFECYCLE_STAGE_FORMATTED=$(date -d "$LIFECYCLE_STAGE" "+%Y-%m-%d %H:%M")
           echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
-          echo -e "Deployment status: $STATUS, Lifecycle Stage: $LIFECYCLE_STAGE_FORMATTED"
+          echo -e "Lifecycle Stage: $LIFECYCLE_STAGE_FORMATTED"
           
           if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
             echo -e "Status reason: $STATUS_REASON"
