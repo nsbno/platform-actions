@@ -101,7 +101,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@ecs-blue-green
     needs:
       - test-terraform
       - get-environments
@@ -120,90 +120,90 @@ jobs:
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-
-  stage-terraform:
-    name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
-    needs:
-      - service-terraform
-      - get-environments
-    if: |
-      always()
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && contains(needs.get-environments.outputs.environments, 'Stage')
-    strategy:
-      matrix:
-        # Matrix gives better visibility in GH UI
-        environment: [Stage]
-    with:
-      environment: ${{ matrix.environment }}
-      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
-      working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
-
-  stage-application:
-    name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
-    needs:
-      - stage-terraform
-      - get-environments
-    if: |
-      always()
-      && inputs.applications
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && needs.stage-terraform.result != 'failure'
-      && contains(needs.get-environments.outputs.environments, 'Stage')
-    strategy:
-      matrix:
-        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
-    with:
-      application-name: ${{ matrix.application-name }}
-      environment: Stage
-      deploy-application: ${{ inputs.has-application-changes }}
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
-
-  production-terraform:
-    name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
-    needs:
-      - stage-application
-      - stage-terraform
-      - test-application
-      - test-terraform
-    if: |
-      always()
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && contains(needs.get-environments.outputs.environments, 'Production')
-    strategy:
-      matrix:
-        # Matrix gives better visibility in GH UI
-        environment: [Production]
-    with:
-      environment: ${{ matrix.environment }}
-      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
-      working-directory: ${{ inputs.working-directory }}
-      terraform-directory: ${{ inputs.terraform-directory }}
-
-  production-application:
-    name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
-    needs:
-      - production-terraform
-      - get-environments
-    if: |
-      always()
-      && inputs.applications
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && contains(needs.get-environments.outputs.environments, 'Production')
-    strategy:
-      matrix:
-        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
-    with:
-      application-name: ${{ matrix.application-name }}
-      environment: Production
-      deploy-application: ${{ inputs.has-application-changes }}
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
+#
+#  stage-terraform:
+#    name: Stage - Terraform
+#    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+#    needs:
+#      - service-terraform
+#      - get-environments
+#    if: |
+#      always()
+#      && !cancelled()
+#      && !contains(needs.*.result, 'failure')
+#      && contains(needs.get-environments.outputs.environments, 'Stage')
+#    strategy:
+#      matrix:
+#        # Matrix gives better visibility in GH UI
+#        environment: [Stage]
+#    with:
+#      environment: ${{ matrix.environment }}
+#      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
+#      working-directory: ${{ inputs.working-directory }}
+#      terraform-directory: ${{ inputs.terraform-directory }}
+#
+#  stage-application:
+#    name: Stage - Application
+#    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+#    needs:
+#      - stage-terraform
+#      - get-environments
+#    if: |
+#      always()
+#      && inputs.applications
+#      && !cancelled()
+#      && !contains(needs.*.result, 'failure')
+#      && needs.stage-terraform.result != 'failure'
+#      && contains(needs.get-environments.outputs.environments, 'Stage')
+#    strategy:
+#      matrix:
+#        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
+#    with:
+#      application-name: ${{ matrix.application-name }}
+#      environment: Stage
+#      deploy-application: ${{ inputs.has-application-changes }}
+#      sha-to-deploy: ${{ inputs.sha-to-deploy }}
+#
+#  production-terraform:
+#    name: Prod - Terraform
+#    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+#    needs:
+#      - stage-application
+#      - stage-terraform
+#      - test-application
+#      - test-terraform
+#    if: |
+#      always()
+#      && !cancelled()
+#      && !contains(needs.*.result, 'failure')
+#      && contains(needs.get-environments.outputs.environments, 'Production')
+#    strategy:
+#      matrix:
+#        # Matrix gives better visibility in GH UI
+#        environment: [Production]
+#    with:
+#      environment: ${{ matrix.environment }}
+#      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
+#      working-directory: ${{ inputs.working-directory }}
+#      terraform-directory: ${{ inputs.terraform-directory }}
+#
+#  production-application:
+#    name: Prod - Application
+#    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+#    needs:
+#      - production-terraform
+#      - get-environments
+#    if: |
+#      always()
+#      && inputs.applications
+#      && !cancelled()
+#      && !contains(needs.*.result, 'failure')
+#      && contains(needs.get-environments.outputs.environments, 'Production')
+#    strategy:
+#      matrix:
+#        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
+#    with:
+#      application-name: ${{ matrix.application-name }}
+#      environment: Production
+#      deploy-application: ${{ inputs.has-application-changes }}
+#      sha-to-deploy: ${{ inputs.sha-to-deploy }}
