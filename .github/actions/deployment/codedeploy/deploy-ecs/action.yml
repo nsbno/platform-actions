@@ -65,23 +65,22 @@ runs:
         DEADLOCK_COUNTER=0;
         POLLING_INTERVAL=15 # seconds
         MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
+        FIND_DEPLOYMENT_COUNTER=0
         
         while true; do
-          # Initial wait time since deployment might not be immediately available
-          sleep 1
-
           DEPLOYMENTS=$(aws ecs list-service-deployments \
             --cluster "${{ inputs.cluster-name }}" \
             --service "${{ inputs.ecs-service-name }}" \
             --created-at "{ \"after\": ${START_TIME} }" \
             --max-results 10)
         
-          DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeploymentArns[0] // ""')
+          DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeployments[0].serviceDeploymentArn // ""')
           echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
       
           if [ -z "$DEPLOYMENT_ARN" ]; then
             echo -e "${YELLOW}No recent deployments found. Waiting...${NC}"
-            if [ "$DEADLOCK_COUNTER" -ge "$MAX_TRIES" ]; then
+            FIND_DEPLOYMENT_COUNTER=$((FIND_DEPLOYMENT_COUNTER + 1))
+            if [ "$FIND_DEPLOYMENT_COUNTER" -ge "$MAX_TRIES" ]; then
               echo -e "${RED}❌ No deployments found after $MAX_TRIES attempts. Exiting...${NC}"
               exit 1
             fi
