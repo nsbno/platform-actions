@@ -118,23 +118,22 @@ runs:
             echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
           fi
         
-          if [[ "$STATUS" == "COMPLETED" ]]; then
+          if [[ "$STATUS" == "SUCCESSFUL" || "$STATUS" == "ROLLBACK_SUCCESSFUL" ]]; then
             echo -e "${GREEN}✅ ECS Deployment completed successfully!${NC}"
             break
-          elif [[ "$STATUS" == "FAILED" ]]; then
+          elif [[ "$STATUS" == "STOPPED" || "$STATUS" == "ROLLBACK_FAILED" ]]; then
             echo -e "${RED}❌ ECS Deployment failed!${NC}"
             echo -e "Reason: $STATUS_REASON"
             exit 1
-          elif [[ "$STATUS" == "STOPPED" ]]; then
-            echo -e "${RED}⚠️ ECS Deployment was stopped!${NC}"
-            echo -e "Reason: $STATUS_REASON"
-            exit 1
+          else
+            # For all other statuses (IN_PROGRESS, PENDING, etc.), continue monitoring
+            echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}"
           fi
-        
+
           sleep $POLLING_INTERVAL
         done
         
-    - name: Cancel CodeDeploy Deployment and Fail
+    - name: Cancel ECS Deployment and Fail
       if: cancelled()
       shell: bash
       run: |
