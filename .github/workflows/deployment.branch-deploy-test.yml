@@ -78,7 +78,6 @@ jobs:
       && !cancelled()
     strategy:
       matrix:
-        # Needs to handle multiple applications later
         application-name: ${{ fromJSON(needs.trigger.outputs.application-names) }}
     with:
       application-name: ${{ matrix.application-name }}
