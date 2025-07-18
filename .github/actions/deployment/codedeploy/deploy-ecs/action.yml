@@ -97,14 +97,12 @@ runs:
           TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
           
           read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
-            $(jq -r '[.requestedTaskCount // 0, .runningCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
+            $(jq -r '[.requestedTaskCount // 0, .runningTaskCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
           
-          CREATED_TIME=$(date -d "$CREATED_AT" "+%Y-%m-%d %H:%M:%S UTC")
-        
+          LIFECYCLE_STAGE_FORMATTED=$(date -d "$LIFECYCLE_STAGE" "+%Y-%m-%d %H:%M")
           echo -e "Deploy in progress. Refreshing in ${POLL_INTERVAL} seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
-          echo -e "Deployment created at: ${CREATED_TIME}"
-          echo -e "${BLUE}Requested Count: $REQUESTED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
-          echo -e "Deployment status: $STATUS, Lifecycle Stage: $LIFECYCLE_STAGE"
+          echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
+          echo -e "Deployment status: $STATUS, Lifecycle Stage: $LIFECYCLE_STAGE_FORMATTED"
           
           if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
             echo -e "Status reason: $STATUS_REASON"
