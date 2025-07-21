@@ -101,7 +101,7 @@ runs:
           DEPLOYMENT=$(echo "$DEPLOYMENT_INFO" | jq -r '.serviceDeployments[0]')
         
           STATUS=$(jq -r '.status' <<< "$DEPLOYMENT")
-          LIFECYCLE_STAGE=$(jq -r '.lifecycleStage // "UNKNOWN"' <<< "$DEPLOYMENT")
+          LIFECYCLE_STAGE=$(jq -r '.lifecycleStage' <<< "$DEPLOYMENT")
           STATUS_REASON=$(jq -r '.statusReason // ""' <<< "$DEPLOYMENT")
           CREATED_AT=$(jq -r '.createdAt' <<< "$DEPLOYMENT")
           TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
@@ -111,8 +111,11 @@ runs:
           
           echo -e "Deploy in progress. Refreshing in $POLLING_INTERVAL seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
-          echo -e "Lifecycle Stage: $LIFECYCLE_STAGE"
           
+          if [ -n "$LIFECYCLE_STAGE" ] && [ "$LIFECYCLE_STAGE" != "null" ]; then
+            echo -e "Lifecycle Stage: $LIFECYCLE_STAGE"
+          fi  
+        
           if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
             echo -e "Status reason: $STATUS_REASON"
           fi
