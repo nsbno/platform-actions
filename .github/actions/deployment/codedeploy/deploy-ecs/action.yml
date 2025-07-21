@@ -61,7 +61,7 @@ runs:
         NC='\033[0m' # No Color
 
         CURRENT_TIME=$(date +%s)
-        START_TIME=$((CURRENT_TIME - 300)) # 5 minutes ago
+        START_TIME=$((CURRENT_TIME - 60)) # 1 minute ago
         # ISO8601 date
         LAST_EVENT_DATE=$(date -u -d "@$CURRENT_TIME" +"%Y-%m-%dT%H:%M:%SZ")
         DEADLOCK_COUNTER=0;
@@ -72,7 +72,7 @@ runs:
         
         while true; do
           if [ -z "$DEPLOYMENT_ARN" ]; then
-            sleep 3
+            sleep 5
             DEPLOYMENTS=$(aws ecs list-service-deployments \
               --cluster "${{ inputs.cluster-name }}" \
               --service "${{ inputs.ecs-service-name }}" \
