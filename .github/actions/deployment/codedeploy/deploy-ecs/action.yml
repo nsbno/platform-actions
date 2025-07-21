@@ -72,6 +72,7 @@ runs:
         
         while true; do
           if [ -z "$DEPLOYMENT_ARN" ]; then
+            sleep 3
             DEPLOYMENTS=$(aws ecs list-service-deployments \
               --cluster "${{ inputs.cluster-name }}" \
               --service "${{ inputs.ecs-service-name }}" \
