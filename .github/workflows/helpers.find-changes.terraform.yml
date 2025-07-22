@@ -35,10 +35,6 @@ on:
 
 name: Find Terraform Changes
 
-# Needed to avoid conflicts with terraform state
-concurrency:
-  group: ${{ inputs.environment }}-terraform
-
 jobs:
   get-environments:
     if: ${{ !inputs.force-deploy }}
@@ -65,6 +61,9 @@ jobs:
       matrix:
         environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
     environment: ${{ matrix.environment }}
+    # Needed to avoid conflicts with terraform state
+    concurrency:
+      group: ${{ matrix.environment }}-terraform
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
