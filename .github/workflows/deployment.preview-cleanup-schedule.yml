@@ -157,7 +157,7 @@ jobs:
         if: steps.identify-inactive.outputs.has_inactive == 'true'
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ inputs.github-token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INACTIVE_PREVIEWS: ${{ steps.identify-inactive.outputs.inactive_previews }}
         run: |
           echo "$INACTIVE_PREVIEWS" | jq -c '.[] | select(.pr != null)' | while read -r SERVICE; do
@@ -173,7 +173,6 @@ jobs:
 
              gh api \
                --method POST \
-               -H "Authorization: token $GITHUB_TOKEN" \
                repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments \
                -f body="${COMMENT}"
 
