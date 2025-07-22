@@ -48,7 +48,11 @@ jobs:
           INACTIVE_THRESHOLD=$((${{ inputs.days-to-keep }} * 24 * 60 * 60))
 
           INACTIVE_PREVIEWS="[]"
-          echo "$PREVIEW_SERVICES" | jq -c '.[]' | while read -r SERVICE; do
+          SERVICES_JSON=$(echo "$PREVIEW_SERVICES" | jq -c '.')
+          SERVICES_COUNT=$(echo "$SERVICES_JSON" | jq 'length')
+
+          for ((i=0; i<$SERVICES_COUNT; i++)); do
+            SERVICE=$(echo "$SERVICES_JSON" | jq -c ".[$i]")
             SERVICE_NAME=$(echo "$SERVICE" | jq -r '.Name')
             SERVICE_ARN=$(echo "$SERVICE" | jq -r '.Arn')
 
