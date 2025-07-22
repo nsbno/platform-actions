@@ -17,13 +17,13 @@ inputs:
     aws-account-id:
       description: "The AWS account ID the preview environment will use"
       required: true
-    aws-region:
-      description: "The AWS region to deploy the service in"
-      required: true
     gh-environment-variables:
       description: "Environment variables to set for the App Runner service"
       required: true
-
+    aws-region:
+      description: "The AWS region to deploy the service in"
+      required: false
+      default: 'eu-west-1'
 
 outputs:
   app-runner-url:
