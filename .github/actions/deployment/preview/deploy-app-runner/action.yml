@@ -68,10 +68,13 @@ runs:
       env:
         VARS_JSON: ${{ toJSON(inputs.gh-environment-variables) }}
       run: |
-        # Filter out AWS-related environment variables used for the pipeline
-        FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
-
-        echo "env_vars_config=$(echo "$FILTERED_VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+        if [ "$VARS_JSON" = '""' ] || [ "$VARS_JSON" = "{}" ]; then
+          echo "env_vars_config={}" >> $GITHUB_OUTPUT
+        else
+          # Filter out AWS-related environment variables used for the pipeline
+          FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
+          echo "env_vars_config=$(echo "$FILTERED_VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+        fi
 
     - name: Deploy to App Runner Image
       if: steps.check-service.outputs.service_exists == 'false'
