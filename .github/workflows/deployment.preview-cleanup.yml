@@ -1,4 +1,4 @@
-name: deployment.preview-cleanup.yml
+name: Preview Cleanup for a given App Runner Service
 on:
   workflow_call:
     inputs:
