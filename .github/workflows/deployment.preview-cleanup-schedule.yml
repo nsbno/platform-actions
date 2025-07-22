@@ -32,7 +32,8 @@ jobs:
           # Get all App Runner services with "pr-" prefix
           PREVIEW_SERVICES=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
             --query "ServiceSummaryList[?starts_with(ServiceName, 'pr-')].{Name:ServiceName,Arn:ServiceArn}" --output json)
-          echo "preview_services=$PREVIEW_SERVICES" >> $GITHUB_OUTPUT
+          # Ensure proper JSON escaping for GitHub Actions output
+          echo "preview_services=$(echo "$PREVIEW_SERVICES" | jq -c .)" >> $GITHUB_OUTPUT
           echo "Found $(echo "$PREVIEW_SERVICES" | jq 'length') preview services"
 
       - name: Identify inactive services (older than ${{ inputs.days-to-keep }} days)
@@ -79,7 +80,8 @@ jobs:
             fi
           done
 
-          echo "inactive_previews=$INACTIVE_PREVIEWS" >> $GITHUB_OUTPUT
+          # Ensure proper JSON escaping for GitHub Actions output
+          echo "inactive_previews=$(echo "$INACTIVE_PREVIEWS" | jq -c .)" >> $GITHUB_OUTPUT
           echo "Found $(echo "$INACTIVE_PREVIEWS" | jq 'length') inactive preview services"
 
           # Set a flag to indicate if we have any inactive services
