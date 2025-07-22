@@ -59,7 +59,7 @@ jobs:
 
       - name: Deploy App Runner Preview Service
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/apprunner/deploy-app-runner@main
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@main
         with:
           service-name: ${{ inputs.service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
