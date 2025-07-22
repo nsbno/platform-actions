@@ -6,7 +6,7 @@ on:
         required: false
         type: number
         description: "Number of days to keep preview deployments. Default is ${{ inputs.days-to-keep }} days."
-        default: ${{ inputs.days-to-keep }}
+        default: 5
 
 permissions:
   contents: read
