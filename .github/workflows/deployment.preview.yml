@@ -65,6 +65,9 @@ jobs:
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
           git-sha: ${{ inputs.git-sha }}
           service-port: ${{ inputs.service-port }}
+          aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
+          aws-region: ${{ vars.AWS_REGION }}
+          gh-environment-variables: ${{ vars }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main

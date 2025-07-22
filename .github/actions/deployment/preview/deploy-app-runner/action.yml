@@ -14,6 +14,15 @@ inputs:
     service-port:
       description: "The port the service is running on, default is 3000"
       required: true
+    aws-account-id:
+      description: "The AWS account ID the preview environment will use"
+      required: true
+    aws-region:
+      description: "The AWS region to deploy the service in"
+      required: true
+    gh-environment-variables:
+      description: "Environment variables to set for the App Runner service"
+      required: true
 
 
 outputs:
@@ -30,8 +39,8 @@ runs:
       run: |
         echo "service_name=pr-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
         echo "image_uri=${{ inputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
-        echo "access_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
-        echo "instance_role_arn='arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{inputs.service-name}}-app-runner-instance-role'" >> $GITHUB_OUTPUT
+        echo "access_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
+        echo "instance_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-instance-role'">> $GITHUB_OUTPUT
 
     - name: Check if App Runner service exists
       id: check-service
@@ -41,7 +50,7 @@ runs:
         SERVICE_NAME="${{ steps.set-service-variables.outputs.service_name }}"
 
         # Check if service already exists
-        SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+        SERVICE_ARN=$(aws apprunner list-services --region ${{ inputs.aws-region }} \
           --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
 
         if [ -n "$SERVICE_ARN" ]; then
@@ -57,7 +66,7 @@ runs:
       id: prepare-env-vars
       shell: bash
       env:
-        VARS_JSON: ${{ toJSON(vars) }}
+        VARS_JSON: ${{ toJSON(inputs.gh-environment-variables) }}
       run: |
         # Filter out AWS-related environment variables used for the pipeline
         FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
@@ -89,7 +98,7 @@ runs:
             "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
           }
         }' \
-        --region ${{ vars.AWS_REGION }}
+        --region ${{ inputs.aws-region }}
 
     - name: Update Existing App Runner Service
       if: steps.check-service.outputs.service_exists == 'true'
@@ -114,17 +123,17 @@ runs:
               "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
             }
           }' \
-          --region ${{ vars.AWS_REGION }}
+          --region ${{ inputs.aws-region }}
 
     - name: Wait for App Runner Service to be Active
       id: wait-for-service
       shell: bash
       run: |
-        SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+        SERVICE_ARN=$(aws apprunner list-services --region ${{ inputs.aws-region }} \
           --query "ServiceSummaryList[?ServiceName=='${{ steps.set-service-variables.outputs.service_name }}'].ServiceArn" --output text)
 
         for i in {1..30}; do
-          STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
+          STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
             --query "Service.Status" --output text)
           echo "Current status: $STATUS"
           if [[ "$STATUS" == "RUNNING" ]]; then
@@ -144,6 +153,6 @@ runs:
         fi
 
         # Get the service URL and set it as an output
-        SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }} \
+        SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
           --query "Service.ServiceUrl" --output text)
         echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
