@@ -1,11 +1,12 @@
-name: deployment.preview-cleanup.yml
-on:
+name: Preview Deployment Cleanup
+on: 
   workflow_call:
-    inputs:
-      service-name:
-        required: true
-        type: string
-        description: "The name of the service to deploy"
+    inputs: 
+      days-to-keep:
+        required: false
+        type: number
+        description: "Number of days to keep preview deployments. Default is ${{ inputs.days-to-keep }} days."
+        default: ${{ inputs.days-to-keep }}
 
 permissions:
   contents: read
@@ -23,40 +24,119 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      - name: Delete App Runner Service
-        id: delete-service
+      - name: List all preview services
+        id: list-previews
         shell: bash
         run: |
-          SERVICE_NAME="pr-${{ github.event.number }}-${{ inputs.service-name }}"
-          echo "service-name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+          # Get all App Runner services with "pr-" prefix
+          PREVIEW_SERVICES=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
+            --query "ServiceSummaryList[?starts_with(ServiceName, 'pr-')].{Name:ServiceName,Arn:ServiceArn}" --output json)
+          echo "preview_services=$PREVIEW_SERVICES" >> $GITHUB_OUTPUT
+          echo "Found $(echo "$PREVIEW_SERVICES" | jq 'length') preview services"
 
-          SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
-            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
-          if [ -n "$SERVICE_ARN" ]; then
-            aws apprunner delete-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }}
-            echo "Deleted App Runner service: $SERVICE_NAME"
+      - name: Identify inactive services (older than ${{ inputs.days-to-keep }} days)
+        id: identify-inactive
+        shell: bash
+        env:
+          PREVIEW_SERVICES: ${{ steps.list-previews.outputs.preview_services }}
+        run: |
+          # Get current timestamp in seconds
+          CURRENT_TIME=$(date +%s)
+          # ${{ inputs.days-to-keep }} days in seconds
+          INACTIVE_THRESHOLD=$((${{ inputs.days-to-keep }} * 24 * 60 * 60))
+          
+          INACTIVE_PREVIEWS="[]"
+          echo "$PREVIEW_SERVICES" | jq -c '.[]' | while read -r SERVICE; do
+            SERVICE_NAME=$(echo "$SERVICE" | jq -r '.Name')
+            SERVICE_ARN=$(echo "$SERVICE" | jq -r '.Arn')
+          
+            echo "Checking service: $SERVICE_NAME"
+          
+            # Get service details including last deployment time
+            SERVICE_DETAILS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }})
+          
+            # Get the last deployment time
+            LAST_DEPLOYMENT=$(echo "$SERVICE_DETAILS" | jq -r '.Service.CreatedAt')
+          
+            # Convert to timestamp in seconds
+            LAST_DEPLOYMENT_TIME=$(date -d "$LAST_DEPLOYMENT" +%s)
+            TIME_DIFF=$((CURRENT_TIME - LAST_DEPLOYMENT_TIME))
+
+            echo "Service $SERVICE_NAME was last active $TIME_DIFF seconds ago"
+          
+            # Check if inactive for more than threshold
+            if [ $TIME_DIFF -gt $INACTIVE_THRESHOLD ]; then
+              echo "Service $SERVICE_NAME is inactive for more than ${{ inputs.days-to-keep }} days. Adding to cleanup list."
+              INACTIVE_PREVIEWS=$(echo "$INACTIVE_PREVIEWS" | jq --arg name "$SERVICE_NAME" --arg arn "$SERVICE_ARN" '. += [{"name": $name, "arn": $arn}]')
+            else
+              echo "Service $SERVICE_NAME is still active (less than ${{ inputs.days-to-keep }} days old)"
+            fi
+          done
+          
+          echo "inactive_previews=$INACTIVE_PREVIEWS" >> $GITHUB_OUTPUT
+          echo "Found $(echo "$INACTIVE_PREVIEWS" | jq 'length') inactive preview services"
+          
+          # Set a flag to indicate if we have any inactive services
+          if [ "$(echo "$INACTIVE_PREVIEWS" | jq 'length')" -gt 0 ]; then
+            echo "has_inactive=true" >> $GITHUB_OUTPUT
           else
-            echo "No App Runner service found for: $SERVICE_NAME"
+            echo "has_inactive=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Delete CloudWatch Logs
+      - name: Delete App Runner Service
+        if: steps.identify-inactive.outputs.has_inactive == 'true'
+        id: delete-service
         shell: bash
+        env:
+          INACTIVE_PREVIEWS: ${{ steps.identify-inactive.outputs.inactive_previews }}
         run: |
-          PREFIX="/aws/apprunner/${{steps.delete-service.outputs.service-name}}"
-
-          LOG_GROUPS=$(aws logs describe-log-groups \
-            --log-group-name-prefix "$PREFIX" \
-            --query "logGroups[*].logGroupName" \
-            --output text)
-          echo "The following log groups will be deleted:"
-          echo "$LOG_GROUPS" | tr '\t' '\n'
-          
-          for LOG_GROUP in $LOG_GROUPS; do
-            echo "Deleting log group: $LOG_GROUP"
-            aws logs delete-log-group --log-group-name "$LOG_GROUP" --region ${{ vars.AWS_REGION }} 
+          echo "$INACTIVE_PREVIEWS" | jq -c '.[]' | while read -r SERVICE; do
+            SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
+            SERVICE_ARN=$(echo "$SERVICE" | jq -r '.arn')
+             
+            echo "Deleting App Runner service: $SERVICE_NAME"
+            aws apprunner delete-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }}
+             
             if [ $? -eq 0 ]; then
-              echo "Successfully deleted: $LOG_GROUP"
+              echo "Successfully deleted App Runner service: $SERVICE_NAME"
             else
-              echo "Failed to delete: $LOG_GROUP"
+              echo "Failed to delete App Runner service: $SERVICE_NAME"
             fi
+          done
+
+      - name: Delete CloudWatch Logs
+        if: steps.identify-inactive.outputs.has_inactive == 'true'
+        shell: bash
+        env:
+          INACTIVE_PREVIEWS: ${{ steps.identify-inactive.outputs.inactive_previews }}
+        run: |
+          # Process each inactive service
+          echo "$INACTIVE_PREVIEWS" | jq -c '.[]' | while read -r SERVICE; do
+            SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
+          
+            echo "Deleting CloudWatch logs for service: $SERVICE_NAME"
+            PREFIX="/aws/apprunner/$SERVICE_NAME"
+          
+            LOG_GROUPS=$(aws logs describe-log-groups \
+              --log-group-name-prefix "$PREFIX" \
+              --query "logGroups[*].logGroupName" \
+              --output text)
+          
+            if [ -z "$LOG_GROUPS" ]; then
+              echo "No log groups found for service: $SERVICE_NAME"
+              continue
+            fi
+          
+            echo "The following log groups will be deleted:"
+            echo "$LOG_GROUPS" | tr '\t' '\n'
+          
+            for LOG_GROUP in $LOG_GROUPS; do
+              echo "Deleting log group: $LOG_GROUP"
+              aws logs delete-log-group --log-group-name "$LOG_GROUP" --region ${{ vars.AWS_REGION }} 
+              if [ $? -eq 0 ]; then
+                echo "Successfully deleted: $LOG_GROUP"
+              else
+                echo "Failed to delete: $LOG_GROUP"
+              fi
+            done
           done
