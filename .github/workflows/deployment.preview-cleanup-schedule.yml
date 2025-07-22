@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  pull-requests: write
 
 jobs:
   cleanup:
@@ -44,38 +45,43 @@ jobs:
           CURRENT_TIME=$(date +%s)
           # ${{ inputs.days-to-keep }} days in seconds
           INACTIVE_THRESHOLD=$((${{ inputs.days-to-keep }} * 24 * 60 * 60))
-          
+
           INACTIVE_PREVIEWS="[]"
           echo "$PREVIEW_SERVICES" | jq -c '.[]' | while read -r SERVICE; do
             SERVICE_NAME=$(echo "$SERVICE" | jq -r '.Name')
             SERVICE_ARN=$(echo "$SERVICE" | jq -r '.Arn')
-          
+
             echo "Checking service: $SERVICE_NAME"
-          
+
             # Get service details including last deployment time
             SERVICE_DETAILS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }})
-          
+
             # Get the last deployment time
             LAST_DEPLOYMENT=$(echo "$SERVICE_DETAILS" | jq -r '.Service.CreatedAt')
-          
+
             # Convert to timestamp in seconds
             LAST_DEPLOYMENT_TIME=$(date -d "$LAST_DEPLOYMENT" +%s)
             TIME_DIFF=$((CURRENT_TIME - LAST_DEPLOYMENT_TIME))
 
             echo "Service $SERVICE_NAME was last active $TIME_DIFF seconds ago"
-          
+
             # Check if inactive for more than threshold
             if [ $TIME_DIFF -gt $INACTIVE_THRESHOLD ]; then
               echo "Service $SERVICE_NAME is inactive for more than ${{ inputs.days-to-keep }} days. Adding to cleanup list."
-              INACTIVE_PREVIEWS=$(echo "$INACTIVE_PREVIEWS" | jq --arg name "$SERVICE_NAME" --arg arn "$SERVICE_ARN" '. += [{"name": $name, "arn": $arn}]')
+
+              # Extract PR number from the service name (format: pr-{PR_NUMBER}-{SERVICE_NAME})
+              PR_NUMBER=$(echo "$SERVICE_NAME" | sed -n 's/pr-\([0-9]*\)-.*/\1/p')
+
+              echo "Extracted PR number: $PR_NUMBER"
+              INACTIVE_PREVIEWS=$(echo "$INACTIVE_PREVIEWS" | jq --arg name "$SERVICE_NAME" --arg arn "$SERVICE_ARN" --arg pr "$PR_NUMBER" '. += [{"name": $name, "arn": $arn, "pr": $pr}]')
             else
               echo "Service $SERVICE_NAME is still active (less than ${{ inputs.days-to-keep }} days old)"
             fi
           done
-          
+
           echo "inactive_previews=$INACTIVE_PREVIEWS" >> $GITHUB_OUTPUT
           echo "Found $(echo "$INACTIVE_PREVIEWS" | jq 'length') inactive preview services"
-          
+
           # Set a flag to indicate if we have any inactive services
           if [ "$(echo "$INACTIVE_PREVIEWS" | jq 'length')" -gt 0 ]; then
             echo "has_inactive=true" >> $GITHUB_OUTPUT
@@ -93,10 +99,10 @@ jobs:
           echo "$INACTIVE_PREVIEWS" | jq -c '.[]' | while read -r SERVICE; do
             SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
             SERVICE_ARN=$(echo "$SERVICE" | jq -r '.arn')
-          
+
             echo "Deleting App Runner service: $SERVICE_NAME"
             aws apprunner delete-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }}
-          
+
             if [ $? -eq 0 ]; then
               echo "Successfully deleted App Runner service: $SERVICE_NAME"
             else
@@ -113,23 +119,23 @@ jobs:
           # Process each inactive service
           echo "$INACTIVE_PREVIEWS" | jq -c '.[]' | while read -r SERVICE; do
             SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
-          
+
             echo "Deleting CloudWatch logs for service: $SERVICE_NAME"
             PREFIX="/aws/apprunner/$SERVICE_NAME"
-          
+
             LOG_GROUPS=$(aws logs describe-log-groups \
               --log-group-name-prefix "$PREFIX" \
               --query "logGroups[*].logGroupName" \
               --output text)
-          
+
             if [ -z "$LOG_GROUPS" ]; then
               echo "No log groups found for service: $SERVICE_NAME"
               continue
             fi
-          
+
             echo "The following log groups will be deleted:"
             echo "$LOG_GROUPS" | tr '\t' '\n'
-          
+
             for LOG_GROUP in $LOG_GROUPS; do
               echo "Deleting log group: $LOG_GROUP"
               aws logs delete-log-group --log-group-name "$LOG_GROUP" --region ${{ vars.AWS_REGION }} 
@@ -139,4 +145,38 @@ jobs:
                 echo "Failed to delete: $LOG_GROUP"
               fi
             done
+          done
+
+      - name: Comment on PR about deleted services
+        if: steps.identify-inactive.outputs.has_inactive == 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ inputs.github-token }}
+          INACTIVE_PREVIEWS: ${{ steps.identify-inactive.outputs.inactive_previews }}
+        run: |
+          echo "$INACTIVE_PREVIEWS" | jq -c '.[] | select(.pr != null)' | while read -r SERVICE; do
+           PR_NUMBER=$(echo "$SERVICE" | jq -r '.pr')
+           SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
+
+           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+             COMMENT="🧹 **Preview Environment Cleanup**
+
+             The preview environment for \`$SERVICE_NAME\` has been automatically deleted due to inactivity (no updates for ${{ inputs.days-to-keep }} days).
+
+             If you need to restore the preview environment, please push a new commit to this PR."
+
+             gh api \
+               --method POST \
+               -H "Authorization: token $GITHUB_TOKEN" \
+               repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments \
+               -f body="${COMMENT}"
+
+             if [ $? -eq 0 ]; then
+               echo "Successfully commented on PR #$PR_NUMBER"
+             else
+               echo "Failed to comment on PR #$PR_NUMBER"
+             fi
+           else
+             echo "Skipping PR comment for service without valid PR number"
+           fi
           done
