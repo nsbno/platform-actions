@@ -175,6 +175,10 @@ runs:
             echo "⚠️ Deployment was stopped!"
             exit 1
           fi
+          
+          # Echo new line
+          echo
+          echo
 
           sleep 15
         done
