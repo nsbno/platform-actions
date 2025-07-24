@@ -102,8 +102,10 @@ runs:
         
           STATUS=$(jq -r '.status' <<< "$DEPLOYMENT")
           LIFECYCLE_STAGE=$(jq -r '.lifecycleStage' <<< "$DEPLOYMENT")
+          STARTED_AT=$(jq -r '.startedAt // 0' <<< "$DEPLOYMENT")
+          STARTED_AT_TS=$(date -u -d "$STARTED_AT" +%s)
+          BAKE_TIME_MINUTES=$(jq -r '.deploymentConfiguration.bakeTimeInMinutes // 0' <<< "$DEPLOYMENT")
           STATUS_REASON=$(jq -r '.statusReason // ""' <<< "$DEPLOYMENT")
-          CREATED_AT=$(jq -r '.createdAt' <<< "$DEPLOYMENT")
           TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
           
           read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
@@ -111,10 +113,6 @@ runs:
           
           echo -e "Deploy in progress. Refreshing in $POLLING_INTERVAL seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
           echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
-          
-          if [ -n "$LIFECYCLE_STAGE" ] && [ "$LIFECYCLE_STAGE" != "null" ]; then
-            echo -e "Lifecycle Stage: $LIFECYCLE_STAGE"
-          fi  
         
           if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
             echo -e "Status reason: $STATUS_REASON"
@@ -123,8 +121,7 @@ runs:
           ROLLBACK=$(jq -r '.rollback // {}' <<< "$DEPLOYMENT")
           ROLLBACK_REASON=$(jq -r '.reason // ""' <<< "$ROLLBACK")
           if [ -n "$ROLLBACK_REASON" ] && [ "$ROLLBACK_REASON" != "null" ]; then
-            ROLLBACK_STARTED=$(jq -r '.startedAt // 0' <<< "$ROLLBACK")
-            ROLLBACK_TIME=$(date -u -d "$ROLLBACK_STARTED" "+%Y-%m-%d %H:%M:%S")
+            ROLLBACK_TIME=$(date -u -d "$STARTED_AT" "+%Y-%m-%d %H:%M:%S")
             echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
           fi
         
@@ -137,7 +134,18 @@ runs:
             exit 1
           else
             # For all other statuses (IN_PROGRESS, PENDING, etc.), continue monitoring
-            echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}"
+            echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}, Lifecycle: $LIFECYCLE_STAGE"
+          fi
+        
+          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "$STARTED_AT_TS" -gt 0 ]; then
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_MINUTES=$(( (CURRENT_TIME - $STARTED_AT_TS) / 60 ))
+            TIME_LEFT=$(( $BAKE_TIME_MINUTES - ELAPSED_MINUTES ))
+            if [ "$TIME_LEFT" -gt 0 ]; then
+             echo -e "${YELLOW}Rollback window is open. Time left: ${TIME_LEFT} minute(s).${NC}"
+            else
+             echo -e "${YELLOW}Rollback window is closed.${NC}"
+            fi
           fi
 
           EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
