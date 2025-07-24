@@ -161,7 +161,6 @@ runs:
           
           # Echo new line
           echo
-          echo
 
           sleep $POLLING_INTERVAL
         done
