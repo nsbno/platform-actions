@@ -159,11 +159,14 @@ runs:
             printf "\n"
           fi
           
-          echo ""
+          # Echo new line
+          echo
+          echo
+
           sleep $POLLING_INTERVAL
         done
-        
-    - name: Cancel ECS Deployment and Fail
+
+    - name: Cancel CodeDeploy Deployment and Fail
       if: cancelled()
       shell: bash
       run: |

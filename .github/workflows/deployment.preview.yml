@@ -59,12 +59,15 @@ jobs:
 
       - name: Deploy App Runner Preview Service
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/apprunner/deploy-app-runner@main
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@main
         with:
           service-name: ${{ inputs.service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
           git-sha: ${{ inputs.git-sha }}
           service-port: ${{ inputs.service-port }}
+          aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
+          aws-region: ${{ vars.AWS_REGION }}
+          gh-environment-variables: ${{ toJSON(vars) }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
