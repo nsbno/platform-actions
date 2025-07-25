@@ -68,7 +68,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@ecs-blue-green
     needs:
       - test-terraform
       - trigger
