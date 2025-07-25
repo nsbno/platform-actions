@@ -137,6 +137,15 @@ runs:
             echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}, Lifecycle: $LIFECYCLE_STAGE"
           fi
         
+          CIRCUIT_BREAKER=$(jq -r '.deploymentCircuitBreaker // {}' <<< "$DEPLOYMENT")
+          FAILURE_COUNT=$(jq -r '.failureCount // 0' <<< "$CIRCUIT_BREAKER")
+          THRESHOLD=$(jq -r '.threshold // 0' <<< "$CIRCUIT_BREAKER")
+
+          # Display circuit breaker information if failure count > 0
+          if [ "$FAILURE_COUNT" -gt 0 ]; then
+            echo -e "${YELLOW}⚠️ Failure Count: $FAILURE_COUNT / $THRESHOLD${NC}"
+          fi
+
           if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "$STARTED_AT_TS" -gt 0 ]; then
             CURRENT_TIME=$(date +%s)
             ELAPSED_MINUTES=$(( (CURRENT_TIME - $STARTED_AT_TS) / 60 ))
