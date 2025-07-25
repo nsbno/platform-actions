@@ -125,10 +125,10 @@ runs:
             echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
           fi
         
-          if [[ "$STATUS" == "SUCCESSFUL" || "$STATUS" == "ROLLBACK_SUCCESSFUL" ]]; then
+          if [[ "$STATUS" == "SUCCESSFUL" ]]; then
             echo -e "${GREEN}✅ ECS Deployment completed successfully!${NC}"
             break
-          elif [[ "$STATUS" == "STOPPED" || "$STATUS" == "ROLLBACK_FAILED" ]]; then
+          elif [[ "$STATUS" == "STOPPED" || "$STATUS" == "ROLLBACK_FAILED" || "$STATUS" == "ROLLBACK_SUCCESSFUL" ]]; then
             echo -e "${RED}❌ ECS Deployment failed!${NC}"
             echo -e "Reason: $STATUS_REASON"
             exit 1
