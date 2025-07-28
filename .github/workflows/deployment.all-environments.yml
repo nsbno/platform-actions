@@ -101,7 +101,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@ecs-blue-green
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - test-terraform
       - get-environments
@@ -144,7 +144,7 @@ jobs:
 
   stage-application:
     name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@ecs-blue-green
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - stage-terraform
       - get-environments
@@ -189,7 +189,7 @@ jobs:
 
   production-application:
     name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@ecs-blue-green
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
       - get-environments
