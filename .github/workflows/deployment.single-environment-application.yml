@@ -73,8 +73,6 @@ jobs:
         if: steps.deployment-info.outputs.compute-target == 'ecs'
         uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
         with:
-          application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
-          deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
           ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}

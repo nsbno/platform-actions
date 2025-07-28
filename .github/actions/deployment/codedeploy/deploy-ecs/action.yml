@@ -13,12 +13,6 @@ inputs:
   image-uri:
     description: "The image to deploy"
     required: true
-  application-name:
-    description: "The CodeDeploy Application Name"
-    required: true
-  deployment-group-name:
-    description: "The CodeDeploy Deployment Group Name"
-    required: true
   ecs-container-port:
     description: "The container port to use"
     required: true
@@ -37,21 +31,6 @@ runs:
         task-definition-family: ${{ inputs.ecs-service-name }}
         image: ${{ inputs.image-uri }}
 
-    - name: Generate AppSpec File
-      shell: bash
-      run: |
-        cat <<EOF > appspec.yml
-        version: 0.0
-        Resources:
-          - TargetService:
-              Type: "AWS::ECS::Service"
-              Properties:
-                TaskDefinition: "task:def:arn"
-                LoadBalancerInfo:
-                  ContainerName: ${{ inputs.ecs-container-name }}
-                  ContainerPort: ${{ inputs.ecs-container-port }}
-        EOF
-
     - name: Deploy new task definition
       id: deploy
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -59,26 +38,20 @@ runs:
         task-definition: ${{ steps.render.outputs.task-definition }}
         service: ${{ inputs.ecs-service-name }}
         cluster: ${{ inputs.cluster-name }}
-        codedeploy-application: ${{ inputs.application-name }}
-        codedeploy-deployment-group: ${{ inputs.deployment-group-name }}
-        codedeploy-appspec: ./appspec.yml
 
-    - name: Output CodeDeploy URL with redirect
+    - name: Output ECS URL with redirect
       id: output
       shell: bash
       run: |
         REDIRECT_URL="https://vygruppen.awsapps.com/start/#/console?account_id=${{ inputs.aws-account-id}}&destination="
-        DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
-        CODEDEPLOY_URL="https://console.aws.amazon.com/codesuite/codedeploy/deployments/${DEPLOYMENT_ID}?region=eu-west-1"
         ECS_URL="https://console.aws.amazon.com/ecs/v2/clusters/${{inputs.cluster-name}}/services/${{inputs.ecs-service-name}}/deployments?region=eu-west-1"
-        ENCODED_CODEDEPLOY_URL=$(jq -rn --arg v "$CODEDEPLOY_URL" '$v|@uri')
         ENCODED_ECS_URL=$(jq -rn --arg v "$ECS_URL" '$v|@uri')
         echo "--- URLs to interact with AWS ---"
-        echo "CodeDeploy (to monitor rollback): ${REDIRECT_URL}${ENCODED_CODEDEPLOY_URL}"
         echo "ECS console (to debug ECS errors): ${REDIRECT_URL}${ENCODED_ECS_URL}"
 
-    - name: Monitor CodeDeploy Deployment Status
+    - name: Monitor ECS Deployment Status
       shell: bash
+      id: monitor
       # language=bash
       run: |
         GREEN='\033[0;32m'
@@ -87,105 +60,133 @@ runs:
         CYAN='\033[0;36m'
         NC='\033[0m' # No Color
 
-        DEPLOYMENT_ID="${{ steps.deploy.outputs.codedeploy-deployment-id }}"
-        LAST_EVENT_DATE=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID" --query "deploymentInfo.createTime" --output text)
-        echo "Monitoring deployment: $DEPLOYMENT_ID"
-        deadlockCounter=0;
-
-        TERMINATION_WAIT_TIME=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID" \
-          --query "deploymentInfo.blueGreenDeploymentConfiguration.terminateBlueInstancesOnDeploymentSuccess.terminationWaitTimeInMinutes" \
-          --output text)
-        echo -e "${CYAN}Rollback window configured: $TERMINATION_WAIT_TIME minutes"
-
+        CURRENT_TIME=$(date +%s)
+        START_TIME=$((CURRENT_TIME - 60)) # 1 minute ago
+        # ISO8601 date
+        LAST_EVENT_DATE=$(date -u -d "@$CURRENT_TIME" +"%Y-%m-%dT%H:%M:%SZ")
+        DEADLOCK_COUNTER=0;
+        POLLING_INTERVAL=15 # seconds
+        MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
+        FIND_DEPLOYMENT_COUNTER=0
+        DEPLOYMENT_ARN=""
+        
         while true; do
-          SERVICE=$(aws ecs describe-services --cluster ${{ inputs.cluster-name }} --services ${{ inputs.ecs-service-name }})
-          DEPLOYMENT_INFO=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID")
-
-          DEPLOYMENT=$(echo "$SERVICE" | jq -r --arg deploymentId "$DEPLOYMENT_ID" '.services[0].taskSets[] | select(.externalId==$deploymentId)')
-          DESIRED_COUNT=$(echo $DEPLOYMENT | jq -r '.computedDesiredCount // 0')
-          RUNNING_COUNT=$(echo $DEPLOYMENT | jq -r '.runningCount // 0')
-          PENDING_COUNT=$(echo $DEPLOYMENT | jq -r '.pendingCount // 0')
-          STATUS=$(echo "$DEPLOYMENT_INFO" | jq -r '.deploymentInfo.status // "UNKNOWN"')
-          STABILITY_STATUS=$(echo $DEPLOYMENT | jq -r '.stabilityStatus // "UNKNOWN"')
-
-          TERMINATION_CONFIGURED=$([ "$TERMINATION_WAIT_TIME" != "0" ] && [ "$TERMINATION_WAIT_TIME" != "" ] && echo "true" || echo "false")
-          TERMINATION_STARTED=$(echo "$DEPLOYMENT_INFO" | jq -r '.deploymentInfo.instanceTerminationWaitTimeStarted // false')
-
-          if [ "$TERMINATION_STARTED" = "true" ] && [ "$STATUS" = "InProgress" ]; then
-            TARGET_IDS=$(aws deploy list-deployment-targets --deployment-id "$DEPLOYMENT_ID" --output json | jq -r '.targetIds[0] // empty')
-            LIFECYCLE_EVENTS=$(aws deploy get-deployment-target --deployment-id "$DEPLOYMENT_ID" --target-id "$TARGET_IDS" --output json | jq -r '.deploymentTarget.ecsTarget.lifecycleEvents // empty')
-
-            TRAFFIC_ROUTING_COMPLETE=$(echo "$LIFECYCLE_EVENTS" | jq -r '.[] | select(.lifecycleEventName=="AllowTraffic") | .endTime // empty')
-            if [ -n "$TRAFFIC_ROUTING_COMPLETE" ]; then
-              # Calculate elapsed time since termination wait started
-              CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
-
-              # Convert times to seconds since epoch for calculation
-              WAIT_START_SECONDS=$(date -d "$TRAFFIC_ROUTING_COMPLETE" +%s)
-              CURRENT_SECONDS=$(date -d "$CURRENT_TIME" +%s)
-
-              ELAPSED_SECONDS=$((CURRENT_SECONDS - WAIT_START_SECONDS))
-              TOTAL_WAIT_SECONDS=$((TERMINATION_WAIT_TIME * 60))
-              REMAINING_SECONDS=$((TOTAL_WAIT_SECONDS - ELAPSED_SECONDS))
-
-              if [ "${REMAINING_SECONDS:-0}" -lt 0 ]; then
-                REMAINING_MINUTES=0
+          if [ -z "$DEPLOYMENT_ARN" ]; then
+            sleep 5
+            DEPLOYMENTS=$(aws ecs list-service-deployments \
+              --cluster "${{ inputs.cluster-name }}" \
+              --service "${{ inputs.ecs-service-name }}" \
+              --created-at "{ \"after\": ${START_TIME} }" \
+              --max-results 5 \
+              --status "IN_PROGRESS" "PENDING" 
+            )
+          
+            DEPLOYMENT_ARN=$(echo "$DEPLOYMENTS" | jq -r '.serviceDeployments[0].serviceDeploymentArn // ""')
+            echo "DEPLOYMENT_ARN=$DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
+        
+            if [ -z "$DEPLOYMENT_ARN" ]; then
+              echo -e "${YELLOW}No recent deployments found. Waiting...${NC}"
+              FIND_DEPLOYMENT_COUNTER=$((FIND_DEPLOYMENT_COUNTER + 1))
+              if [ "$FIND_DEPLOYMENT_COUNTER" -ge "$MAX_TRIES" ]; then
+                echo -e "${RED}❌ No deployments found after $MAX_TRIES attempts. Exiting...${NC}"
+                exit 1
               fi
-
-              REMAINING_MINUTES=$((REMAINING_SECONDS / 60))
-              REMAINING_ONLY_SECONDS=$((REMAINING_SECONDS % 60))
-
-              TERMINATION_STATUS="${YELLOW}Rollback window time left: ${REMAINING_MINUTES}m ${REMAINING_ONLY_SECONDS}s of ${TERMINATION_WAIT_TIME}m"
-              fi
-          elif [ "$TERMINATION_CONFIGURED" = "true" ] && [ "$STATUS" = "InProgress" ]; then
-            TERMINATION_STATUS="${BLUE}Termination wait configured but not yet started"
-          elif [ "$TERMINATION_STARTED" = "true" ] && [ "$STATUS" = "Succeeded" ]; then
-            TERMINATION_STATUS="${GREEN}Termination completed successfully"
+              sleep $POLLING_INTERVAL
+              continue
+            fi
+          fi
+          
+          DEPLOYMENT_INFO=$(aws ecs describe-service-deployments \
+            --service-deployment-arns "$DEPLOYMENT_ARN")
+          DEPLOYMENT=$(echo "$DEPLOYMENT_INFO" | jq -r '.serviceDeployments[0]')
+        
+          STATUS=$(jq -r '.status' <<< "$DEPLOYMENT")
+          LIFECYCLE_STAGE=$(jq -r '.lifecycleStage' <<< "$DEPLOYMENT")
+          STARTED_AT=$(jq -r '.startedAt // 0' <<< "$DEPLOYMENT")
+          STARTED_AT_TS=$(date -u -d "$STARTED_AT" +%s)
+          BAKE_TIME_MINUTES=$(jq -r '.deploymentConfiguration.bakeTimeInMinutes // 0' <<< "$DEPLOYMENT")
+          STATUS_REASON=$(jq -r '.statusReason // ""' <<< "$DEPLOYMENT")
+          TARGET_REVISION=$(jq -r '.targetServiceRevision' <<< "$DEPLOYMENT")
+          
+          read -r REQUESTED_COUNT RUNNING_COUNT PENDING_COUNT <<< \
+            $(jq -r '[.requestedTaskCount // 0, .runningTaskCount // 0, .pendingTaskCount // 0] | join(" ")' <<< "$TARGET_REVISION")
+          
+          echo -e "Deploy in progress. Refreshing in $POLLING_INTERVAL seconds. (Try $((++DEADLOCK_COUNTER)))${NC}"
+          echo -e "${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC} (${BLUE}Requested Count: $REQUESTED_COUNT)"
+        
+          if [ -n "$STATUS_REASON" ] && [ "$STATUS_REASON" != "null" ]; then
+            echo -e "Status reason: $STATUS_REASON"
+          fi
+        
+          ROLLBACK=$(jq -r '.rollback // {}' <<< "$DEPLOYMENT")
+          ROLLBACK_REASON=$(jq -r '.reason // ""' <<< "$ROLLBACK")
+          if [ -n "$ROLLBACK_REASON" ] && [ "$ROLLBACK_REASON" != "null" ]; then
+            ROLLBACK_TIME=$(date -u -d "$STARTED_AT" "+%Y-%m-%d %H:%M:%S")
+            echo -e "${RED}Rollback initiated at ${ROLLBACK_TIME}: $ROLLBACK_REASON${NC}"
+          fi
+        
+          if [[ "$STATUS" == "SUCCESSFUL" ]]; then
+            echo -e "${GREEN}✅ ECS Deployment completed successfully!${NC}"
+            break
+          elif [[ "$STATUS" == "STOPPED" || "$STATUS" == "ROLLBACK_FAILED" || "$STATUS" == "ROLLBACK_SUCCESSFUL" ]]; then
+            echo -e "${RED}❌ ECS Deployment failed!${NC}"
+            echo -e "Reason: $STATUS_REASON"
+            exit 1
           else
-            TERMINATION_STATUS="${BLUE}Termination wait not yet started"
+            # For all other statuses (IN_PROGRESS, PENDING, etc.), continue monitoring
+            echo -e "${BLUE}🔄 ECS Deployment status: $STATUS${NC}, Lifecycle: $LIFECYCLE_STAGE"
+          fi
+        
+          CIRCUIT_BREAKER=$(jq -r '.deploymentCircuitBreaker // {}' <<< "$DEPLOYMENT")
+          FAILURE_COUNT=$(jq -r '.failureCount // 0' <<< "$CIRCUIT_BREAKER")
+          THRESHOLD=$(jq -r '.threshold // 0' <<< "$CIRCUIT_BREAKER")
+
+          # Display circuit breaker information if failure count > 0
+          if [ "$FAILURE_COUNT" -gt 0 ]; then
+            echo -e "${YELLOW}⚠️ Failure Count: $FAILURE_COUNT / $THRESHOLD${NC}"
           fi
 
-          echo -e "Deploy in progress. Refreshing in 15 seconds. (Try $((++deadlockCounter)))${NC}"
-          echo -e "${BLUE}Desired Count: $DESIRED_COUNT, ${YELLOW}Pending Count: $PENDING_COUNT, ${GREEN}Running Count: $RUNNING_COUNT${NC}"
-          echo -e "Deployment status: $STATUS, Stability Status: $STABILITY_STATUS${NC}"
-          if [ $TERMINATION_STARTED = "true" ]; then
-            echo -e "$TERMINATION_STATUS"
+          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "$STARTED_AT_TS" -gt 0 ]; then
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_MINUTES=$(( (CURRENT_TIME - $STARTED_AT_TS) / 60 ))
+            TIME_LEFT=$(( $BAKE_TIME_MINUTES - ELAPSED_MINUTES ))
+            if [ "$TIME_LEFT" -gt 0 ]; then
+             echo -e "${YELLOW}Rollback window is open. Time left: ${TIME_LEFT} minute(s).${NC}"
+            else
+             echo -e "${YELLOW}Rollback window is closed.${NC}"
+            fi
           fi
 
           EVENTS_RESPONSE=$(aws ecs describe-services --cluster "${{ inputs.cluster-name }}" \
             --services "${{ inputs.ecs-service-name }}" \
             --query "services[*].events[?createdAt > \`$LAST_EVENT_DATE\`]" \
             --output json)
-
+          
+          # Update LAST_EVENT_DATE to the timestamp of the most recent event (if any)
           TEMP_LAST_EVENT_DATE=$(echo "$EVENTS_RESPONSE" | jq -r '.[][0].createdAt // empty')
-
+          
           if [ -n "$TEMP_LAST_EVENT_DATE" ]; then
-              LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
+            LAST_EVENT_DATE="$TEMP_LAST_EVENT_DATE"
           fi
-
-          echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
-
-          if [[ "$STATUS" == "Succeeded" ]]; then
-            echo "✅ Deployment completed successfully!"
-            break
-          elif [[ "$STATUS" == "Failed" || "$STATUS" == "Stopped" ]]; then
-            echo "❌ Deployment failed or was stopped!"
-            exit 1
-          elif [[ "$STATUS" == "Stopped" ]]; then
-            echo "⚠️ Deployment was stopped!"
-            exit 1
+          
+          EVENT_COUNT=$(echo "$EVENTS_RESPONSE" | jq -r '.[] | flatten | length // 0')
+          if [ -n "$EVENT_COUNT" ] && [ "$EVENT_COUNT" -gt 0 ]; then
+            echo -e "${CYAN}Recent Service Events:${NC}"
+            echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
+            printf "\n"
           fi
           
           # Echo new line
           echo
-          echo
 
-          sleep 15
+          sleep $POLLING_INTERVAL
         done
 
     - name: Cancel CodeDeploy Deployment and Fail
       if: cancelled()
       shell: bash
       run: |
-        aws deploy stop-deployment --deployment-id ${{ steps.deploy.outputs.codedeploy-deployment-id }}
+        aws ecs stop-service-deployment \ 
+          --service-deployment-arn ${{ steps.monitor.outputs.DEPLOYMENT_ARN }} \
+          --stop-type "ROLLBACK"
         exit 1
