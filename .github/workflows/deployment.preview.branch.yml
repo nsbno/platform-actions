@@ -33,7 +33,6 @@ jobs:
 
   preview:
     needs: trigger
-    continue-on-error: true
     uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@main
     with:
       service-name: ${{ inputs.service-name }}
