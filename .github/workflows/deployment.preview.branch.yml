@@ -13,14 +13,14 @@ jobs:
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.preview')
     runs-on: ubuntu-latest
     outputs:
-      continue: ${{ steps.branch-deploy.outputs.continue }}
-      deployment_id: ${{ steps.branch-deploy.outputs.deployment_id }}
-      environment: ${{ steps.branch-deploy.outputs.environment }}
-      ref: ${{ steps.branch-deploy.outputs.ref }}
-      sha: ${{ steps.branch-deploy.outputs.sha }}
-      comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
-      initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
-      actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
+      continue: ${{ steps.branch-comment-handler.outputs.continue }}
+      deployment_id: ${{ steps.branch-comment-handler.outputs.deployment_id }}
+      environment: ${{ steps.branch-comment-handler.outputs.environment }}
+      ref: ${{ steps.branch-comment-handler.outputs.ref }}
+      sha: ${{ steps.branch-comment-handler.outputs.sha }}
+      comment_id: ${{ steps.branch-comment-handler.outputs.comment_id }}
+      initial_reaction_id: ${{ steps.branch-comment-handler.outputs.initial_reaction_id }}
+      actor_handle: ${{ steps.branch-comment-handler.outputs.actor_handle }}
 
     steps:
       - uses: github/branch-deploy@v10.4.2
