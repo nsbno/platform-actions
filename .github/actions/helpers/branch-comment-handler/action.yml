@@ -1,0 +1,138 @@
+name: Branch Preview Deployment Comment Handler
+
+inputs:
+  github_repository:
+    description: 'The GitHub repository (owner/repo)'
+    required: true
+  github_token:
+    description: 'GitHub token for API access'
+    required: true
+  deployment_id:
+    description: 'The deployment ID from the branch-comment-handler action'
+    required: true
+  environment:
+    description: 'The deployment environment'
+    required: true
+  comment_id:
+    description: 'The comment ID that triggered the deployment'
+    required: true
+  initial_reaction_id:
+    description: 'The ID of the initial reaction added by branch-comment-handler'
+    required: true
+  actor_handle:
+    description: 'The GitHub handle of the actor who triggered the deployment'
+    required: true
+  ref:
+    description: 'The Git reference (branch) being deployed'
+    required: true
+  issue_number:
+    description: 'The issue or PR number where comments should be posted'
+    required: true
+  job_status:
+    description: 'The status of the deployment job (success/failure)'
+    required: true
+  is_preview:
+    description: 'Indicates if this is a preview deployment'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # if a previous step failed, set a variable to use as the deployment status
+    - name: set deployment status
+      id: deploy-status
+      if: ${{ inputs.job_status == 'failure' }}
+      shell: bash
+      run: |
+        echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT
+
+    # use the GitHub CLI to update the deployment status that was initiated by the branch-comment-handler action
+    - name: Create a deployment status
+      env:
+        GH_REPO: ${{ inputs.github_repository }}
+        GH_TOKEN: ${{ inputs.github_token }}
+        DEPLOY_STATUS: ${{ steps.deploy-status.outputs.DEPLOY_STATUS }}
+      shell: bash
+      run: |
+        if [ -z "${DEPLOY_STATUS}" ]; then
+          DEPLOY_STATUS="success"
+        fi
+        
+        gh api \
+          --method POST \
+          repos/{owner}/{repo}/deployments/${{ inputs.deployment_id }}/statuses \
+          -f environment='${{ inputs.environment }}' \
+          -f state=${DEPLOY_STATUS}
+
+    # use the GitHub CLI to remove the non-sticky lock that was created by the branch-comment-handler action
+    - name: Remove a non-sticky lock
+      env:
+        GH_REPO: ${{ inputs.github_repository }}
+        GH_TOKEN: ${{ inputs.github_token }}
+      shell: bash
+      run: |
+        gh api \
+          --method DELETE \
+          repos/{owner}/{repo}/git/refs/heads/${{ inputs.environment }}-branch-deploy-lock
+
+    # remove the default 'eyes' reaction from the comment that triggered the deployment
+    # this reaction is added by the branch-comment-handler action by default
+    - name: remove eyes reaction
+      env:
+        GH_REPO: ${{ inputs.github_repository }}
+        GH_TOKEN: ${{ inputs.github_token }}
+      shell: bash
+      run: |
+        gh api \
+          --method DELETE \
+          repos/{owner}/{repo}/issues/comments/${{ inputs.comment_id }}/reactions/${{ inputs.initial_reaction_id }}
+
+    # if the deployment was successful, add a 'rocket' reaction to the comment that triggered the deployment
+    - name: rocket reaction
+      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' }}
+      uses: GrantBirki/comment@1e9986de26cf23e6c4350276234c91705c540fef # pin@v2.0.3
+      with:
+        comment-id: ${{ inputs.comment_id }}
+        reactions: rocket
+
+    # if the deployment failed, add a '-1' (thumbs down) reaction to the comment that triggered the deployment
+    - name: failure reaction
+      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS == 'failure' }}
+      uses: GrantBirki/comment@1e9986de26cf23e6c4350276234c91705c540fef # pin@v2.0.3
+      with:
+        comment-id: ${{ inputs.comment_id }}
+        reactions: '-1'
+
+    # if the deployment was successful, add a 'success' comment
+    - name: success comment
+      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' }}
+      uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # pin@v2.1.1
+      with:
+        issue-number: ${{ inputs.issue_number }}
+        body: |
+          if [ "${{inputs.is_preview}}" = "true" ]; then
+            ### Preview URL Results ✅
+          
+            **${{ inputs.actor_handle }}** successfully created preview from branch `${{ inputs.ref }}`. 
+          else
+            ### Deployment Results ✅
+      
+            **${{ inputs.actor_handle }}** successfully deployed branch `${{ inputs.ref }}` to **${{ inputs.environment }}**
+          fi    
+
+    # if the deployment was not successful, add a 'failure' comment
+    - name: failure comment
+      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS == 'failure' }}
+      uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # pin@v2.1.1
+      with:
+        issue-number: ${{ inputs.issue_number }}
+        body: |
+          if [ "${{inputs.is_preview}}" = "true" ]; then
+            ### Preview URL Results ❌
+          
+            **${{ inputs.actor_handle }}** had a failure when creating preview from branch `${{ inputs.ref }}`.
+          else
+            ### Deployment Results ❌
+          
+            **${{ inputs.actor_handle }}** had a failure when deploying `${{ inputs.ref }}` to **${{ inputs.environment }}**
+          fi
