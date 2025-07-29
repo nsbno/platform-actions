@@ -38,6 +38,7 @@ jobs:
       service-name: ${{ inputs.service-name }}
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
+      git-sha: ${{ needs.trigger.outputs.sha }}
 
   comment-handler:
     needs: [ trigger, preview ]
