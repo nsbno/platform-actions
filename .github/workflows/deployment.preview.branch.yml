@@ -1,0 +1,55 @@
+name: Branch Preview Deployment
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "The name of the service to deploy"
+
+jobs:
+  trigger:
+    name: Trigger - Branch Preview
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.preview')
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.branch-deploy.outputs.continue }}
+      deployment_id: ${{ steps.branch-deploy.outputs.deployment_id }}
+      environment: ${{ steps.branch-deploy.outputs.environment }}
+      ref: ${{ steps.branch-deploy.outputs.ref }}
+      sha: ${{ steps.branch-deploy.outputs.sha }}
+      comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
+      initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
+      actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
+
+    steps:
+      - uses: github/branch-deploy@v10.4.2
+        id: branch-comment-handler
+        with:
+          trigger: '.preview'
+          environment: 'Preview'
+          skip_completing: 'true' # we will complete the deployment manually
+          skip_reviews: 'Preview' # skip reviews for Preview environments
+
+  preview:
+    needs: trigger
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@main
+    with:
+      service-name: ${{ inputs.service-name }}
+
+  comment-handler:
+    needs: [ trigger, preview ]
+    uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@main
+    if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
+    with:
+      is_preview: true
+      environment: 'Preview'
+      github_repository: ${{ github.repository }}
+      github_token: ${{ github.token }}
+      issue_number: ${{ github.event.issue.number }}
+      ref: ${{ needs.trigger.outputs.ref }}
+      initial_reaction_id: ${{ needs.trigger.outputs.initial_reaction_id }}
+      deployment_id: ${{ needs.trigger.outputs.deployment_id }}
+      comment_id: ${{ needs.trigger.outputs.comment_id }}
+      actor_handle: ${{ needs.trigger.outputs.actor_handle }}
+      job_status: ${{ contains(needs.*.result, 'failure') || cancelled() && 'failure' || 'success' }}
