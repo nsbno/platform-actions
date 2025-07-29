@@ -23,6 +23,10 @@ on:
         required: false
         type: string
         default: ${{ github.event.number }}
+      git-repository:
+        required: false
+        type: string
+        default: ${{ github.repository }}
 
 permissions:
   contents: read
@@ -82,3 +86,5 @@ jobs:
           apprunner-host: ${{ steps.app-runner-deploy.outputs.app-runner-url }}
           dynamodb-table-arn: "arn:aws:dynamodb:us-east-1:${{ steps.deployment-info.outputs.central-deployment-account-id }}:table/platform-preview-url-mapper"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-repository: ${{ inputs.git-repository }}
+          github-event-number: ${{ inputs.git-event-number }}

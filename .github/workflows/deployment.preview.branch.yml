@@ -37,6 +37,7 @@ jobs:
     with:
       service-name: ${{ inputs.service-name }}
       git-event-number: ${{ github.event.issue.number }}
+      git-repository: ${{ github.repository }}
 
   comment-handler:
     needs: [ trigger, preview ]

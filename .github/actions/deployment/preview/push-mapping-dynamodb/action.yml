@@ -14,6 +14,12 @@ inputs:
   github-token:
     description: "GitHub token to use for commenting on the PR"
     required: true
+  github-repository:
+    description: "The GitHub repository (owner/repo)"
+    required: true
+  github-event-number:
+    description: "The issue or PR number where comments should be posted"
+    required: true
 
 runs:
   using: composite
@@ -45,8 +51,8 @@ runs:
         EOF
         )
         
-        ISSUE_NUMBER="${{ github.event.pull_request.number }}"
-        GITHUB_REPOSITORY="${{ github.repository }}"
+        ISSUE_NUMBER="${{ inputs.github-event-number }}"
+        GITHUB_REPOSITORY="${{ inputs.github-repository }}"
 
         gh api \
           --method POST \
