@@ -110,15 +110,9 @@ runs:
       with:
         issue-number: ${{ inputs.issue_number }}
         body: |
-          if [ "${{inputs.is_preview}}" = "true" ]; then
-            ### Preview URL Results ✅
-          
-            **${{ inputs.actor_handle }}** successfully created preview from branch `${{ inputs.ref }}`. 
-          else
-            ### Deployment Results ✅
-      
-            **${{ inputs.actor_handle }}** successfully deployed branch `${{ inputs.ref }}` to **${{ inputs.environment }}**
-          fi    
+          ### Deployment Results ✅
+    
+          **${{ inputs.actor_handle }}** successfully deployed branch `${{ inputs.ref }}` to **${{ inputs.environment }}**
 
     # if the deployment was not successful, add a 'failure' comment
     - name: failure comment
@@ -127,12 +121,6 @@ runs:
       with:
         issue-number: ${{ inputs.issue_number }}
         body: |
-          if [ "${{inputs.is_preview}}" = "true" ]; then
-            ### Preview URL Results ❌
-          
-            **${{ inputs.actor_handle }}** had a failure when creating preview from branch `${{ inputs.ref }}`.
-          else
-            ### Deployment Results ❌
-          
-            **${{ inputs.actor_handle }}** had a failure when deploying `${{ inputs.ref }}` to **${{ inputs.environment }}**
-          fi
+          ### Deployment Results ❌
+        
+          **${{ inputs.actor_handle }}** had a failure when deploying `${{ inputs.ref }}` to **${{ inputs.environment }}**
