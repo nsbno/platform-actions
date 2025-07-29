@@ -36,6 +36,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@main
     with:
       service-name: ${{ inputs.service-name }}
+      git-event-number: ${{ github.event.issue.number }}
 
   comment-handler:
     needs: [ trigger, preview ]

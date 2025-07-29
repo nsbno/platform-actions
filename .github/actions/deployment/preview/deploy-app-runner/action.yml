@@ -20,6 +20,9 @@ inputs:
     gh-environment-variables:
       description: "Environment variables to set for the App Runner service"
       required: true
+    git-event-number:
+      description: "The GitHub event number (PR number) to use in the service name"
+      required: true
     aws-region:
       description: "The AWS region to deploy the service in"
       required: false
@@ -37,7 +40,7 @@ runs:
       shell: bash
       id: set-service-variables
       run: |
-        echo "service_name=pr-${{ github.event.number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
+        echo "service_name=pr-${{ inputs.git-event-number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
         echo "image_uri=${{ inputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
         echo "access_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
         echo "instance_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-instance-role'">> $GITHUB_OUTPUT

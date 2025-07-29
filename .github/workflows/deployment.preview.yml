@@ -19,6 +19,10 @@ on:
         required: false
         type: string
         default: ""
+      git-event-number:
+        required: false
+        type: string
+        default: ${{ github.event.number }}
 
 permissions:
   contents: read
@@ -68,12 +72,13 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           aws-region: ${{ vars.AWS_REGION }}
           gh-environment-variables: ${{ toJSON(vars) }}
+          git-event-number: ${{ inputs.git-event-number }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
-          domain-name: "pr-${{ github.event.number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"
+          domain-name: "pr-${{ inputs.git-event-number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"
           apprunner-host: ${{ steps.app-runner-deploy.outputs.app-runner-url }}
           dynamodb-table-arn: "arn:aws:dynamodb:us-east-1:${{ steps.deployment-info.outputs.central-deployment-account-id }}:table/platform-preview-url-mapper"
           github-token: ${{ secrets.GITHUB_TOKEN }}
