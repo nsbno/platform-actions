@@ -36,6 +36,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@main
     with:
       service-name: ${{ inputs.service-name }}
+      skip-s3-upload: true
 
   comment-handler:
     needs: [ trigger, preview ]

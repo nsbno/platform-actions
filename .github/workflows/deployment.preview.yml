@@ -19,6 +19,11 @@ on:
         required: false
         type: string
         default: ""
+      skip-s3-upload:
+        required: false
+        type: boolean
+        default: false
+        description: "Skip uploading static files to S3, useful if already built"
 
 permissions:
   contents: read
@@ -51,7 +56,7 @@ jobs:
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
-        if: steps.deployment-info.outputs.static-files-bucket-name != ''
+        if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-upload
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
