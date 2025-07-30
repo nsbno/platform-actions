@@ -1,0 +1,69 @@
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "Name of the application to upload static files for."
+      artifact-name:
+        required: true
+        type: string
+        description: "Name of the artifact storing the build files."
+      artifact-path:
+        required: false
+        type: string
+        description: "Path to artifact files from previous workflow."
+        default: 'build/client' # Default path to the client build files
+      working-directory:
+        required: false
+        type: string
+        description: "Directory to run the zip-command from."
+        default: '.'
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region to use."
+        default: 'eu-west-1'
+      git-sha:
+        required: false
+        type: string
+        description: "Git SHA to use for versioning"
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+      environment:
+        required: false
+        type: string
+        description: "Environment to deploy to."
+        default: 'Test'
+
+name: Upload Frontend Static Files to S3. For Pull Requests.
+
+jobs:
+  upload-zip-to-s3:
+    name: Upload static files build to S3
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
+      - name: Get Application Deployment Information
+        id: deployment-info
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
+        with:
+          application-name: ${{ inputs.service-name }}
+
+      - name: Upload Static Files/Web Build to S3
+        if: steps.deployment-info.outputs.static-files-bucket-name != ''
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
+        with:
+          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
+          git-sha: ${{ inputs.git-sha }}
+          artifact-name: ${{ inputs.artifact-name }}
+          artifact-path: ${{ inputs.artifact-path }}

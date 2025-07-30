@@ -57,14 +57,6 @@ jobs:
         with:
           application-name: ${{ inputs.service-name }}
 
-      # Needs to be available before the frontend server deploys
-      - name: Deploy Static S3/Website
-        if: steps.deployment-info.outputs.static-files-bucket-name != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
-        with:
-          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
-          git-sha: '${{ inputs.git-sha }}'
-
       - name: Deploy App Runner Preview Service
         id: app-runner-deploy
         uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@main
