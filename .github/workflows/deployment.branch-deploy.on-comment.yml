@@ -1,4 +1,3 @@
-# TO-DO: replace with deployment.branch-deploy.on-comment.yml
 name: deployment.branch-deploy-test.yml
 on:
   workflow_call:
