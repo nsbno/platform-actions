@@ -58,3 +58,4 @@ jobs:
           comment_id: ${{ needs.trigger.outputs.comment_id }}
           actor_handle: ${{ needs.trigger.outputs.actor_handle }}
           job_status: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') && 'failure' || 'success' }}
+          skip_success_comment: true # Skip success comment for preview deployments

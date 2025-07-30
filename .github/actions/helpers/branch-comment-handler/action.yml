@@ -34,6 +34,10 @@ inputs:
   is_preview:
     description: 'Indicates if this is a preview deployment'
     required: true
+  skip-success-comment:
+    description: 'Skip the success comment if true'
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -105,7 +109,7 @@ runs:
 
     # if the deployment was successful, add a 'success' comment
     - name: success comment
-      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' }}
+      if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' && inputs.skip-success-comment != 'true' }}
       uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # pin@v2.1.1
       with:
         issue-number: ${{ inputs.issue_number }}
