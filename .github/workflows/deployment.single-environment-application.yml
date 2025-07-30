@@ -20,6 +20,11 @@ on:
         type: string
         required: false
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      skip-s3-deployment:
+        description: Skip S3 deployment for static files
+        type: boolean
+        required: false
+        default: false
 
 
 run-name: Deploy to ${{ inputs.environment }}
@@ -63,7 +68,7 @@ jobs:
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
-        if: steps.deployment-info.outputs.static-files-bucket-name != ''
+        if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}

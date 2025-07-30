@@ -84,6 +84,7 @@ jobs:
       environment: Test
       deploy-application: true
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}
+      skip-s3-deployment: true # Skip S3 deployment for branch deployments, assume it already is deployed before command
 
   comment-handler:
     needs: [ trigger, test-application, test-terraform ]
