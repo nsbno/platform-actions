@@ -19,6 +19,10 @@ on:
         required: false
         default: "artifact.zip"
         type: string
+      git-sha:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
 
     outputs:
       artifact-name:
@@ -35,6 +39,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
+          ref: ${{ inputs.git-sha }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
