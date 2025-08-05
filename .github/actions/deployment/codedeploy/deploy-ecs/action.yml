@@ -173,10 +173,10 @@ runs:
           if [ -n "$EVENT_COUNT" ] && [ "$EVENT_COUNT" -gt 0 ]; then
             echo -e "${CYAN}Recent Service Events:${NC}"
             echo "$EVENTS_RESPONSE" | jq -r '.[][].message'
-            printf "\n"
           fi
           
           # Echo new line
+          echo
           echo
 
           sleep $POLLING_INTERVAL
