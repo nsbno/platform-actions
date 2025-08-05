@@ -74,6 +74,7 @@ jobs:
     if: |
       always()
       && needs.trigger.outputs.continue == 'true'
+      && !contains(needs.test-terraform.result, 'failure')
       && inputs.applications
       && !cancelled()
     strategy:
