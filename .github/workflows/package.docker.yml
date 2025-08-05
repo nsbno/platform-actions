@@ -59,7 +59,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
+          path: ${{inputs.working-directory}}/${{ inputs.artifact-path }}
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
