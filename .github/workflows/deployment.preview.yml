@@ -27,6 +27,11 @@ on:
         required: false
         type: string
         default: ${{ github.repository }}
+      on_preview_comment:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to check for a .preview comment before deploying"
 
 permissions:
   contents: read
@@ -38,7 +43,25 @@ jobs:
     name: Deploy Preview
     runs-on: ubuntu-latest
     environment: Preview # Use an own GitHub environment for preview deployments
+    continue-on-error: false
     steps:
+      - name: Check for .preview comments
+        if: ${{ inputs.on-preview-comment }}
+        id: check-comments
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          
+          COMMENTS=$(gh api repos/${{ github.repository }}/issues/$PR_NUMBER/comments --paginate)
+          
+          if echo "$COMMENTS" | jq -e '.[] | select(.body | startswith(".preview"))' > /dev/null; then
+            echo "Found a .preview comment in PR #$PR_NUMBER, continuing..."
+          else
+            echo "No .preview comment found in PR #$PR_NUMBER"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
