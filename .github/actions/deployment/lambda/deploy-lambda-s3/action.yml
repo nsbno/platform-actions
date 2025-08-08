@@ -1,0 +1,41 @@
+inputs:
+  function-name:
+    description: "The name of the Lambda Function"
+    required: true
+  s3-bucket:
+    description: "The bucket with the artifact"
+    required: true
+  s3-folder:
+    description: "The path of the artifact"
+    required: true
+  aws-region:
+    description: "The AWS Region to use for the deployment"
+    required: true
+    default: "eu-west-1"
+
+runs:
+  using: composite
+  steps:
+    - name: Publish Lambda Version
+      id: publish
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        LAMBDA_NAME="${{ inputs.function-name }}"
+        S3_BUCKET="${{ inputs.s3-bucket }}"
+        S3_FOLDER="${{ inputs.s3-folder }}"
+        # SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+        # TODO: Add support for sha deployment, now it is main branch
+        S3_KEY="${S3_FOLDER}"
+        
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key $S3_KEY --query 'Version' --publish --output text)
+        
+        echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Update Lambda Alias to New Version
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        aws lambda update-alias --function-name "${{ inputs.function-name }}" --name active --function-version "${{ steps.publish.outputs.new_lambda_version }}"

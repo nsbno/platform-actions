@@ -87,19 +87,16 @@ jobs:
 
       - name: Deploy Lambda (ECR Image)
         if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-ecr-image-base != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda-image@main
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-image@main
         with:
-          codedeploy-application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
-          codedeploy-deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy Lambda (S3 Zip)
         if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-s3-bucket != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-lambda-s3@main
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@main
         with:
-          codedeploy-application-name: ${{ steps.deployment-info.outputs.codedeploy-application-name }}
-          codedeploy-deployment-group-name: ${{ steps.deployment-info.outputs.codedeploy-deployment-group }}
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
           s3-folder: ${{ steps.deployment-info.outputs.lambda-s3-folder }}
