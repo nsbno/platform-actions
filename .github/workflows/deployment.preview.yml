@@ -27,7 +27,7 @@ on:
         required: false
         type: string
         default: ${{ github.repository }}
-      on_preview_comment:
+      only_on_preview_comment:
         required: false
         type: boolean
         default: false
@@ -46,7 +46,7 @@ jobs:
     continue-on-error: false
     steps:
       - name: Check for .preview comments
-        if: ${{ inputs.on-preview-comment }}
+        if: ${{ inputs.only_on_preview_comment && github.event.pull_request }}
         id: check-comments
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
