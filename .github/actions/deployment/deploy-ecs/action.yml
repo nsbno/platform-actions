@@ -1,4 +1,4 @@
-name: Deploy Container via CodeDeploy
+name: Deploy Container via ECS
 
 inputs:
   cluster-name:
@@ -182,7 +182,7 @@ runs:
           sleep $POLLING_INTERVAL
         done
 
-    - name: Cancel CodeDeploy Deployment and Fail
+    - name: Cancel ECS Deployment and Fail
       if: cancelled()
       shell: bash
       run: |

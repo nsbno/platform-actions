@@ -76,7 +76,7 @@ jobs:
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute-target == 'ecs'
-        uses: nsbno/platform-actions/.github/actions/deployment/codedeploy/deploy-ecs@main
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@main
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
