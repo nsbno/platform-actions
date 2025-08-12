@@ -68,16 +68,38 @@ runs:
     - name: Prepare Environment Variables Configuration
       id: prepare-env-vars
       shell: bash
-      env:
-        VARS_JSON: ${{ inputs.gh-environment-variables }}
       run: |
-        if [ "$VARS_JSON" = '""' ] || [ "$VARS_JSON" = "{}" ]; then
-          echo "env_vars_config={}" >> $GITHUB_OUTPUT
-        else
-          # Filter out AWS-related environment variables used for the pipeline
-          FILTERED_VARS_JSON=$(echo "$VARS_JSON" | jq 'with_entries(select(.key | startswith("AWS_") | not))')
-          echo "env_vars_config=$(echo "$FILTERED_VARS_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+        ENV_VARS_JSON="{}"
+        
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__${{ inputs.service_name }}__/" --query "Parameters")
+        
+        if [ -n "$PARAMS" ] && [ "$PARAMS" != "[]" ]; then
+          # Process each parameter
+          ENV_VARS_JSON="{"
+          FIRST=true
+        
+          for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
+            # Extract last part of the path
+            FULL_PATH=$(echo "$ROW" | jq -r '.Name')
+            NAME=$(basename "$FULL_PATH")
+        
+            VALUE=$(echo "$ROW" | jq -r '.Value')
+        
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              ENV_VARS_JSON="$ENV_VARS_JSON,"
+            fi
+        
+            # Properly escape the value for JSON
+            ESCAPED_VALUE=$(echo "$VALUE" | jq -R .)
+            ENV_VARS_JSON="$ENV_VARS_JSON\"$NAME\":$ESCAPED_VALUE"
+          done
+        
+          ENV_VARS_JSON="$ENV_VARS_JSON}"
         fi
+        
+        echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
 
     - name: Deploy to App Runner Image
       if: steps.check-service.outputs.service_exists == 'false'
@@ -89,7 +111,7 @@ runs:
         aws apprunner create-service \
         --service-name ${{ steps.set-service-variables.outputs.service_name }} \
         --instance-configuration '{
-        "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}"
+          "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}"
         }' \
         --source-configuration '{
           "ImageRepository": {
@@ -97,7 +119,7 @@ runs:
             "ImageRepositoryType": "ECR",
             "ImageConfiguration": { 
               "Port": "${{ inputs.service-port }}",
-              "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
+              "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"'
             }
           },
           "AuthenticationConfiguration": {
@@ -122,7 +144,7 @@ runs:
               "ImageRepositoryType": "ECR",
               "ImageConfiguration": { 
                 "Port": "${{ inputs.service-port }}",
-                "RuntimeEnvironmentVariables": '"$ENV_VARS_CONFIG"'
+                "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"'
               }
             },
             "AuthenticationConfiguration": {
