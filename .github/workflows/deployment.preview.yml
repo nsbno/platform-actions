@@ -42,7 +42,7 @@ jobs:
   build:
     name: Deploy Preview
     runs-on: ubuntu-latest
-    environment: Preview # Use an own GitHub environment for preview deployments
+    environment: Test
     steps:
       - name: Check for .preview comments
         if: ${{ inputs.only_on_preview_comment && github.event.pull_request }}

@@ -17,7 +17,7 @@ jobs:
   cleanup:
     name: Delete App Runner Service and Logs
     runs-on: ubuntu-latest
-    environment: Preview
+    environment: Test
     steps:
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4

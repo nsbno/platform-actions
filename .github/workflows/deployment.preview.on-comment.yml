@@ -27,9 +27,9 @@ jobs:
         id: branch-comment-handler
         with:
           trigger: '.preview'
-          environment: 'Preview'
+          environment: Test
           skip_completing: 'true' # we will complete the deployment manually
-          skip_reviews: 'Preview' # skip reviews for Preview environments
+          skip_reviews: Test # skip reviews for Preview
 
   preview:
     needs: trigger
@@ -48,7 +48,7 @@ jobs:
       - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@main
         with:
           is-preview: true
-          environment: 'Preview'
+          environment: Test
           github-repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           issue-number: ${{ github.event.issue.number }}
