@@ -72,7 +72,7 @@ runs:
         ENV_VARS_JSON="{}"
         
         # Path is expected to include `env_vars` or `secrets` after `service_name`
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__${{ inputs.service_name }}__/" --recursive --query "Parameters")
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__${{ inputs.service_name }}__/" --recursive --query "Parameters" --region ${{ inputs.aws-region }})
         echo "Parameters fetched: $PARAMS"
         
         if [ -n "$PARAMS" ] && [ "$PARAMS" != "[]" ]; then
