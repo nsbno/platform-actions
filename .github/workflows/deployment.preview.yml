@@ -27,10 +27,10 @@ on:
         required: false
         type: string
         default: ${{ github.repository }}
-      only_on_preview_comment:
+      only-on-preview-comment:
         required: false
         type: boolean
-        default: false
+        default: true
         description: "Whether to check for a .preview comment before deploying"
 
 permissions:
@@ -40,12 +40,12 @@ permissions:
 
 jobs:
   build:
-    name: Deploy Preview
+    name: Deploy Preview if checks pass
     runs-on: ubuntu-latest
     environment: Test
     steps:
       - name: Check for .preview comments
-        if: ${{ inputs.only_on_preview_comment && github.event.pull_request }}
+        if: ${{ inputs.only-on-preview-comment && github.event.pull_request }}
         id: check-comments
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
@@ -63,13 +63,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
-        if: ${{ inputs.only_on_preview_comment == false || steps.check-comments.outputs.continue == 'true' }}
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         with:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
           ref: ${{ inputs.git-sha }}
 
       - name: Authenticate with AWS
-        if: ${{ inputs.only_on_preview_comment == false || steps.check-comments.outputs.continue == 'true' }}
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ vars.AWS_REGION }}
@@ -77,14 +77,14 @@ jobs:
 
       # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
       - name: Get Application Deployment Information
-        if: ${{ inputs.only_on_preview_comment == false || steps.check-comments.outputs.continue == 'true' }}
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
         with:
           application-name: ${{ inputs.service-name }}
 
       - name: Deploy App Runner Preview Service
-        if: ${{ inputs.only_on_preview_comment == false || steps.check-comments.outputs.continue == 'true' }}
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
         uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@main
         with:
@@ -98,7 +98,7 @@ jobs:
           git-event-number: ${{ inputs.git-event-number }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
-        if: ${{ inputs.only_on_preview_comment == false || steps.check-comments.outputs.continue == 'true' }}
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@main
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
