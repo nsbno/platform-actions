@@ -84,7 +84,7 @@ runs:
             FULL_PATH=$(echo "$ROW" | jq -r '.Name')
             NAME=$(basename "$FULL_PATH")
         
-            VALUE=$(echo "$ROW" | jq -r '.Value')
+            VALUE=$(echo "$ROW" | jq -r '.ARN')
         
             if [ "$FIRST" = true ]; then
               FIRST=false
