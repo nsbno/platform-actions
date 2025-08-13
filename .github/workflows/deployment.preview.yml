@@ -94,7 +94,6 @@ jobs:
           service-port: ${{ inputs.service-port }}
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           aws-region: ${{ vars.AWS_REGION }}
-          gh-environment-variables: ${{ toJSON(vars) }}
           git-event-number: ${{ inputs.git-event-number }}
 
       - name: Push Mapping to DynamoDB and Comment domain name

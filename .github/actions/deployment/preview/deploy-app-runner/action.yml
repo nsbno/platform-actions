@@ -17,9 +17,6 @@ inputs:
   aws-account-id:
     description: "The AWS account ID the preview environment will use"
     required: true
-  gh-environment-variables:
-    description: "Environment variables to set for the App Runner service"
-    required: true
   git-event-number:
     description: "The GitHub event number (PR number) to use in the service name"
     required: true
@@ -89,7 +86,7 @@ runs:
               # Substitute for correct AUTH_URL (used in auth.js) for preview url auth
               ENV_VAR_VALUE=$(echo "$ROW" | jq -r '.Value')
               SERVICE_NAME="${{inputs.service-name}}"
-              PR_SERVICE_NAME="${{steps.set-service-variables.outputs.service_name}}"
+              PR_SERVICE_NAME="pr-${{ inputs.git-event-number }}.${{ inputs.service-name }}"
               
               AUTH_URL=${ENV_VAR_VALUE//"$SERVICE_NAME"/"$PR_SERVICE_NAME"}  # pure bash replace
               AUTH_URL_JSON="{\"AUTH_URL\":$(echo "$AUTH_URL" | jq -R .)}"
