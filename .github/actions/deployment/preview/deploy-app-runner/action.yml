@@ -83,8 +83,17 @@ runs:
             # Extract last part of the path
             FULL_PATH=$(echo "$ROW" | jq -r '.Name')
             NAME=$(basename "$FULL_PATH")
-        
-            VALUE=$(echo "$ROW" | jq -r '.ARN')
+
+            if [[ "$NAME" == "AUTH_URL" ]]; then
+              # Substitute for correct AUTH_URL (used in auth.js) for preview url auth
+              ENV_VAR_VALUE=$(echo "$ROW" | jq -r '.Value')
+              SERVICE_NAME="${{inputs.service-name}}"
+              PR_SERVICE_NAME="${{steps.set-service-variables.outputs.service_name}}"
+
+              VALUE=$(echo "$ENV_VAR_VALUE" | sed "s/$SERVICE_NAME/$PR_SERVICE_NAME/")
+            else
+              VALUE=$(echo "$ROW" | jq -r '.ARN')
+            fi
         
             if [ "$FIRST" = true ]; then
               FIRST=false
@@ -99,6 +108,8 @@ runs:
         
           ENV_VARS_JSON="$ENV_VARS_JSON}"
         fi
+        
+        # TODO: CHANGE AUTH URL TO pr-XX domain name 
         
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
 
