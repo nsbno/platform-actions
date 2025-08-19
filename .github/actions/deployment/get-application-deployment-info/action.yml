@@ -74,4 +74,11 @@ runs:
       run: |
         set +e
         CENTRAL_DEPLOYMENT_ACCOUNT_ID=$(aws ssm get-parameter --name "/__deployment__/applications/preview-url-mapper/central-deployment-account-id" --query "Parameter.Value" --output text)
+        STATUS=$?
+        
+        if [ $STATUS -ne 0 ] || [ -z "$CENTRAL_DEPLOYMENT_ACCOUNT_ID" ]; then
+          echo "No central deployment account ID found."
+          exit 0
+        fi
+        
         echo "central_deployment_account_id=$CENTRAL_DEPLOYMENT_ACCOUNT_ID" >> $GITHUB_OUTPUT
