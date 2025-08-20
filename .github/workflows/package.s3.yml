@@ -28,7 +28,7 @@ on:
         required: false
         type: string
         description: "Name of the S3 bucket to upload to."
-        default: "${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts"
+        default: ''
       aws-region:
         required: false
         type: string
@@ -69,7 +69,7 @@ jobs:
       - name: Upload to S3
         working-directory: ${{ inputs.working-directory }}
         env:
-          S3_BUCKET: ${{ inputs.s3-bucket-name }}
+          S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           APPLICATION_NAME: ${{ inputs.application-name }}
           ZIP_FILE_NAME: ${{ inputs.zip-file-name }}
