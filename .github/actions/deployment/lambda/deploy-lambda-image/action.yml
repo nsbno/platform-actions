@@ -41,8 +41,8 @@ runs:
             DD_GIT_REPOSITORY_URL: "'$REPO_URL'"
           }')
           
-          # Update the Lambda function configuration with the new environment variables
-          aws lambda update-function-configuration --function-name "${{ inputs.function-name }}" --environment Variables="$UPDATED_ENV_VARS"
+          ENV_JSON=$(echo '{"Variables": '$UPDATED_ENV_VARS'}')
+          aws lambda update-function-configuration --function-name "${{ inputs.function-name }}" --environment "$ENV_JSON"
         else
           echo "Datadog not enabled. Skipping environment variable update."
         fi
