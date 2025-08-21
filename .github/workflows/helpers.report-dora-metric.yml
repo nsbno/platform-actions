@@ -7,6 +7,9 @@ on:
         required: true
         type: string
 
+permissions:
+  id-token: write
+
 jobs:
   submit-dora-metrics:
     name: Submitt DORA Metrics
