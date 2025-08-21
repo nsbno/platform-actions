@@ -39,6 +39,12 @@ on:
 run-name: Deploy Environments
 
 jobs:
+  send-dora-metric-started:
+    name: Send "started" metric to DORA service
+    uses: nsbno/platform-actions/.github/actions/helpers/dora-metrics
+    with:
+      status: started
+
   get-environments:
     name: Find Relevant GH Environments
     runs-on: ubuntu-latest
@@ -207,3 +213,13 @@ jobs:
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+
+  send-dora-metric-finished:
+    name: Send finsihed metric to DORA service
+    uses: nsbno/platform-actions/.github/actions/helpers/dora-metrics
+    needs:
+      - production-application
+      - production-terraform
+    if: always()
+    with:
+      status: ${{ contains(needs.*.result, 'failure') && 'failed' || 'succeeded' }}
