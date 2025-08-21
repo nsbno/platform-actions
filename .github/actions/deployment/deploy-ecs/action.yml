@@ -69,6 +69,7 @@ runs:
         MAX_TRIES=3 # Maximum number of tries before giving up finding a deployment
         FIND_DEPLOYMENT_COUNTER=0
         DEPLOYMENT_ARN=""
+        BAKE_TIME_START_TS=0
         
         while true; do
           if [ -z "$DEPLOYMENT_ARN" ]; then
@@ -145,10 +146,14 @@ runs:
           if [ "$FAILURE_COUNT" -gt 0 ]; then
             echo -e "${YELLOW}⚠️ Failure Count: $FAILURE_COUNT / $THRESHOLD${NC}"
           fi
+        
+          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_START_TS" -eq 0 ]; then
+            BAKE_TIME_START_TS=$(date +%s)
+          fi
 
-          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "$STARTED_AT_TS" -gt 0 ]; then
+          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "BAKE_TIME_START_TS" -gt 0 ]; then
             CURRENT_TIME=$(date +%s)
-            ELAPSED_MINUTES=$(( (CURRENT_TIME - $STARTED_AT_TS) / 60 ))
+            ELAPSED_MINUTES=$(( (CURRENT_TIME - $BAKE_TIME_START_TS) / 60 ))
             TIME_LEFT=$(( $BAKE_TIME_MINUTES - ELAPSED_MINUTES ))
             if [ "$TIME_LEFT" -gt 0 ]; then
              echo -e "${YELLOW}Rollback window is open. Time left: ${TIME_LEFT} minute(s).${NC}"
