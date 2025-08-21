@@ -22,6 +22,7 @@ runs:
       env:
         AWS_REGION: ${{ inputs.aws-region }}
       run: |
+        # This action is not working as intended, because S3 folder is not the same as the one being uploaded
         LAMBDA_NAME="${{ inputs.function-name }}"
         S3_BUCKET="${{ inputs.s3-bucket }}"
         S3_FOLDER="${{ inputs.s3-folder }}"
