@@ -33,7 +33,7 @@ runs:
 
         echo "Sending deployment status to SNS topic"
         aws sns publish \
-          --topic-arn ${{ secrets.DORA_METRICS_SNS_TOPIC_ARN }} \
+          --topic-arn ${{ vars.DORA_METRICS_SNS_TOPIC_ARN }} \
           --message "$message"
 
         echo "Message sent successfully"
