@@ -43,8 +43,6 @@ runs:
           
           ENV_JSON=$(echo '{"Variables": '$UPDATED_ENV_VARS'}')
           aws lambda update-function-configuration --function-name "${{ inputs.function-name }}" --environment "$ENV_JSON"
-          
-          aws lambda wait function-updated-v2 --function-name "${{ inputs.function-name }}"
         else
           echo "Datadog not enabled. Skipping environment variable update."
         fi
