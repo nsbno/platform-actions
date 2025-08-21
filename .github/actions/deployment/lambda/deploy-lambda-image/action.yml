@@ -13,40 +13,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Get current environment variables
-      id: env-vars
-      shell: bash
-      env:
-        AWS_REGION: ${{ inputs.aws-region }}
-      run: |
-        aws lambda get-function-configuration --function-name "${{ inputs.function-name }}" --query 'Environment.Variables' --output json > env-vars.json
-
-    - name: Update Lambda Environment Variables with DD Tags
-      shell: bash
-      env:
-        AWS_REGION: ${{ inputs.aws-region }}
-      run: |
-        ENV_VARS=$(cat env-vars.json)
-        
-        # Check if any existing variables begin with "DD_"
-        HAS_DD_VARS=$(echo $ENV_VARS | jq 'keys[] | select(startswith("DD_"))' | wc -l)
-        
-        if [ "$HAS_DD_VARS" -gt 0 ] || [ -z "$ENV_VARS" ] || [ "$ENV_VARS" = "{}" ]; then
-          COMMIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-          
-          UPDATED_ENV_VARS=$(echo $ENV_VARS | jq '. + {
-            DD_VERSION: "'$COMMIT_SHA'",
-            DD_GIT_COMMIT_SHA: "'$COMMIT_SHA'",
-            DD_GIT_REPOSITORY_URL: "'$REPO_URL'"
-          }')
-          
-          # Update the Lambda function configuration with the new environment variables
-          aws lambda update-function-configuration --function-name "${{ inputs.function-name }}" --environment Variables="$UPDATED_ENV_VARS"
-        else
-          echo "Datadog not enabled. Skipping environment variable update."
-        fi
-
     - name: Publish Lambda Version and Update Version Tag
       id: publish
       shell: bash
