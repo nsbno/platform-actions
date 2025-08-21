@@ -5,6 +5,9 @@ inputs:
   status:
     description: "The status of the pipeline to report to the metric handler"
     required: true
+  topic_arn:
+    description: "The DORA Metric Report SNS Topic ARN"
+    required: true
 
 runs:
   using: composite
@@ -33,7 +36,7 @@ runs:
 
         echo "Sending deployment status to SNS topic"
         aws sns publish \
-          --topic-arn ${{ vars.DORA_METRICS_SNS_TOPIC_ARN }} \
+          --topic-arn ${{ inputs.topic_arn }} \
           --message "$message"
 
         echo "Message sent successfully"

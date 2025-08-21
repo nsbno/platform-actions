@@ -22,3 +22,4 @@ jobs:
         uses: nsbno/platform-actions/.github/actions/helpers/dora-metrics@dora-metrics
         with:
           status: ${{ inputs.status }}
+          topic_arn: ${{ vars.DORA_METRICS_SNS_TOPIC_ARN }}
