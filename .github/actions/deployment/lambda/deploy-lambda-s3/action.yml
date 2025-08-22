@@ -25,12 +25,7 @@ runs:
         S3_BUCKET="${{ inputs.lambda-s3-bucket }}"
         S3_KEY_PATH="$LAMBDA_NAME/${{ github.event.pull_request.head.sha || github.sha }}.zip"
         
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code \
-          --function-name $LAMBDA_NAME \
-          --s3-bucket $S3_BUCKET \ 
-          --s3-key $S3_KEY_PATH \
-          --query 'Version' --publish --output text)
-        
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name "$LAMBDA_NAME" --s3-bucket "$S3_BUCKET" --s3-key "$S3_KEY_PATH" --query 'Version' --publish --output text)
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
     - name: Update Lambda Alias to New Version
