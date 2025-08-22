@@ -2,6 +2,9 @@ inputs:
   function-name:
     description: "The name of the Lambda Function"
     required: true
+  lambda-s3-bucket:
+    description: "The S3 Bucket to upload the Lambda package to"
+    required: true
   aws-region:
     description: "The AWS Region to use for the deployment"
     required: true
@@ -17,6 +20,7 @@ runs:
         AWS_REGION: ${{ inputs.aws-region }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
+        S3_BUCKET="${{ inputs.lambda-s3-bucket }}"
         S3_KEY_PATH="$LAMBDA_NAME/${{ github.event.pull_request.head.sha || github.sha }}.zip"
         
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code \
