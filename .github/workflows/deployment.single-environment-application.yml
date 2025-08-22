@@ -25,12 +25,6 @@ on:
         type: boolean
         required: false
         default: false
-      lambda-artifact-name:
-        description: Name of the artifact to deploy to Lambda (if applicable)
-        type: string
-        required: false
-        default: lambda-artifact
-
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -103,7 +97,6 @@ jobs:
         uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@main
         with:
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          artifact-name: ${{ inputs.lambda-artifact-name }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Put Application Deployment Version

@@ -2,9 +2,6 @@ inputs:
   function-name:
     description: "The name of the Lambda Function"
     required: true
-  artifact-name:
-    description: "The name of the artifact to download from the build"
-    required: true
   aws-region:
     description: "The AWS Region to use for the deployment"
     required: true
@@ -13,40 +10,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Download artifacts from build
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ inputs.artifact-name }}
-
-    - name: zip artifact
-      id: zip
-      shell: bash
-      run: |
-        echo "Zipping artifact into ${{ inputs.function-name }}.zip"
-        zip -r "./${{ inputs.function-name }}.zip" ./*
-
-    - name: Resolve artifacts S3 bucket
-      id: resolve-bucket
-      shell: bash
-      env:
-        AWS_REGION: ${{ inputs.aws-region }}
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        echo "S3_BUCKET=${ACCOUNT_ID}-deployment-delivery-pipeline-artifacts" >> $GITHUB_ENV
-
-    - name: Upload to S3
-      shell: bash
-      env:
-        AWS_REGION: ${{ inputs.aws-region }}
-        GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        APPLICATION_NAME: ${{ inputs.function-name }}
-        ZIP_FILE_NAME: "${{ inputs.function-name }}.zip"
-      run: |
-        BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
-
-        aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-        aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-
     - name: Publish Lambda Version
       id: publish
       shell: bash
