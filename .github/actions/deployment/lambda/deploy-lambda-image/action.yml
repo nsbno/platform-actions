@@ -13,6 +13,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Update Datadog Environment Tags if enabled
+      uses: nsbno/platform-actions/.github/actions/deployment/lambda/update-datadog-tags@main
+      with:
+        function-name: ${{ inputs.function-name }}
+
     - name: Publish Lambda Version and Update Version Tag
       id: publish
       shell: bash
