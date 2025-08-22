@@ -2,12 +2,10 @@ inputs:
   function-name:
     description: "The name of the Lambda Function"
     required: true
-  s3-bucket:
-    description: "The bucket with the artifact"
+  artifact-name:
+    description: "The name of the artifact to download from the build"
     required: true
-  s3-folder:
-    description: "The path of the artifact"
-    required: true
+    default: "lambda-artifact"
   aws-region:
     description: "The AWS Region to use for the deployment"
     required: true
@@ -16,18 +14,40 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Download artifacts from build
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+
+    - name: zip artifact
+      id: zip
+      shell: bash
+      run: |
+        echo "Zipping artifact into ${{ inputs.function-name }}.zip"
+        zip -r "./${{ inputs.function-name }}.zip" ./*
+
+    - name: Upload to S3
+      shell: bash
+      env:
+        S3_BUCKET: ${{ format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
+        GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        APPLICATION_NAME: ${{ inputs.function-name }}
+        ZIP_FILE_NAME: "${{ inputs.function-name }}.zip"
+      run: |
+        BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
+
+        aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+        aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+
     - name: Publish Lambda Version
       id: publish
       shell: bash
       env:
         AWS_REGION: ${{ inputs.aws-region }}
+        S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
-        S3_BUCKET="${{ inputs.s3-bucket }}"
-        S3_FOLDER="${{ inputs.s3-folder }}"
-        # SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-        # TODO: Add support for sha deployment, now it is main branch
-        S3_KEY="${S3_FOLDER}"
+        S3_KEY="${{ github.event.pull_request.head.sha || github.sha }}"
         
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key $S3_KEY --query 'Version' --publish --output text)
         

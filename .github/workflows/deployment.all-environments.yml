@@ -35,6 +35,11 @@ on:
         type: boolean
         default: false
         required: false
+      lambda-artifact-name:
+        description: The name of the Lambda artifact to deploy. If not provided, it will default to 'lambda-artifact'.
+        type: string
+        required: false
+        default: 'lambda-artifact'
 
 run-name: Deploy Environments
 
@@ -120,6 +125,7 @@ jobs:
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-artifact-name: ${{ inputs.lambda-artifact-name }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -163,6 +169,7 @@ jobs:
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-artifact-name: ${{ inputs.lambda-artifact-name }}
 
   production-terraform:
     name: Prod - Terraform
@@ -207,3 +214,4 @@ jobs:
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-artifact-name: ${{ inputs.lambda-artifact-name }}
