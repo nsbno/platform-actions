@@ -1,0 +1,42 @@
+name: Publish DORA Metric
+description: Publishes status to DORA Metric Handler
+
+inputs:
+  status:
+    description: "The status of the pipeline to report to the metric handler (started | failed | succeeded)"
+    required: true
+  topic_arn:
+    description: "The DORA Metric Report SNS Topic ARN"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send SNS message
+      id: sns-message
+      shell: bash
+      run: |
+        timestamp=$(date +%s)
+        deploy_id="$GITHUB_RUN_ID"
+
+        # Get AWS account ID
+        aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+
+        message=$(cat << EOF
+        {
+          "time": ${timestamp},
+          "account_id": "${aws_account_id}",
+          "git_repo": "${{ github.event.repository.name }}",
+          "status": "${{ inputs.status }}",
+          "commit_hash": "${{ github.event.pull_request.head.sha || github.sha }}",
+          "deploy_id": "${deploy_id}"
+        }
+        EOF
+        )
+
+        echo "Sending deployment status to SNS topic"
+        aws sns publish \
+          --topic-arn ${{ inputs.topic_arn }} \
+          --message "$message"
+
+        echo "Message sent successfully"
