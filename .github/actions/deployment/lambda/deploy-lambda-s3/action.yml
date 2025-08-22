@@ -5,7 +5,6 @@ inputs:
   artifact-name:
     description: "The name of the artifact to download from the build"
     required: true
-    default: "lambda-artifact"
   aws-region:
     description: "The AWS Region to use for the deployment"
     required: true
