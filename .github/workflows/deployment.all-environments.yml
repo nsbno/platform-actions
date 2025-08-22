@@ -41,7 +41,7 @@ run-name: Deploy Environments
 jobs:
   send-dora-metric-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@dora-metrics
+    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
     with:
       status: started
 
@@ -216,7 +216,7 @@ jobs:
 
   send-dora-metric-finished:
     name: Send finsihed metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@dora-metrics
+    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
     needs:
       - production-application
       - production-terraform
