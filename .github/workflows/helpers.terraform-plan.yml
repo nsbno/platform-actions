@@ -49,7 +49,7 @@ jobs:
         environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
     # Needed to avoid conflicts with terraform state
     concurrency:
-      group: ${{ matrix.environment }}-terraform
+      group: ${{ inputs.working-directory }}-${{ matrix.environment }}-terraform
     environment: ${{ matrix.environment }}
     steps:
       - name: Checkout code

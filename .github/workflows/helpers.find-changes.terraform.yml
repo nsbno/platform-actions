@@ -63,7 +63,7 @@ jobs:
     environment: ${{ matrix.environment }}
     # Needed to avoid conflicts with terraform state
     concurrency:
-      group: ${{ matrix.environment }}-terraform
+      group: ${{ inputs.working-directory }}-${{ matrix.environment }}-terraform
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
