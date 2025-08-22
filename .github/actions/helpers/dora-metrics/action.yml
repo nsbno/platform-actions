@@ -27,7 +27,7 @@ runs:
           "time": ${timestamp},
           "account_id": "${aws_account_id}",
           "git_repo": "${{ github.repository }}",
-          "status": "${mapped_status}",
+          "status": "${{ inputs.status }}",
           "commit_hash": "${{ github.sha }}",
           "deploy_id": "${deploy_id}"
         }
