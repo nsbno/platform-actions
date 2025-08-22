@@ -3,7 +3,7 @@ description: Publishes status to DORA Metric Handler
 
 inputs:
   status:
-    description: "The status of the pipeline to report to the metric handler"
+    description: "The status of the pipeline to report to the metric handler (started | failed | succeeded)"
     required: true
   topic_arn:
     description: "The DORA Metric Report SNS Topic ARN"
@@ -28,7 +28,7 @@ runs:
           "account_id": "${aws_account_id}",
           "git_repo": "${{ github.event.repository.name }}",
           "status": "${{ inputs.status }}",
-          "commit_hash": "${{ github.sha }}",
+          "commit_hash": "${{ github.event.pull_request.head.sha || github.sha }}",
           "deploy_id": "${deploy_id}"
         }
         EOF
