@@ -7,7 +7,7 @@ inputs:
     required: true
   aws-region:
     description: "The AWS Region to use for the deployment"
-    required: true
+    required: false
     default: "eu-west-1"
 
 runs:
@@ -17,6 +17,7 @@ runs:
       uses: nsbno/platform-actions/.github/actions/deployment/lambda/update-datadog-tags@main
       with:
         function-name: ${{ inputs.function-name }}
+        aws-region: ${{ inputs.aws-region }}
 
     - name: Publish Lambda Version and Update Version Tag
       id: publish
