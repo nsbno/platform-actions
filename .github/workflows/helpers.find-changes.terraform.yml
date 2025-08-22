@@ -97,10 +97,18 @@ jobs:
           mkdir -p ./matrix-outputs
           echo "${{ steps.changed-files.outputs.any-changed }}" > ./matrix-outputs/${{ matrix.environment }}.txt
 
+      - name: Determine working directory name for artifacts
+        id: without-slashes
+        run: |
+          WORKING_DIRECTORY="${{ inputs.working-directory }}"
+          # Replace slashes with dashes to avoid issues with artifact names
+          NAME_WITHOUT_SLASHES="${WORKING_DIRECTORY//\//-}"
+          echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
+  
       - name: Upload matrix outputs
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.working-directory }}-matrix-outputs-${{ matrix.environment }}
+          name: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-${{ matrix.environment }}
           path: ./matrix-outputs
           retention-days: 1
           overwrite: true
@@ -113,10 +121,18 @@ jobs:
     outputs:
       changes: ${{ steps.aggregate.outputs.CHANGES }}
     steps:
+      - name: Determine working directory name for artifacts
+        id: without-slashes
+        run: |
+          WORKING_DIRECTORY="${{ inputs.working-directory }}"
+          # Replace slashes with dashes to avoid issues with artifact names
+          NAME_WITHOUT_SLASHES="${WORKING_DIRECTORY//\//-}"
+          echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
+
       - name: Download matrix outputs
         uses: actions/download-artifact@v4
         with:
-          pattern: ${{ inputs.working-directory }}-matrix-outputs-*
+          pattern: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-*
           merge-multiple: true
           path: ./matrix-outputs
 
