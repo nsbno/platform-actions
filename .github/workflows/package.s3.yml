@@ -10,20 +10,11 @@ on:
         required: false
         type: string
         description: "Name of the artifact storing the build files."
-      artifact-path:
-        required: false
-        type: string
-        description: "Path to artifact files from previous workflow."
       zip-file-name:
         required: false
         type: string
         description: "Name of the zip file to upload."
-        default: 'artifact.zip'
-      working-directory:
-        required: false
-        type: string
-        description: "Directory to run the zip-command from."
-        default: '.'
+        default: ''
       s3-bucket-name:
         required: false
         type: string
@@ -58,7 +49,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.working-directory }}
+
+      - name: Create zip file if not specified
+        if: inputs.zip-file-name == ''
+        run: |
+          zip -r "${{ inputs.application-name }}.zip" ./*
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -67,12 +62,11 @@ jobs:
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
       - name: Upload to S3
-        working-directory: ${{ inputs.working-directory }}
         env:
           S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           APPLICATION_NAME: ${{ inputs.application-name }}
-          ZIP_FILE_NAME: ${{ inputs.zip-file-name }}
+          ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', inputs.application-name) }}
         run: |
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
 
