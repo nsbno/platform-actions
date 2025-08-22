@@ -26,10 +26,19 @@ runs:
         echo "Zipping artifact into ${{ inputs.function-name }}.zip"
         zip -r "./${{ inputs.function-name }}.zip" ./*
 
+    - name: Resolve artifacts S3 bucket
+      id: resolve-bucket
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo "S3_BUCKET=${ACCOUNT_ID}-deployment-delivery-pipeline-artifacts" >> $GITHUB_ENV
+
     - name: Upload to S3
       shell: bash
       env:
-        S3_BUCKET: ${{ format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
+        AWS_REGION: ${{ inputs.aws-region }}
         GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         APPLICATION_NAME: ${{ inputs.function-name }}
         ZIP_FILE_NAME: "${{ inputs.function-name }}.zip"
@@ -44,12 +53,15 @@ runs:
       shell: bash
       env:
         AWS_REGION: ${{ inputs.aws-region }}
-        S3_BUCKET: ${{ format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
       run: |
         LAMBDA_NAME="${{ inputs.function-name }}"
-        S3_KEY="${{ github.event.pull_request.head.sha || github.sha }}"
+        S3_KEY_PATH="$LAMBDA_NAME/${{ github.event.pull_request.head.sha || github.sha }}.zip"
         
-        NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key $S3_KEY --query 'Version' --publish --output text)
+        NEW_LAMBDA_VERSION=$(aws lambda update-function-code \
+          --function-name $LAMBDA_NAME \
+          --s3-bucket $S3_BUCKET \ 
+          --s3-key $S3_KEY_PATH \
+          --query 'Version' --publish --output text)
         
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT
 
