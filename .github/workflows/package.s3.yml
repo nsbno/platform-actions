@@ -55,9 +55,11 @@ jobs:
         if: inputs.zip-file-name == ''
         run: |
           if [ -d "./temp-artifact" ]; then
-              cd ./temp-artifact || exit 1
+            cd ./temp-artifact
+            zip -r "../${{ inputs.application-name }}.zip" ./*
+          else
+            zip -r "${{ inputs.application-name }}.zip" ./*
           fi
-          zip -r "${{ inputs.application-name }}.zip" ./*
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
