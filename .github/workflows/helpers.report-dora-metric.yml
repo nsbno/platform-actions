@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   submit-dora-metrics:
-    name: Submitt DORA Metrics
+    name: Submit DORA Metrics
     environment: 'Service'
     runs-on: ubuntu-latest
     steps:
