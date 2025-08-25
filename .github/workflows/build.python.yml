@@ -14,6 +14,10 @@ on:
         required: false
         type: string
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
 
     outputs:
       artifact-name:
@@ -23,7 +27,7 @@ on:
 jobs:
   build:
     name: Build Python
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     outputs:
       artifact-name: ${{ steps.artifact-name.outputs.artifact-name }}
 
