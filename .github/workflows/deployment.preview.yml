@@ -45,7 +45,7 @@ jobs:
     environment: Test
     steps:
       - name: Check for .preview comments
-        if: ${{ inputs.only-on-preview-comment && github.event.pull_request }}
+        if: ${{ inputs.only-on-preview-comment }}
         id: check-comments
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
