@@ -31,6 +31,7 @@ runs:
           "status": "${{ inputs.status }}",
           "commit_hash": "${{ github.event.pull_request.head.sha || github.sha }}",
           "deploy_id": "${deploy_id}"
+          "provider": "github"
         }
         EOF
         )
