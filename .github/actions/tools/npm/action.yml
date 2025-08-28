@@ -36,7 +36,7 @@ runs:
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
-        npm install
+        npm ci
 
     - name: Run NPM Command
       working-directory: ${{ inputs.working-directory }}
