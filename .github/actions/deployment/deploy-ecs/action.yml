@@ -151,7 +151,7 @@ runs:
             BAKE_TIME_START_TS=$(date +%s)
           fi
 
-          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "BAKE_TIME_START_TS" -gt 0 ]; then
+          if [ "$LIFECYCLE_STAGE" = "BAKE_TIME" ] && [ "$BAKE_TIME_MINUTES" -gt 0 ] && [ "$BAKE_TIME_START_TS" -gt 0 ]; then
             CURRENT_TIME=$(date +%s)
             ELAPSED_MINUTES=$(( (CURRENT_TIME - $BAKE_TIME_START_TS) / 60 ))
             TIME_LEFT=$(( $BAKE_TIME_MINUTES - ELAPSED_MINUTES ))
