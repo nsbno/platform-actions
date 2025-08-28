@@ -30,10 +30,6 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'npm'
 
-    - name: Clean node_modules
-      shell: bash
-      run: rm -rf node_modules
-
     - name: Run NPM Install
       working-directory: ${{ inputs.working-directory }}
       shell: bash
