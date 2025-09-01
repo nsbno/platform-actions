@@ -83,15 +83,13 @@ runs:
             NAME=$(basename "$FULL_PATH")
 
             if [[ "$NAME" == "AUTH_URL" ]]; then
-              # Substitute for correct AUTH_URL (used in auth.js) for preview url auth
               ENV_VAR_VALUE=$(echo "$ROW" | jq -r '.Value')
-              SERVICE_NAME="${{inputs.service-name}}"
-              PR_SERVICE_NAME="pr-${{ inputs.git-event-number }}.${{ inputs.service-name }}"
+              PR_PREFIX="pr-${{ inputs.git-event-number }}."
               
-              AUTH_URL=${ENV_VAR_VALUE//"$SERVICE_NAME"/"$PR_SERVICE_NAME"}  # pure bash replace
+              # Insert PR prefix right after https:// and before the first dot in the hostname
+              AUTH_URL=$(echo "$ENV_VAR_VALUE" | sed -E "s#^(https://)([^./]+)#\1${PR_PREFIX}\2#")
+
               AUTH_URL_JSON="{\"AUTH_URL\":$(echo "$AUTH_URL" | jq -R .)}"
-  
-              # Skip and set it as env varaiable instead of secret in App Runner step
               continue
             else
               VALUE=$(echo "$ROW" | jq -r '.ARN')
