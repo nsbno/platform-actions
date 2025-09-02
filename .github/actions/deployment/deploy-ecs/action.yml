@@ -187,6 +187,13 @@ runs:
           sleep $POLLING_INTERVAL
         done
 
+    - name: On failure or cancel, deregister Task Definition
+      if: failure() || cancelled()
+      shell: bash
+      run: |
+        aws ecs deregister-task-definition \
+          --task-definition "${{ steps.deploy.outputs.task-definition-arn }}" || true
+
     - name: Cancel ECS Deployment and Fail
       if: cancelled()
       shell: bash
