@@ -1,0 +1,98 @@
+on:
+  workflow_call:
+    inputs:
+      open-api-spec-path:
+        type: string
+        required: true
+        description: "Path to your API spec"
+      application-name:
+        type: string
+        required: true
+        description: "Name of the service. Will be used as folder name in S3."
+      api_referencepersist_url:
+        description: "The domain of the persist API"
+        type: string
+        default: "api-reference-persist.common-services.vydev.io"
+      api_reference_s3_bucket:
+        description: "The S3 Bucket of the API Reference Service"
+        type: string
+        default: "727646359971-api-portal-artifacts"
+
+permissions:
+  contents: read
+  id-token: write
+
+# Upload an API spec to the API portal.
+# We expect the API spec to be in YAML format.
+# Supported API Types: OpenAPI.
+jobs:
+  convert-to-yml:
+    name: Convert YAML to JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Convert from YAML to JSON
+        uses: mikefarah/yq@v4.40.5
+        with:
+          cmd: yq -o=json '.' '${{ inputs.file_to_upload }}' > 'converted.json'
+
+      - name: Persist file between jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'open-api-spec'
+          path: 'converted.json'
+
+  persist-api-spec:
+    name: Persist API spec to the API portal
+    needs:
+      - convert-to-yml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Download API Spec
+        uses: actions/download-artifact@v4
+        with:
+          name: "open-api-spec"
+
+      - name: Upload API Spec
+        env:
+          FILE_TO_UPLOAD: "converted.json"
+          S3_BUCKET: "727646359971-api-portal-artifacts"
+          S3_FOLDER: ${{ inputs.application_name }}
+          S3_FILE_NAME: "openapi.json"
+        run: |
+            aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}"
+
+      - name: Validate and persist the spec to the API portal
+        env:
+          REPO: ${{ github.event.repository.name }}
+          SERVICE_ACCOUNT_ID: ${{ inputs.service_account_id }} # Used to determine ownership of the spec
+          REGION: ${{ vars.AWS_REGION }}
+          PERSIST_URL: ${{ inputs.persist_url }}
+          APPLICATION_NAME: ${{ inputs.application_name }}
+          SPEC_TYPE: "openapi"
+        run: |
+          echo "Persisting ${SPEC_TYPE} spec for ${SERVICE_NAME} in ${REGION} to ${PERSIST_URL}"
+          STATUS_CODE=$(\
+            curl \
+              --silent \
+              --output /dev/stderr \
+              --write-out "%{http_code}" \
+              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}" \
+              --data "{\"repository\": \"${REPO}\"}" \
+              --aws-sigv4 "aws:amz:${REGION}:execute-api" \
+              --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
+              --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
+          )
+          
+          echo "Response code: ${STATUS_CODE}"
+          
+          if [ ${STATUS_CODE} -ne 200 ]; then
+            exit 1
+          fi
