@@ -1,0 +1,58 @@
+name: Terraform Plan on comment
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: ''
+      skip-service-environment:
+        description: Skip the service environment, if the repository does not deploy to the service environment.
+        type: boolean
+        default: false
+        required: false
+
+jobs:
+  trigger:
+    name: Trigger - Terraform Plan Comment
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.tf')
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.branch-deploy.outputs.continue }}
+      deployment_id: ${{ steps.branch-deploy.outputs.deployment_id }}
+      environment: ${{ steps.branch-deploy.outputs.environment }}
+      ref: ${{ steps.branch-deploy.outputs.ref }}
+      sha: ${{ steps.branch-deploy.outputs.sha }}
+      comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
+      initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
+      actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
+      application-names: ${{ steps.parse-app-names.outputs.apps_json }}
+
+    steps:
+      - uses: github/branch-deploy@v10.4.2
+        id: branch-deploy
+        with:
+          trigger: '.tf plan'
+          skip_completing: 'true' # we will complete the deployment manually
+          skip_reviews: 'Test,Stage,Production,Service' # skip reviews for test deployments
+
+  check-terraform-changes:
+    name: Find Terraform Changes
+    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@main
+    needs: trigger
+    if: |
+      always()
+      && needs.trigger.outputs.continue == 'true'
+      && !cancelled()
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+      skip-service-environment: ${{ inputs.skip-service-environment }}
+      git-sha: ${{ needs.trigger.outputs.sha }}
+
