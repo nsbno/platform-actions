@@ -35,6 +35,11 @@ on:
         type: boolean
         default: false
         required: false
+      aws-role-name-to-assume:
+        description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
+        required: false
+        type: string
+        default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
 
 run-name: Deploy Environments
 
@@ -44,6 +49,7 @@ jobs:
     uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
     with:
       status: started
+      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
 
   get-environments:
     name: Find Relevant GH Environments
@@ -223,3 +229,4 @@ jobs:
     if: always()
     with:
       status: ${{ (!contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')) && 'succeeded' || 'failed' }}
+      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
