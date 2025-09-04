@@ -40,7 +40,8 @@ jobs:
         with:
           trigger: '.tf plan'
           skip_completing: 'true' # we will complete the deployment manually
-          skip_reviews: 'Test,Stage,Production,Service' # skip reviews for test deployments
+          skip_reviews: 'Test,Stage,Production,Service' # skip reviews for deployments
+          skip_ci: 'Test,Stage,Production,Service' # skip CI for deployments
 
   check-terraform-changes:
     name: Find Terraform Changes
