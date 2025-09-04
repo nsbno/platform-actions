@@ -30,7 +30,7 @@ on:
       artifact-path:
         required: false
         type: string
-        default: "./build/libs"  # Default for Gradle.
+        default: "./build"  # Default for Gradle.
       gradle-operations:
         required: false
         type: string
