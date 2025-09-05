@@ -20,35 +20,58 @@ on:
 
 jobs:
   trigger:
-    name: Trigger - Terraform Plan Comment
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.tf')
+    # Own implementation of trigger which is not branch-deploy because of message body customization
+    name: Trigger .tf plan
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.tf plan')
     runs-on: ubuntu-latest
+    env:
+      GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     outputs:
-      continue: ${{ steps.branch-deploy.outputs.continue }}
-      deployment_id: ${{ steps.branch-deploy.outputs.deployment_id }}
-      environment: ${{ steps.branch-deploy.outputs.environment }}
-      ref: ${{ steps.branch-deploy.outputs.ref }}
-      sha: ${{ steps.branch-deploy.outputs.sha }}
-      comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
-      initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
-      actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
-      application-names: ${{ steps.parse-app-names.outputs.apps_json }}
-
+      sha: ${{ env.GIT_SHA }}
+      issue_number: ${{ steps.ids.outputs.issue_number }}
+      comment_id: ${{ steps.ids.outputs.comment_id }}
     steps:
-      - uses: github/branch-deploy@v10.4.2
-        id: branch-deploy
-        with:
-          noop_trigger: '.tf plan'
-          deploy_message_path: 'nsbno/platform-actions/.github/branch-deploy-templates/terraform-plan.md'
+      - id: ids
+        run: |
+          echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
 
-  check-terraform-changes:
-    name: Find Terraform Changes
-    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@main
+      - name: Add eyes reaction to triggering comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content='eyes'
+
+      - name: Comment plan is running
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            Terraform plan initiated for commit `${{ env.GIT_SHA }}`.
+            
+            • Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            • Triggered by: @${{ github.actor }}
+
+  react-rocket:
+    name: React rocket
     needs: trigger
-    if: |
-      always()
-      && needs.trigger.outputs.continue == 'true'
-      && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add rocket reaction to triggering comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
+            -f content='rocket'
+
+  plan:
+    needs: trigger
+    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@main
     with:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
