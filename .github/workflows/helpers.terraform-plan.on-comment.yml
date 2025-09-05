@@ -25,9 +25,9 @@ jobs:
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.tf plan')
     runs-on: ubuntu-latest
     env:
-      GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
     outputs:
-      sha: ${{ env.GIT_SHA }}
+      git_sha: ${{ steps.get-sha.outputs.sha }}
       issue_number: ${{ steps.ids.outputs.issue_number }}
       comment_id: ${{ steps.ids.outputs.comment_id }}
     steps:
@@ -36,9 +36,14 @@ jobs:
           echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
 
+      - name: Determine PR SHA
+        id: get-sha
+        run: |
+          PR_NUMBER=${{ github.event.issue.number }}
+          SHA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq .head.sha)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
       - name: Add eyes reaction to triggering comment
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           gh api \
             --method POST \
@@ -50,24 +55,13 @@ jobs:
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            Terraform plan initiated for commit `${{ env.GIT_SHA }}`.
+            ### Terraform plan initiated
             
-            • Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            • Triggered by: @${{ github.actor }}
-
-  react-rocket:
-    name: React rocket
-    needs: trigger
-    runs-on: ubuntu-latest
-    steps:
-      - name: Add rocket reaction to triggering comment
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api \
-            --method POST \
-            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
-            -f content='rocket'
+            🔗 [Follow the plan here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            Commit: [${{ steps.get-sha.outputs.sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.issue.number }}/commits/${{ steps.get-sha.outputs.sha }})
+            
+            _If you see a 🚀 on your comment and no Terraform Plan output, it means no changes were detected._
 
   plan:
     needs: trigger
@@ -76,5 +70,36 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       skip-service-environment: ${{ inputs.skip-service-environment }}
-      git-sha: ${{ needs.trigger.outputs.sha }}
+      git-sha: ${{ needs.trigger.outputs.git_sha }}
 
+  reaction-handling:
+    name: Remove eyes, React rocket
+    needs:
+      - trigger
+      - plan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove eyes reaction from triggering comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REACTION_ID=$(gh api \
+            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
+            | jq -r '.[] | select(.content == "eyes") | .id' | head -n 1)
+
+          if [ -n "$REACTION_ID" ]; then
+            gh api \
+              --method DELETE \
+              repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions/$REACTION_ID
+          else
+            echo "No 'eyes' reaction found to remove."
+          fi
+
+      - name: Add rocket reaction to triggering comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
+            -f content='rocket'
