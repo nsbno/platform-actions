@@ -75,7 +75,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           ENVIRONMENT: ${{ matrix.environment }}
         run: |
           PLAN_OUTPUT=$(cat << 'EOF'
