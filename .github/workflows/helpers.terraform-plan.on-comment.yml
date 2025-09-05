@@ -39,7 +39,7 @@ jobs:
         id: branch-deploy
         with:
           noop_trigger: '.tf plan'
-          deploy_message_path: '.github/branch-deploy-templates/terraform-plan.md'
+          deploy_message_path: 'nsbno/platform-actions/.github/branch-deploy-templates/terraform-plan.md'
 
   check-terraform-changes:
     name: Find Terraform Changes
