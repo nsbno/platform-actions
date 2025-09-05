@@ -38,10 +38,8 @@ jobs:
       - uses: github/branch-deploy@v10.4.2
         id: branch-deploy
         with:
-          trigger: '.tf plan'
-          skip_completing: 'true' # we will complete the deployment manually
-          skip_reviews: 'Test,Stage,Production,Service' # skip reviews for deployments
-          skip_ci: 'Test,Stage,Production,Service' # skip CI for deployments
+          noop_trigger: '.tf plan'
+          deploy_message_path: '.github/branch-deploy-templates/terraform-plan.md'
 
   check-terraform-changes:
     name: Find Terraform Changes
