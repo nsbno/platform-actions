@@ -71,7 +71,7 @@ jobs:
           terraform-options: '-no-color'
 
       - name: Add Terraform Plan to PR
-        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment' && steps.changed-files.outputs.any-changed == 'true'
+        if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
