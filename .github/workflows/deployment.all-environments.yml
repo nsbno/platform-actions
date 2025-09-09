@@ -83,7 +83,7 @@ jobs:
     strategy:
       matrix:
         # Matrix gives better visibility in GH UI
-        environment: [Service]
+        environment: [ Service ]
     with:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
@@ -93,7 +93,7 @@ jobs:
   test-terraform:
     name: Test - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
-    needs: 
+    needs:
       - service-terraform
       - get-environments
     if: |
@@ -104,7 +104,7 @@ jobs:
     strategy:
       matrix:
         # Matrix gives better visibility in GH UI
-        environment: [Test]
+        environment: [ Test ]
     with:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
@@ -147,7 +147,7 @@ jobs:
     strategy:
       matrix:
         # Matrix gives better visibility in GH UI
-        environment: [Stage]
+        environment: [ Stage ]
     with:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
@@ -192,7 +192,7 @@ jobs:
     strategy:
       matrix:
         # Matrix gives better visibility in GH UI
-        environment: [Production]
+        environment: [ Production ]
     with:
       environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
@@ -224,9 +224,14 @@ jobs:
     name: Send finsihed metric to DORA service
     uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
     needs:
-      - production-application
+      - service-terraform
+      - test-terraform
+      - test-application
+      - stage-terraform
+      - stage-application
       - production-terraform
+      - production-application
     if: always()
     with:
-      status: ${{ (!contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')) && 'succeeded' || 'failed' }}
+      status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}
       aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
