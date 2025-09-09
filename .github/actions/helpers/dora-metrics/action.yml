@@ -17,7 +17,7 @@ runs:
       shell: bash
       run: |
         timestamp=$(date +%s)
-        deploy_id="$GITHUB_RUN_ID"
+        deploy_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
         # Get AWS account ID
         aws_account_id=$(aws sts get-caller-identity --query Account --output text)
