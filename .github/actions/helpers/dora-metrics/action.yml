@@ -15,6 +15,10 @@ runs:
     - name: Send SNS message
       id: sns-message
       shell: bash
+      env:
+        GIT_REPO: ${{ github.event.repository.name }}
+        COMMIT_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
+        COMMIT_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
       run: |
         timestamp=$(date +%s)
         deploy_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -26,10 +30,11 @@ runs:
         {
           "time": ${timestamp},
           "account_id": "${aws_account_id}",
-          "git_repo": "${{ github.event.repository.name }}",
-          "pipeline": "${{ github.event.repository.name }}",
+          "git_repo": "${GIT_REPO}",
+          "pipeline": "${GIT_REPO}",
           "status": "${{ inputs.status }}",
-          "commit_hash": "${{ github.event.pull_request.head.sha || github.sha }}",
+          "commit_hash": "${COMMIT_HASH}",
+          "commit_message": "${COMMIT_MESSAGE}",
           "deploy_id": "${deploy_id}",
           "provider": "github"
         }
