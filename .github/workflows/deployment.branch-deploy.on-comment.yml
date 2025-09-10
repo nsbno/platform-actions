@@ -41,6 +41,8 @@ jobs:
           environment: 'Test'
           skip_completing: 'true' # we will complete the deployment manually
           skip_reviews: 'Test' # skip reviews for test deployments
+          draft_permitted_targets: Test # allow draft PRs to deploy to Test
+
       - id: parse-app-names
         run: |
           APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
