@@ -17,6 +17,14 @@ on:
         required: false
         default: ''
 
+permissions:
+  pull-requests: write
+  deployments: write
+  contents: write
+  checks: read
+  statuses: read
+  id-token: write
+
 jobs:
   trigger:
     name: Trigger - Branch Deploy Test
