@@ -23,7 +23,7 @@ jobs:
       actor_handle: ${{ steps.branch-comment-handler.outputs.actor_handle }}
 
     steps:
-      - uses: github/branch-deploy@v10.4.2
+      - uses: github/branch-deploy@c9fcc362bdcea69eecac6578dde245cd5e3a55bf  # 10.4.3
         id: branch-comment-handler
         with:
           trigger: '.preview'
