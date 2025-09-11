@@ -59,4 +59,4 @@ jobs:
           deployment-id: ${{ needs.trigger.outputs.deployment_id }}
           comment-id: ${{ needs.trigger.outputs.comment_id }}
           actor-handle: ${{ needs.trigger.outputs.actor_handle }}
-          job-status: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') && 'failure' || 'success' }}
+          job-status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
