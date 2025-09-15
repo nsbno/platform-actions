@@ -1,0 +1,56 @@
+name: Deploy to single environment (Terraform + App)
+on:
+  workflow_call:
+    inputs:
+      application-name:
+        description: The name of the application to deploy.
+        type: string
+        required: true
+        default: ${{ github.event.repository.name }}
+      environment:
+        description: The environment to deploy to.
+        type: string
+        required: true
+      sha-to-deploy:
+        description: The SHA to deploy.
+        type: string
+        required: true
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  deploy-terraform:
+    name: Terraform Apply
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+    if: |
+      always()
+      && !cancelled()
+    with:
+      environment: ${{ inputs.environment }}
+      deploy-terraform: true
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
+
+  deploy-application:
+    name: Deploy Application
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    needs:
+      - deploy-terraform
+    if: |
+      always()
+      && !cancelled()
+      && needs.deploy-terraform.result != 'failure'
+    with:
+      environment: ${{ inputs.environment }}
+      deploy-application: true
+      application-name: ${{ inputs.application-name }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
