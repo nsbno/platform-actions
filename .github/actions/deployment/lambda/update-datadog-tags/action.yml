@@ -25,7 +25,12 @@ runs:
         AWS_REGION: ${{ inputs.aws-region }}
       run: |
         ENV_VARS=$(cat env-vars.json)
-
+        
+        if [ "$ENV_VARS" = "null" ] || [ -z "$ENV_VARS" ]; then
+          echo "No env vars. Skipping environment variable update."
+          exit 0
+        fi
+        
         # Check if any existing variables begin with "DD_"
         HAS_DD_VARS=$(echo $ENV_VARS | jq 'keys[] | select(startswith("DD_"))' | wc -l)
 
