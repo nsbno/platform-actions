@@ -20,6 +20,11 @@ on:
         type: string
         default: "temurin"
         description: "What Java distribution to use. Default is temurin (By Adoptium)."
+      gradle-operations:
+        required: false
+        type: string
+        default: "test"
+        description: "Gradle operations to run."
       working-directory:
         required: false
         type: string
@@ -38,7 +43,7 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           java-distribution: ${{ inputs.java-distribution }}
-          gradle-operations: 'test'
+          gradle-operations: ${{ inputs.gradle-operations }}
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
