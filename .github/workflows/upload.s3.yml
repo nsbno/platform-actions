@@ -7,7 +7,7 @@ on:
         description: "Name of the S3 Folder to publish to."
         default: ${{github.event.repository.name}}
       artifact-name:
-        required: false
+        required: true
         type: string
         description: "Name of the artifact storing the build files."
       s3-bucket-name:
@@ -39,8 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download artifacts if specified
-        if: inputs.artifact-name != ''
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
@@ -59,16 +58,29 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
           ARTIFACT_NAME: ${{ inputs.artifact-name }}
         run: |
+          set -euo pipefail
           BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
-          
-          # Get artifact name file extension
-          EXTENSION="${ARTIFACT_NAME##*.}"
-          
-          # If the extension is the same as the artifact name, it means there was no extension
-          if [ "$EXTENSION" = "$ARTIFACT_NAME" ]; then
-            echo "No file extension found."
+
+          # Locate the downloaded artifact file
+          FILE_COUNT=$(find ./temp-artifact -type f | wc -l | tr -d ' ')
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "Error: No files found in ./temp-artifact from downloaded artifact '${ARTIFACT_NAME}'." >&2
+            exit 1
+          elif [ "$FILE_COUNT" -gt 1 ]; then
+            echo "Error: Multiple files found in ./temp-artifact. This workflow uploads a single file; please ensure the artifact contains exactly one file." >&2
+            find ./temp-artifact -maxdepth 2 -type f -print
             exit 1
           fi
 
-          aws s3 cp "./${ARTIFACT_NAME}" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-          aws s3 cp "./${ARTIFACT_NAME}" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          FILE_PATH=$(find ./temp-artifact -type f | head -n1)
+          FILE_NAME="$(basename "$FILE_PATH")"
+
+          # Determine file extension
+          EXTENSION="${FILE_NAME##*.}"
+          if [ "$EXTENSION" = "$FILE_NAME" ]; then
+            echo "No file extension found for '$FILE_NAME'." >&2
+            exit 1
+          fi
+
+          aws s3 cp "$FILE_PATH" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "$FILE_PATH" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
