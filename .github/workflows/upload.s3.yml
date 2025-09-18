@@ -1,0 +1,74 @@
+on:
+  workflow_call:
+    inputs:
+      application-name:
+        required: false
+        type: string
+        description: "Name of the S3 Folder to publish to."
+        default: ${{github.event.repository.name}}
+      artifact-name:
+        required: false
+        type: string
+        description: "Name of the artifact storing the build files."
+      s3-bucket-name:
+        required: false
+        type: string
+        description: "Name of the S3 bucket to upload to."
+        default: ''
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region to use."
+        default: 'eu-west-1'
+
+name: Upload single file to S3 with correct file extension
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  upload-zip-to-s3:
+    name: Upload zip to S3
+    environment: Service
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts if specified
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: "./temp-artifact"
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Upload single file to S3
+        env:
+          S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          APPLICATION_NAME: ${{ inputs.application-name }}
+          ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        run: |
+          BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
+          
+          # Get artifact name file extension
+          EXTENSION="${ARTIFACT_NAME##*.}"
+          
+          # If the extension is the same as the artifact name, it means there was no extension
+          if [ "$EXTENSION" = "$ARTIFACT_NAME" ]; then
+            echo "No file extension found."
+            exit 1
+          fi
+
+          aws s3 cp "./${ARTIFACT_NAME}" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./${ARTIFACT_NAME}" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.$EXTENSION" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
