@@ -9,6 +9,10 @@ inputs:
     description: "The AWS Region to use for the deployment"
     required: false
     default: "eu-west-1"
+  file-extension:
+    description: "The file extension of the Lambda package"
+    required: false
+    default: "zip"
 
 runs:
   using: composite
@@ -29,7 +33,7 @@ runs:
         # TODO: Refactor the way to find S3 bucket name. Now it is tightly coupled to Terraform Vy Provider.
         # We are missing a way to connect a service account id to an environment in the pipeline.
         S3_BUCKET="${{ inputs.lambda-s3-bucket }}"
-        S3_KEY_PATH="$LAMBDA_NAME/${{ github.event.pull_request.head.sha || github.sha }}.zip"
+        S3_KEY_PATH="$LAMBDA_NAME/${{ github.event.pull_request.head.sha || github.sha }}.${{ inputs.file-extension }}"
         
         NEW_LAMBDA_VERSION=$(aws lambda update-function-code --function-name "$LAMBDA_NAME" --s3-bucket "$S3_BUCKET" --s3-key "$S3_KEY_PATH" --query 'Version' --publish --output text)
         echo "new_lambda_version=$NEW_LAMBDA_VERSION" >> $GITHUB_OUTPUT

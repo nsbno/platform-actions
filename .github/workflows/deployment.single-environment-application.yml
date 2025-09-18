@@ -25,6 +25,10 @@ on:
         type: boolean
         required: false
         default: false
+      lambda-file-extension:
+        description: File extension for Lambda deployment package (zip or jar)
+        type: string
+        required: false
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -92,13 +96,14 @@ jobs:
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Deploy Lambda (S3 Zip)
+      - name: Deploy Lambda (S3 Zip/jar)
         if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-s3-bucket != ''
         uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@main
         with:
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           lambda-s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
           aws-region: ${{ vars.AWS_REGION }}
+          file-extension: ${{ inputs.lambda-file-extension }}
 
       - name: Put Application Deployment Version
         id: deployment-version

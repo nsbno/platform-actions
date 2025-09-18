@@ -40,6 +40,10 @@ on:
         required: false
         type: string
         default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+      lambda-file-extension:
+        description: File extension for Lambda deployment package (zip or jar)
+        type: string
+        required: false
 
 run-name: Deploy Environments
 
@@ -132,6 +136,7 @@ jobs:
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-file-extension: ${{ inputs.lambda-file-extension }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -175,6 +180,7 @@ jobs:
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-file-extension: ${{ inputs.lambda-file-extension }}
 
   production-terraform:
     name: Prod - Terraform
@@ -219,6 +225,7 @@ jobs:
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      lambda-file-extension: ${{ inputs.lambda-file-extension }}
 
   send-dora-metric-finished:
     name: Send finsihed metric to DORA service
