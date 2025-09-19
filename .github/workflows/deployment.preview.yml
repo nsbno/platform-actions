@@ -43,6 +43,8 @@ jobs:
     name: Deploy Preview if checks pass
     runs-on: ubuntu-latest
     environment: Test
+    outputs:
+      deployment-successful: ${{ steps.app-runner-deploy.conclusion == 'success' }}
     steps:
       - name: Check for .preview comments
         if: ${{ inputs.only-on-preview-comment }}
@@ -113,3 +115,13 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           github-repository: ${{ inputs.git-repository }}
           github-event-number: ${{ inputs.git-event-number }}
+
+  report-to-reporter:
+    name: Report Preview Deployment Status
+    if: ${{ needs.build.outputs.deployment-successful == 'true' }}
+    needs: build
+    uses: nsbno/platform-actions/.github/workflows/helpers.report-to-reporter.yml@main
+    secrets: inherit
+    with:
+      status: "succeeded"
+      reporter-topic-arn: ${{ vars.REPORTER_SNS_TOPIC_ARN }}

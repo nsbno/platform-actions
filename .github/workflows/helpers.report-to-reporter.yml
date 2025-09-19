@@ -1,0 +1,62 @@
+name: helpers.report-to-reporter.yml
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: "The status of the pipeline"
+        required: true
+        type: string
+      aws-role-name-to-assume:
+        description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
+        required: false
+        type: string
+        default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+      reporter-topic-arn:
+        description: "The Reporter SNS Topic ARN"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+
+jobs:
+  submit-reporter-status:
+    name: Submit Reporter Status
+    environment: 'Service'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ inputs.aws-role-name-to-assume }}
+      - name: Send status to reporter
+        shell: bash
+        run: |
+          timestamp=$(date +%s)
+          deploy_id="$GITHUB_RUN_ID"
+
+          # Get AWS account ID
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+
+          message=$(cat << EOF
+          {
+            "time": ${timestamp},
+            "account_id": "${aws_account_id}",
+            "git_repo": "${{ github.event.repository.name }}",
+            "pipeline": "${{ github.event.repository.name }}",
+            "status": "${{ inputs.status }}",
+            "commit_hash": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "branch": "${{ github.head_ref || github.ref_name }}",
+            "deploy_id": "${deploy_id}",
+            "provider": "github"
+          }
+          EOF
+          )
+
+          echo "Sending deployment status to reporter SNS topic"
+          aws sns publish \
+            --topic-arn ${{ inputs.reporter-topic-arn }} \
+            --message "$message"
+
+          echo "Message sent successfully"
