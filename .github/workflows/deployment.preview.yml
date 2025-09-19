@@ -124,4 +124,3 @@ jobs:
     secrets: inherit
     with:
       status: "succeeded"
-      reporter-topic-arn: ${{ vars.REPORTER_SNS_TOPIC_ARN }}
