@@ -73,13 +73,6 @@ jobs:
         run: |
           APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
-      - name: Put Application Deployment Version (if deploying with Terraform only)
-        if: ${{ !inputs.applications }}
-        id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@main
-        with:
-          application-name: ${{ inputs.application-name }}
-          sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
