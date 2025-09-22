@@ -26,6 +26,11 @@ inputs:
     default: "."
     description: "Where gradle will be run from."
 
+  cache-read-only:
+    required: false
+    default: "false"
+    description: "When true, existing cache entries will be read but no new cache entries will be written."
+
 runs:
   using:
     composite
@@ -44,7 +49,15 @@ runs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
-        cache-read-only: false # enables caching on all branches, not just master
+        cache-read-only: ${{ inputs.cache-read-only }}
+        gradle-home-cache-includes: |
+          caches
+          notifications
+        gradle-home-cache-excludes: |
+          caches/modules-2/modules-2.lock
+          caches/modules-2/gc.properties
+          caches/build-cache-*
+          caches/keyrings
 
     - name: Run Gradle Command
       working-directory: ${{ inputs.working-directory }}

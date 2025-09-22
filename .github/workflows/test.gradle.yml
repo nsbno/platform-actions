@@ -29,6 +29,11 @@ on:
         required: false
         type: string
         default: "."
+      cache-read-only:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether to only read from cache (prevents cache pollution from test jobs)."
 
 jobs:
   test:
@@ -45,5 +50,6 @@ jobs:
           java-distribution: ${{ inputs.java-distribution }}
           gradle-operations: ${{ inputs.gradle-operations }}
           working-directory: ${{ inputs.working-directory }}
+          cache-read-only: ${{ inputs.cache-read-only }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
