@@ -67,8 +67,5 @@ runs:
         gradle-operations: ${{ inputs.gradle-operations }}
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
-        # Optional secrets. Default to empty strings if not defined.
-        BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD || '' }}
-        BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME || '' }}
       run: |
         ./gradlew ${{ inputs.gradle-operations }}
