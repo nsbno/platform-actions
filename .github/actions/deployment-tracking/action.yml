@@ -1,0 +1,79 @@
+name: 'Branch Deployment Tracking'
+description: 'Send branch deployment tracking events to the reporting system'
+author: 'NSB AS'
+
+inputs:
+  repository:
+    description: 'Repository name (e.g., my-service)'
+    required: true
+  branch:
+    description: 'Branch name being deployed'
+    required: true
+  environment:
+    description: 'Deployment environment (Test, Stage, Production)'
+    required: true
+  commit-hash:
+    description: 'Git commit SHA'
+    required: true
+  deploy-id:
+    description: 'Unique deployment identifier'
+    required: true
+  status:
+    description: 'Deployment status (started, succeeded, failed)'
+    required: true
+  provider:
+    description: 'Deployment provider'
+    required: false
+    default: 'github'
+  sns-topic-arn:
+    description: 'SNS Topic ARN for deployment tracking'
+    required: false
+    default: ''
+  aws-region:
+    description: 'AWS region'
+    required: false
+    default: 'eu-west-1'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Send deployment tracking event
+      shell: bash
+      env:
+        AWS_REGION: ${{ inputs.aws-region }}
+        INPUT_SNS_TOPIC_ARN: ${{ inputs.sns-topic-arn }}
+      run: |
+        # Set default SNS topic ARN if not provided
+        if [[ -z "$INPUT_SNS_TOPIC_ARN" ]]; then
+          SNS_TOPIC_ARN="arn:aws:sns:eu-west-1:433462727137:receive_branch_deployment_notification"
+        else
+          SNS_TOPIC_ARN="$INPUT_SNS_TOPIC_ARN"
+        fi
+
+        # Create deployment event payload
+        EVENT_PAYLOAD=$(cat <<EOF
+        {
+          "time": $(date +%s),
+          "repository": "${{ inputs.repository }}",
+          "branch": "${{ inputs.branch }}",
+          "environment": "${{ inputs.environment }}",
+          "commit_hash": "${{ inputs.commit-hash }}",
+          "deploy_id": "${{ inputs.deploy-id }}",
+          "status": "${{ inputs.status }}",
+          "provider": "${{ inputs.provider }}"
+        }
+        EOF
+        )
+
+        echo "::group::Deployment Tracking Event"
+        echo "Sending branch deployment tracking event to: $SNS_TOPIC_ARN"
+        echo "$EVENT_PAYLOAD" | jq .
+        echo "::endgroup::"
+
+        # Send to SNS topic for deployment tracking
+        aws sns publish \
+          --topic-arn "$SNS_TOPIC_ARN" \
+          --message "$EVENT_PAYLOAD" \
+          --region "$AWS_REGION"
+
+        echo "✅ Deployment tracking event sent successfully"

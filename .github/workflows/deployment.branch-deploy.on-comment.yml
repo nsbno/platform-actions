@@ -57,6 +57,17 @@ jobs:
           APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
           echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
+      - name: Track deployment started
+        if: steps.branch-deploy.outputs.continue == 'true'
+        uses: nsbno/platform-actions/.github/actions/deployment-tracking@main
+        with:
+          repository: "nsbno/${{ github.event.repository.name }}"
+          branch: ${{ steps.branch-deploy.outputs.ref }}
+          environment: ${{ steps.branch-deploy.outputs.environment }}
+          commit-hash: ${{ steps.branch-deploy.outputs.sha }}
+          deploy-id: ${{ steps.branch-deploy.outputs.deployment_id }}
+          status: started
+
   test-terraform:
     name: Test - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
@@ -116,3 +127,13 @@ jobs:
           comment-id: ${{ needs.trigger.outputs.comment_id }}
           actor-handle: ${{ needs.trigger.outputs.actor_handle }}
           job-status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
+
+      - name: Track deployment completed
+        uses: nsbno/platform-actions/.github/actions/deployment-tracking@main
+        with:
+          repository: "nsbno/${{ github.event.repository.name }}"
+          branch: ${{ needs.trigger.outputs.ref }}
+          environment: ${{ needs.trigger.outputs.environment }}
+          commit-hash: ${{ needs.trigger.outputs.sha }}
+          deploy-id: ${{ needs.trigger.outputs.deployment_id }}
+          status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failed' || 'succeeded' }}
