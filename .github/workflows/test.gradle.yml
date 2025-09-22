@@ -53,3 +53,6 @@ jobs:
           cache-read-only: ${{ inputs.cache-read-only }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          # if exists
+          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
+          BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}

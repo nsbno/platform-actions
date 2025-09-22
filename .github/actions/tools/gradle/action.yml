@@ -9,6 +9,15 @@ inputs:
     required: true
     description: "Nexus login password."
 
+  BUILD_CACHE_USERNAME:
+    required: false
+    default: ""
+    description: "Optional Gradle build cache username."
+  BUILD_CACHE_PASSWORD:
+    required: false
+    default: ""
+    description: "Optional Gradle build cache password."
+
   gradle-operations:
     required: true
     description: "What gradle operations to execute."
@@ -67,5 +76,7 @@ runs:
         gradle-operations: ${{ inputs.gradle-operations }}
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
+        BUILD_CACHE_USERNAME: ${{ inputs.BUILD_CACHE_USERNAME }}
+        BUILD_CACHE_PASSWORD: ${{ inputs.BUILD_CACHE_PASSWORD }}
       run: |
         ./gradlew ${{ inputs.gradle-operations }}
