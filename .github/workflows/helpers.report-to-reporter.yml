@@ -14,7 +14,7 @@ on:
       reporter-topic-arn:
         description: "The Reporter SNS Topic ARN"
         default: "arn:aws:sns:eu-west-1:433462727137:receive_preview_deployment_notification"
-        required: true
+        required: false
         type: string
 
 permissions:
