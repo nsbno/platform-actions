@@ -56,3 +56,4 @@ jobs:
           # if exists
           BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
           BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
+          GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
