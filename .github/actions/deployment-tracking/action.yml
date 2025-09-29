@@ -37,18 +37,13 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Authenticate with AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-region: ${{ vars.AWS_REGION }}
-        role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ inputs.aws-role-name-to-assume }}
-
     - name: Send deployment tracking event
       shell: bash
       env:
         AWS_REGION: ${{ inputs.aws-region }}
         INPUT_SNS_TOPIC_ARN: ${{ inputs.sns-topic-arn }}
       run: |
+        # Set default SNS topic ARN if not provided
         if [[ -z "$INPUT_SNS_TOPIC_ARN" ]]; then
           SNS_TOPIC_ARN="arn:aws:sns:eu-west-1:433462727137:receive_branch_deployment_notification"
         else
