@@ -1,0 +1,123 @@
+name: helpers.deployment-tracking.yml
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: "Deployment status: started|succeeded|failed"
+        required: true
+        type: string
+
+      tracking-type:
+        description: "Type of tracking: dora|reporter|branch"
+        required: true
+        type: string
+
+      environment:
+        description: "Deployment environment (optional override)"
+        required: false
+        type: string
+        default: ""
+
+      aws-role-name-to-assume:
+        description: "AWS role name to assume"
+        required: false
+        type: string
+        default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+
+permissions:
+  id-token: write
+
+jobs:
+  send-tracking:
+    name: Send Deployment Tracking
+    environment: 'Service'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ inputs.aws-role-name-to-assume }}
+
+      - name: Send tracking event
+        shell: bash
+        env:
+          GIT_REPO: ${{ github.event.repository.name }}
+          COMMIT_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          STATUS: ${{ inputs.status }}
+          TRACKING_TYPE: ${{ inputs.tracking-type }}
+        run: |
+          # Auto-detect values
+          timestamp=$(date +%s)
+          deploy_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+
+          # Determine SNS topic based on tracking type
+          case "${TRACKING_TYPE}" in
+            "dora")
+              SNS_TOPIC="${{ vars.DORA_METRICS_SNS_TOPIC_ARN }}"
+              ;;
+            "reporter")
+              SNS_TOPIC="arn:aws:sns:eu-west-1:433462727137:receive_preview_deployment_notification"
+              ;;
+            "branch")
+              SNS_TOPIC="arn:aws:sns:eu-west-1:433462727137:receive_branch_deployment_notification"
+              ;;
+            *)
+              echo "Error: Unknown tracking type: ${TRACKING_TYPE}"
+              exit 1
+              ;;
+          esac
+
+          # Build message based on tracking type
+          if [[ "${TRACKING_TYPE}" == "branch" ]]; then
+            # Branch deployment format (different structure)
+            message=$(cat << EOF
+          {
+            "time": ${timestamp},
+            "repository": "nsbno/${GIT_REPO}",
+            "branch": "${BRANCH}",
+            "environment": "${ENVIRONMENT}",
+            "commit_hash": "${COMMIT_HASH}",
+            "deploy_id": "${deploy_id}",
+            "status": "${STATUS}",
+            "provider": "github"
+          }
+          EOF
+            )
+          else
+            # DORA/Reporter format (standard format)
+            message=$(cat << EOF
+          {
+            "time": ${timestamp},
+            "account_id": "${aws_account_id}",
+            "git_repo": "${GIT_REPO}",
+            "pipeline": "${GIT_REPO}",
+            "status": "${STATUS}",
+            "commit_hash": "${COMMIT_HASH}",
+            "commit_message": "${COMMIT_MESSAGE}",
+            "branch": "${BRANCH}",
+            "deploy_id": "${deploy_id}",
+            "provider": "github"
+          }
+          EOF
+            )
+          fi
+
+          echo "::group::Deployment Tracking Event"
+          echo "Tracking Type: ${TRACKING_TYPE}"
+          echo "Status: ${STATUS}"
+          echo "SNS Topic: ${SNS_TOPIC}"
+          echo "Message:"
+          echo "${message}" | jq .
+          echo "::endgroup::"
+
+          # Send to SNS
+          aws sns publish \
+            --topic-arn "${SNS_TOPIC}" \
+            --message "${message}"
+
+          echo "✅ ${TRACKING_TYPE} tracking event sent successfully"

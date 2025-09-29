@@ -48,11 +48,12 @@ on:
 run-name: Deploy Environments
 
 jobs:
-  send-dora-metric-started:
+  send-tracking-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@main
     with:
       status: started
+      tracking-type: dora
       aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
 
   get-environments:
@@ -227,9 +228,9 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       lambda-file-extension: ${{ inputs.lambda-file-extension }}
 
-  send-dora-metric-finished:
+  send-tracking-finished:
     name: Send finsihed metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.report-dora-metric.yml@main
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@main
     needs:
       - service-terraform
       - test-terraform
@@ -241,4 +242,5 @@ jobs:
     if: always()
     with:
       status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}
+      tracking-type: dora
       aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
