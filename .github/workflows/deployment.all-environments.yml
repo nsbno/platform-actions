@@ -48,14 +48,6 @@ on:
 run-name: Deploy Environments
 
 jobs:
-  send-tracking-started:
-    name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@main
-    with:
-      status: started
-      tracking-type: dora
-      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
-
   get-environments:
     name: Find Relevant GH Environments
     runs-on: ubuntu-latest
@@ -65,6 +57,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@main
+        with:
+          status: started
+          tracking-type: dora
+          aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
         id: envs
         with:
