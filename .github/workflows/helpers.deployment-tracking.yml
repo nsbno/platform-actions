@@ -74,37 +74,43 @@ jobs:
 
           # Build message based on tracking type
           if [[ "${TRACKING_TYPE}" == "branch" ]]; then
-            # Branch deployment format (different structure)
-            message=$(cat << EOF
-          {
-            "time": ${timestamp},
-            "repository": "nsbno/${GIT_REPO}",
-            "branch": "${BRANCH}",
-            "environment": "${ENVIRONMENT}",
-            "commit_hash": "${COMMIT_HASH}",
-            "deploy_id": "${deploy_id}",
-            "status": "${STATUS}",
-            "provider": "github"
-          }
-          EOF
-            )
+            # Branch format (no commit_message)
+            message=$(jq -n \
+              --argjson time "${timestamp}" \
+              --arg repository "nsbno/${GIT_REPO}" \
+              --arg branch "${BRANCH}" \
+              --arg environment "${ENVIRONMENT}" \
+              --arg commit_hash "${COMMIT_HASH}" \
+              --arg deploy_id "${deploy_id}" \
+              --arg status "${STATUS}" \
+              --arg provider "github" \
+              '{time: $time, repository: $repository, branch: $branch, environment: $environment, commit_hash: $commit_hash, deploy_id: $deploy_id, status: $status, provider: $provider}')
+          elif [[ "${TRACKING_TYPE}" == "dora" ]]; then
+            # DORA format (includes commit_message)
+            message=$(jq -n \
+              --argjson time "${timestamp}" \
+              --arg account_id "${aws_account_id}" \
+              --arg git_repo "${GIT_REPO}" \
+              --arg pipeline "${GIT_REPO}" \
+              --arg status "${STATUS}" \
+              --arg commit_hash "${COMMIT_HASH}" \
+              --arg commit_message "${COMMIT_MESSAGE}" \
+              --arg deploy_id "${deploy_id}" \
+              --arg provider "github" \
+              '{time: $time, account_id: $account_id, git_repo: $git_repo, pipeline: $pipeline, status: $status, commit_hash: $commit_hash, commit_message: $commit_message, deploy_id: $deploy_id, provider: $provider}')
           else
-            # DORA/Reporter format (standard format)
-            message=$(cat << EOF
-          {
-            "time": ${timestamp},
-            "account_id": "${aws_account_id}",
-            "git_repo": "${GIT_REPO}",
-            "pipeline": "${GIT_REPO}",
-            "status": "${STATUS}",
-            "commit_hash": "${COMMIT_HASH}",
-            "commit_message": "${COMMIT_MESSAGE}",
-            "branch": "${BRANCH}",
-            "deploy_id": "${deploy_id}",
-            "provider": "github"
-          }
-          EOF
-            )
+            # Reporter format (no commit_message, but includes branch)
+            message=$(jq -n \
+              --argjson time "${timestamp}" \
+              --arg account_id "${aws_account_id}" \
+              --arg git_repo "${GIT_REPO}" \
+              --arg pipeline "${GIT_REPO}" \
+              --arg status "${STATUS}" \
+              --arg commit_hash "${COMMIT_HASH}" \
+              --arg branch "${BRANCH}" \
+              --arg deploy_id "${deploy_id}" \
+              --arg provider "github" \
+              '{time: $time, account_id: $account_id, git_repo: $git_repo, pipeline: $pipeline, status: $status, commit_hash: $commit_hash, branch: $branch, deploy_id: $deploy_id, provider: $provider}')
           fi
 
           echo "::group::Deployment Tracking Event"
