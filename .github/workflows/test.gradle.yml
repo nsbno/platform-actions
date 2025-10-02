@@ -23,7 +23,7 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "test"
+        default: "test --build-cache"
         description: "Gradle operations to run."
       working-directory:
         required: false
