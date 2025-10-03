@@ -26,9 +26,6 @@ runs:
           exit 1
         fi
 
-        environments=$(echo "$environments" | jq 'map(select(test("^preview$"; "i") | not))')
-        echo "environments=$environments"
-
         if [ "${{ inputs.skip-service-environment }}" = "true" ]; then
           # Filter out the "service" case insensitive environment if it exists
           environments=$(echo "$environments" | jq 'map(select(test("^service$"; "i") | not))')
