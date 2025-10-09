@@ -30,11 +30,19 @@ jobs:
       git_sha: ${{ steps.get-sha.outputs.sha }}
       issue_number: ${{ steps.ids.outputs.issue_number }}
       comment_id: ${{ steps.ids.outputs.comment_id }}
+      environment: ${{ steps.ids.outputs.environment || '' }}
     steps:
       - id: ids
         run: |
           echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
+
+          ENVIRONMENT=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+          if [ -z "$ENVIRONMENT" ]; then
+            echo "No environment specified in the comment. Running plan for all environments."
+            exit 0
+          fi
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
 
       - name: Determine PR SHA
         id: get-sha
@@ -71,6 +79,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       skip-service-environment: ${{ inputs.skip-service-environment }}
       git-sha: ${{ needs.trigger.outputs.git_sha }}
+      environment: ${{ needs.trigger.outputs.environment || '' }}
 
   reaction-handling:
     name: Remove eyes, React rocket
