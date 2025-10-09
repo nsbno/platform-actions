@@ -42,6 +42,19 @@ jobs:
             echo "No environment specified in the comment. Running plan for all environments."
             exit 0
           fi
+  
+          # Map environment names to match GitHub environment names if needed
+          if [ "$ENVIRONMENT" = "dev" ]; then
+              ENVIRONMENT="Development"
+          elif [ "$ENVIRONMENT" = "test" ]; then
+              ENVIRONMENT="Test"
+          elif [ "$ENVIRONMENT" = "stage" ]; then
+              ENVIRONMENT="Stage"
+          elif [ "$ENVIRONMENT" = "service" ]; then
+              ENVIRONMENT="Service"
+          elif [ "$ENVIRONMENT" = "prod" || "$ENVIRONMENT" = "production" ]; then
+              ENVIRONMENT="Production"
+          fi
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
 
       - name: Determine PR SHA
