@@ -35,6 +35,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-static-files-deployment:
+        description: Skip deployment of static files to S3 (if applicable). Used if application is built in Dockerfile.
+        type: boolean
+        default: false
+        required: false
       aws-role-name-to-assume:
         description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
         required: false
@@ -138,6 +143,7 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       lambda-file-extension: ${{ inputs.lambda-file-extension }}
+      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -182,6 +188,7 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       lambda-file-extension: ${{ inputs.lambda-file-extension }}
+      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   production-terraform:
     name: Prod - Terraform
@@ -227,6 +234,7 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       lambda-file-extension: ${{ inputs.lambda-file-extension }}
+      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   send-tracking-finished:
     name: Send finsihed metric to DORA service
