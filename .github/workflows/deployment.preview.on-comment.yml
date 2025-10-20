@@ -35,7 +35,7 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v1
     with:
       service-name: ${{ inputs.service-name }}
       git-event-number: ${{ github.event.issue.number }}
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@main
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v1
         with:
           is-preview: true
           environment: Test

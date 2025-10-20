@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
@@ -72,7 +72,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@main
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v1
         id: changed-files
         with:
           environment: ${{ matrix.environment }}
