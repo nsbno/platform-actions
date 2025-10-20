@@ -34,6 +34,11 @@ on:
         type: string
         description: "Environment to deploy to."
         default: 'Test'
+      s3-static-files-path:
+        required: false
+        type: string
+        description: "Path in S3 bucket to upload static files to."
+        default: "static"
 
 name: Upload Frontend Static Files to S3. For Pull Requests.
 
@@ -67,3 +72,4 @@ jobs:
           git-sha: ${{ inputs.git-sha }}
           artifact-name: ${{ inputs.artifact-name }}
           artifact-path: ${{ inputs.artifact-path }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}
