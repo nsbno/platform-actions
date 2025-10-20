@@ -80,8 +80,6 @@ jobs:
           body: |
             ### Terraform plan initiated
             
-            🔗 [Follow the plan here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            
             Commit: [${{ steps.get-sha.outputs.sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.issue.number }}/commits/${{ steps.get-sha.outputs.sha }})
             
             _If you see a 🚀 on your comment and no Terraform Plan output, it means no changes were detected._
