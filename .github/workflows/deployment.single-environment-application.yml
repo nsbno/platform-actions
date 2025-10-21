@@ -69,6 +69,14 @@ jobs:
         with:
           application-name: ${{ inputs.application-name }}
 
+      # Make sure ECS services are upgraded to use Capacity Provider Strategy, to avoid task recreation
+      - name: Upgrade ECS to Capacity Provider Strategy if applicable
+        if: steps.deployment-info.outputs.compute-target == 'ecs'
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs-upgrade-capacity-provider@main
+        with:
+          ecs-cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
+          ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
+
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
