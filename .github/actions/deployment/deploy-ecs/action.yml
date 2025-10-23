@@ -40,9 +40,19 @@ runs:
         jq --arg version "${{ inputs.sha-version }}" '
           .containerDefinitions |= map(
             if (.logConfiguration.logDriver? // "") == "awsfirelens" then
-              # Get existing tags or empty string, append new tag, remove leading comma
-              .logConfiguration.options.dd_tags =
-                ((.logConfiguration.options.dd_tags // "") + ",version:\($version)") | ltrimstr(",")
+              # Split tags, filter out existing version: tags, add new version, rejoin
+              .logConfiguration.options.dd_tags = (
+                if (.logConfiguration.options.dd_tags // "") == "" then
+                  # No existing tags - set version directly
+                  "version:\($version)"
+                else
+                  # Has existing tags - filter and append
+                  [
+                    (.logConfiguration.options.dd_tags | split(",") | map(select(startswith("version:") | not)) | .[]),
+                    "version:\($version)"
+                  ] | join(",")
+                end
+              )
             else
               .
             end
