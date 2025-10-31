@@ -63,12 +63,11 @@ runs:
         done
 
     - name: Validate compute target exists
-      # Supported application deployments should have a compute_target defined as a SSM parameter set in Terraform
+      # Supported application deployments should have a compute_target defined as an SSM parameter set in Terraform
       if: ${{ steps.params.outputs.compute_target == '' }}
       shell: bash
       run: |
-          echo "::warning::Error: application '${{ inputs.application-name }}' does not exist." 
-          echo "Check if the application name is correct in your GitHub Workflows."
+          echo "::error::Application name '${{ inputs.application-name }}' does not exist. Verify 'applications' parameter in your GHA Workflows."
           exit 1
 
     - name: Get central deployment account ID
