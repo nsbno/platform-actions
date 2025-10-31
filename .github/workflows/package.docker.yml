@@ -75,14 +75,9 @@ jobs:
       - name: Validate ECR Repository Exists
         shell: bash
         run: |
-          ECR_REPO=$(aws ecr describe-repositories \
+          aws ecr describe-repositories \
             --query 'repositories[].repositoryName' \
             --repository-names "${{inputs.repo-name || inputs.ecr-repo-name }}"
-          )
-          if [ -z "$ECR_REPO" ]; then
-              echo "ECR repository ${{inputs.repo-name || inputs.ecr-repo-name }} does not exist in AWS ECR."
-              echo "::debug::Verify your ECR repository name in your service account before pushing images."
-          fi
 
       - name: Login to Amazon ECR
         id: login-ecr
