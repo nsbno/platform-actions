@@ -65,17 +65,9 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@validation
         with:
           application-name: ${{ inputs.application-name }}
-
-      - name: Validate Deployment Information
-        uses: nsbno/platform-actions/.github/actions/deployment/validate-application-deployment-info@validation
-        with:
-          compute-target: ${{ steps.deployment-info.outputs.compute-target }}
-          ecs-cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
-          ecs-service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
-          lambda-function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website

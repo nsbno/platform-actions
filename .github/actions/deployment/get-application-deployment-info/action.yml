@@ -9,12 +9,6 @@ outputs:
   compute-target:
     description: What kind of compute we are targeting (ECS or Lambda)
     value: ${{ steps.params.outputs.compute_target }}
-  codedeploy-deployment-group:
-    description: The CodeDeploy Deployment Group
-    value: ${{ steps.params.outputs.codedeploy_deployment_group }}
-  codedeploy-application-name:
-    description: The CodeDeploy Applicaion Name
-    value: ${{ steps.params.outputs.codedeploy_application_name }}
   ecs-cluster-name:
     description: The ECS Cluster Name
     value: ${{ steps.params.outputs.ecs_cluster_name }}
@@ -67,6 +61,15 @@ runs:
           echo "VALUE=$VALUE"
           echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
         done
+
+    - name: Validate compute target exists
+      # Supported application deployments should have a compute_target defined as a SSM parameter set in Terraform
+      if: ${{ steps.params.outputs.compute_target == '' }}
+      shell: bash
+      run: |
+          echo "::warning::Error: application '${{ inputs.application-name }}' does not exist." 
+          echo "Check if the application name is correct in your GitHub Workflows."
+          exit 1
 
     - name: Get central deployment account ID
       id: central-account
