@@ -65,7 +65,7 @@ jobs:
             exit 1
           fi
 
-      - uses: nsbno/platform-actions/.github/actions/tools/npm@v1
+      - uses: nsbno/platform-actions/.github/actions/tools/npm@validation
         if: ${{ inputs.package-manager == 'npm' }}
         name: npm Build
         with:
@@ -76,7 +76,7 @@ jobs:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           git-sha: ${{ inputs.git-sha }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@v1
+      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@validation
         if: ${{ inputs.package-manager == 'pnpm' }}
         name: pnpm Build
         with:

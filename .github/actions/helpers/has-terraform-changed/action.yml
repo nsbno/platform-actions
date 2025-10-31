@@ -41,12 +41,12 @@ runs:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: "arn:aws:iam::${{ inputs.aws-account-id }}:role/${{ inputs.deployment-role }}"
 
-    - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@v1
+    - uses: nsbno/platform-actions/.github/actions/helpers/environment-mapping@validation
       id: env-mapping
       with:
         environment: ${{ inputs.environment }}
 
-    - uses: nsbno/platform-actions/.github/actions/tools/terraform@v1
+    - uses: nsbno/platform-actions/.github/actions/tools/terraform@validation
       id: terraform
       with:
         env-mapping-directory: ${{ steps.env-mapping.outputs.directory }}
