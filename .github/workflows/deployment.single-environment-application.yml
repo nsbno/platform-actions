@@ -65,7 +65,7 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
           application-name: ${{ inputs.application-name }}
 
@@ -80,14 +80,14 @@ jobs:
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v1
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute-target == 'ecs'
-        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@v1
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
@@ -99,7 +99,7 @@ jobs:
 
       - name: Deploy Lambda (ECR Image)
         if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-ecr-image-base != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-image@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-image@v1
         with:
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
@@ -107,7 +107,7 @@ jobs:
 
       - name: Deploy Lambda (S3 Zip/jar)
         if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-s3-bucket != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@v1
         with:
           function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
           lambda-s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
@@ -116,7 +116,7 @@ jobs:
 
       - name: Put Application Deployment Version
         id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@v1
         with:
           application-name: ${{ inputs.application-name }}
           sha-to-deploy: ${{ inputs.sha-to-deploy }}

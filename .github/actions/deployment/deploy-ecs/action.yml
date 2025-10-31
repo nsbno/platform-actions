@@ -28,7 +28,7 @@ runs:
   steps:
     - name: Create Amazon ECS task definition
       id: render
-      uses: aws-actions/amazon-ecs-render-task-definition@validation
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         container-name: ${{ inputs.ecs-container-name }}
         task-definition-family: ${{ inputs.ecs-service-name }}

@@ -18,7 +18,7 @@ runs:
   using: composite
   steps:
     - name: Update Datadog Environment Tags if enabled
-      uses: nsbno/platform-actions/.github/actions/deployment/lambda/update-datadog-tags@validation
+      uses: nsbno/platform-actions/.github/actions/deployment/lambda/update-datadog-tags@v1
       with:
         function-name: ${{ inputs.function-name }}
         aws-region: ${{ inputs.aws-region }}

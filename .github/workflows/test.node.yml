@@ -56,7 +56,7 @@ jobs:
             exit 1
           fi
 
-      - uses: nsbno/platform-actions/.github/actions/tools/npm@validation
+      - uses: nsbno/platform-actions/.github/actions/tools/npm@v1
         if: ${{ inputs.package-manager == 'npm' }}
         name: npm test
         with:
@@ -66,7 +66,7 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@validation
+      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@v1
         if: ${{ inputs.package-manager == 'pnpm' }}
         name: pnpm test
         with:

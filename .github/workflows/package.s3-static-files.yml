@@ -60,13 +60,13 @@ jobs:
       # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
           application-name: ${{ inputs.service-name }}
 
       - name: Upload Static Files/Web Build to S3
         if: steps.deployment-info.outputs.static-files-bucket-name != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v1
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: ${{ inputs.git-sha }}
