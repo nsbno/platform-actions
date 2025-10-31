@@ -65,7 +65,7 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@validation
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
           application-name: ${{ inputs.application-name }}
 
