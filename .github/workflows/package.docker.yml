@@ -72,6 +72,18 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ inputs.aws-role-name-to-assume }}
 
+      - name: Validate ECR Repository Exists
+        shell: bash
+        run: |
+          ECR_REPO=$(aws ecr describe-repositories \
+            --query 'repositories[].repositoryName' \
+            --repository-names "${{inputs.repo-name || inputs.ecr-repo-name }}"
+          )
+          if [ -z "$ECR_REPO" ]; then
+              echo "ECR repository ${{inputs.repo-name || inputs.ecr-repo-name }} does not exist in AWS ECR."
+              echo "::debug::Verify your ECR repository name in your service account before pushing images."
+          fi
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
