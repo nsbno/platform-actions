@@ -15,7 +15,7 @@ on:
       terraform-changes:
         type: string
         required: false
-        default: '[Service, Test, Stage, Production]' # Assume all environments have changes if not specified
+        default: '["Service","Test","Stage","Production"]' # Assume all environments have changes if not specified
       working-directory:
         description: "Directory containing the project files"
         required: false
