@@ -55,7 +55,7 @@ run-name: Deploy Environments
 jobs:
   send-tracking-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@lambda-deploy
     with:
       status: started
       tracking-type: dora
@@ -83,7 +83,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@lambda-deploy
     needs: get-environments
     if: |
       always()
@@ -99,10 +99,11 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@lambda-deploy
     needs:
       - service-terraform
       - get-environments
@@ -120,10 +121,11 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@lambda-deploy
     needs:
       - test-terraform
       - get-environments
@@ -147,7 +149,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@lambda-deploy
     needs:
       - service-terraform
       - get-environments
@@ -165,10 +167,11 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   stage-application:
     name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@lambda-deploy
     needs:
       - stage-terraform
       - get-environments
@@ -192,7 +195,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@lambda-deploy
     needs:
       - stage-application
       - stage-terraform
@@ -212,10 +215,11 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
 
   production-application:
     name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@lambda-deploy
     needs:
       - production-terraform
       - get-environments
@@ -238,7 +242,7 @@ jobs:
 
   send-tracking-finished:
     name: Send finsihed metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@lambda-deploy
     needs:
       - service-terraform
       - test-terraform

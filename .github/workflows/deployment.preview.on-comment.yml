@@ -35,7 +35,7 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@lambda-deploy
     with:
       service-name: ${{ inputs.service-name }}
       git-event-number: ${{ github.event.issue.number }}

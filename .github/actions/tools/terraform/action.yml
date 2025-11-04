@@ -113,6 +113,8 @@ runs:
       working-directory: ${{ steps.tf-dir.outputs.dir }}
       id: terraform
       shell: bash
+      env:
+        TF_VAR_deployment_sha: ${{ inputs.git-sha }}
       run: terraform ${{ inputs.terraform-command }} ${{ inputs.terraform-options }}
 
     # Workaround for releasing lock if cancelling a Terraform job
