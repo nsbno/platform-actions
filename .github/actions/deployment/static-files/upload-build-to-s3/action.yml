@@ -20,6 +20,10 @@ inputs:
     description: "Path in S3 bucket to upload static files to."
     required: false
     default: "static"
+  cache-control-config:
+    description: "Path to cache-control config file (relative to repository root)"
+    required: false
+    default: ".static-files-cache.yml"
 
 runs:
   using: composite
@@ -28,9 +32,17 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
 
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        python3 -m pip install -q boto3 PyYAML
+
     - name: Upload build files to S3
       shell: bash
       id: upload
       run: |
-          aws s3 cp --recursive ${{ inputs.artifact-path }} s3://${{ inputs.s3-bucket-name }}/${{ inputs.s3-static-files-path }}/${{ inputs.git-sha }}
-          aws s3 cp ${{ inputs.artifact-path }}/favicon.ico s3://${{ inputs.s3-bucket-name }} || true
+          python3 ${{ github.action_path }}/upload.py \
+            "${{ inputs.artifact-path }}" \
+            "${{ inputs.s3-bucket-name }}" \
+            "${{ inputs.s3-static-files-path }}/${{ inputs.git-sha }}" \
+            "${{ inputs.cache-control-config }}"
