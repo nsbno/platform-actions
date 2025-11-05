@@ -83,7 +83,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@s3-testing
     needs: get-environments
     if: |
       always()
@@ -102,7 +102,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@s3-testing
     needs:
       - service-terraform
       - get-environments
@@ -123,7 +123,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@s3-testing
     needs:
       - test-terraform
       - get-environments
@@ -147,7 +147,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@s3-testing
     needs:
       - service-terraform
       - get-environments
@@ -192,7 +192,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@s3-testing
     needs:
       - stage-application
       - stage-terraform
@@ -215,7 +215,7 @@ jobs:
 
   production-application:
     name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@s3-testing
     needs:
       - production-terraform
       - get-environments
