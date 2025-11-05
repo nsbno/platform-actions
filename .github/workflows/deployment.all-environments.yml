@@ -215,7 +215,7 @@ jobs:
 
   production-application:
     name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - production-terraform
       - get-environments
