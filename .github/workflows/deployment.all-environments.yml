@@ -102,7 +102,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - service-terraform
       - get-environments
@@ -123,7 +123,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - test-terraform
       - get-environments
@@ -147,7 +147,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - service-terraform
       - get-environments
@@ -168,7 +168,7 @@ jobs:
 
   stage-application:
     name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
     needs:
       - stage-terraform
       - get-environments
@@ -192,7 +192,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@main
     needs:
       - stage-application
       - stage-terraform
