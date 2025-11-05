@@ -168,7 +168,7 @@ jobs:
 
   stage-application:
     name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@main
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@s3-testing
     needs:
       - stage-terraform
       - get-environments
