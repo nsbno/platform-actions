@@ -94,4 +94,21 @@ def test_upload_workflow(temp_workspace):
     assert js_obj["CacheControl"] == "max-age=3600"
     print("✓ app.js has default cache-control header")
 
+    # Verify Content-Type headers
+    assert index_obj["ContentType"] == "text/html"
+    print("✓ index.html has correct Content-Type")
+
+    assert js_obj["ContentType"] == "text/javascript"
+    print("✓ app.js has correct Content-Type")
+
+    css_obj = s3_client.head_object(
+        Bucket="test-bucket", Key="static/abc123/assets/style.css"
+    )
+    assert css_obj["ContentType"] == "text/css"
+    print("✓ style.css has correct Content-Type")
+
+    favicon_obj = s3_client.head_object(Bucket="test-bucket", Key="favicon.ico")
+    assert favicon_obj["ContentType"] == "image/x-icon"
+    print("✓ favicon.ico has correct Content-Type")
+
     print("\n✅ All smoke tests passed!")

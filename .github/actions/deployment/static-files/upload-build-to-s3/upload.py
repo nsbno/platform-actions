@@ -3,6 +3,7 @@
 
 import sys
 import asyncio
+import mimetypes
 from pathlib import Path
 import yaml
 import boto3
@@ -25,7 +26,7 @@ def collect_files(artifact_path, s3_bucket, s3_path, default_cache, overrides):
     """
     Collect all files to upload with their S3 destinations and cache-control.
 
-    Returns a list of dicts with keys: local_path, s3_bucket, s3_key, cache_control
+    Returns a list of dicts with keys: local_path, s3_bucket, s3_key, cache_control, content_type
     """
     files_to_upload = []
 
@@ -37,6 +38,7 @@ def collect_files(artifact_path, s3_bucket, s3_path, default_cache, overrides):
         relative = str(file_path.relative_to(artifact_path)).replace("\\", "/")
         s3_key = f"{s3_path}/{relative}"
         cache_control = overrides.get(relative, default_cache)
+        content_type, _ = mimetypes.guess_type(str(file_path))
 
         files_to_upload.append(
             {
@@ -44,18 +46,21 @@ def collect_files(artifact_path, s3_bucket, s3_path, default_cache, overrides):
                 "s3_bucket": s3_bucket,
                 "s3_key": s3_key,
                 "cache_control": cache_control,
+                "content_type": content_type,
             }
         )
 
     # Add favicon to bucket root if exists
     favicon = artifact_path / "favicon.ico"
     if favicon.exists():
+        content_type, _ = mimetypes.guess_type(str(favicon))
         files_to_upload.append(
             {
                 "local_path": favicon,
                 "s3_bucket": s3_bucket,
                 "s3_key": "favicon.ico",
                 "cache_control": default_cache,
+                "content_type": content_type,
             }
         )
 
@@ -65,6 +70,10 @@ def collect_files(artifact_path, s3_bucket, s3_path, default_cache, overrides):
 async def upload_file(file_info, s3_client):
     """Upload a single file to S3 asynchronously."""
     extra_args = {}
+
+    if file_info["content_type"]:
+        extra_args["ContentType"] = file_info["content_type"]
+
     if file_info["cache_control"]:
         extra_args["CacheControl"] = file_info["cache_control"]
 
