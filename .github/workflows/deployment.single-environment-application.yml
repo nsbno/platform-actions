@@ -69,7 +69,7 @@ jobs:
         with:
           application-name: ${{ inputs.application-name }}
 
-      # Needs to be available before the frontend server deploys
+      # Needs to be avalable before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@s3-testing
