@@ -1,9 +1,9 @@
-name: Deploy to single environment
+name: Deploy ECS Service/SSR Service
 
 on:
   workflow_call:
     inputs:
-      application-name:
+      ecs-service-name:
         description: Name of the application to deploy
         type: string
         required: true
@@ -25,10 +25,6 @@ on:
         type: boolean
         required: false
         default: false
-      lambda-file-extension:
-        description: File extension for Lambda deployment package (zip or jar)
-        type: string
-        required: false
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -37,12 +33,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy-${{ inputs.application-name }}
+  group: ${{ inputs.environment }}-deploy-${{ inputs.ecs-service-name }}
   cancel-in-progress: true
 
 jobs:
   deploy-applications:
-    name: ${{ inputs.application-name }} (${{ inputs.environment }})
+    name: ${{ inputs.ecs-service-name }} (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |
@@ -67,7 +63,7 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
-          application-name: ${{ inputs.application-name }}
+          ecs-service-name: ${{ inputs.ecs-service-name }}
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
@@ -89,26 +85,9 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           sha-version: ${{ inputs.sha-to-deploy }}
 
-      - name: Deploy Lambda (ECR Image)
-        if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-ecr-image-base != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-image@v1
-        with:
-          function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Deploy Lambda (S3 Zip/jar)
-        if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-s3-bucket != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@v1
-        with:
-          function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          lambda-s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
-          aws-region: ${{ vars.AWS_REGION }}
-          file-extension: ${{ inputs.lambda-file-extension }}
-
       - name: Put Application Deployment Version
         id: deployment-version
         uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@v1
         with:
-          application-name: ${{ inputs.application-name }}
+          ecs-service-name: ${{ inputs.ecs-service-name }}
           sha-to-deploy: ${{ inputs.sha-to-deploy }}

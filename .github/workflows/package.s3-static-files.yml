@@ -62,7 +62,7 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
-          application-name: ${{ inputs.service-name }}
+          ecs-service-name: ${{ inputs.service-name }}
 
       - name: Upload Static Files/Web Build to S3
         if: steps.deployment-info.outputs.static-files-bucket-name != ''

@@ -1,8 +1,8 @@
-name: Deploy to single environment (Terraform + App)
+name: Deploy to single environment (Terraform + Service)
 on:
   workflow_call:
     inputs:
-      application-name:
+      ecs-service-name:
         description: The name of the application to deploy.
         type: string
         required: true
@@ -52,5 +52,5 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       deploy-application: true
-      application-name: ${{ inputs.application-name }}
+      ecs-service-name: ${{ inputs.ecs-service-name }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}

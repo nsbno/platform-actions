@@ -2,7 +2,7 @@ name: deployment.branch-deploy-test.yml
 on:
   workflow_call:
     inputs:
-      applications:
+      ecs-service-name:
         description: The name of the application in your Terraform configuration. Comma-separated.
         type: string
         required: false
@@ -39,7 +39,6 @@ jobs:
       comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
       initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
       actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
-      application-names: ${{ steps.parse-app-names.outputs.apps_json }}
 
     steps:
       - uses: github/branch-deploy@c9fcc362bdcea69eecac6578dde245cd5e3a55bf  # 10.4.3
@@ -51,11 +50,6 @@ jobs:
           skip_reviews: 'Test' # skip reviews for test deployments
           draft_permitted_targets: Test # allow draft PRs to deploy to Test
           stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
-
-      - id: parse-app-names
-        run: |
-          APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
-          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   send-tracking-started:
     name: Track deployment started
@@ -96,13 +90,13 @@ jobs:
       always()
       && needs.trigger.outputs.continue == 'true'
       && !contains(needs.test-terraform.result, 'failure')
-      && inputs.applications
+      && inputs.ecs-service-name
       && !cancelled()
     strategy:
       matrix:
-        application-name: ${{ fromJSON(needs.trigger.outputs.application-names) }}
+        ecs-service-name: ${{ inputs.ecs-service-name }}
     with:
-      application-name: ${{ matrix.application-name }}
+      ecs-service-name: ${{ matrix.ecs-service-name }}
       environment: Test
       deploy-application: true
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}

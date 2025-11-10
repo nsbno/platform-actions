@@ -89,7 +89,7 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
-          application-name: ${{ inputs.service-name }}
+          ecs-service-name: ${{ inputs.service-name }}
 
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}

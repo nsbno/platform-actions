@@ -2,7 +2,7 @@ name: Get Application Deployment Info
 description: Gets information about the deployable
 
 inputs:
-  application-name:
+  ecs-service-name:
     description: "The name of the application"
 
 outputs:
@@ -24,18 +24,6 @@ outputs:
   ecs-container-port:
     description: The container port to use
     value: ${{ steps.params.outputs.ecs_container_port }}
-  lambda-function-name:
-    description: The name of the Lambda function
-    value: ${{ steps.params.outputs.lambda_function_name }}
-  lambda-s3-bucket:
-    description: The S3 Bucket Name
-    value: ${{ steps.params.outputs.lambda_s3_bucket }}
-  lambda-s3-folder:
-    description: The folder within the S3 Bucket
-    value: ${{ steps.params.outputs.lambda_s3_folder }}
-  lambda-ecr-image-base:
-    description: The ECR Image URI for the Lambda function
-    value: ${{ steps.params.outputs.lambda_ecr_image_base }}
   static-files-bucket-name:
     description: The S3 Bucket Name for static files
     value: ${{ steps.params.outputs.static_files_bucket_name }}
@@ -53,7 +41,7 @@ runs:
       id: params
       shell: bash
       run: |
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.application-name }}/" --query "Parameters")
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.ecs-service-name }}/" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
           echo "NAME=$NAME"
@@ -67,7 +55,7 @@ runs:
       if: ${{ steps.params.outputs.compute_target == '' }}
       shell: bash
       run: |
-          echo "::error::Application name '${{ inputs.application-name }}' does not exist. Verify 'applications' parameter in your GHA Workflows."
+          echo "::error::ECS Service with name '${{ inputs.ecs-service-name }}' does not exist. Verify 'ecs-service-name' parameter in your GHA Workflows."
           exit 1
 
     - name: Get central deployment account ID

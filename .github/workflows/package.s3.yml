@@ -56,9 +56,9 @@ jobs:
         run: |
           if [ -d "./temp-artifact" ]; then
             cd ./temp-artifact
-            zip -r "../${{ inputs.application-name }}.zip" ./*
+            zip -r "../artifact.zip" ./*
           else
-            zip -r "${{ inputs.application-name }}.zip" ./*
+            zip -r "artifact.zip" ./*
           fi
 
       - name: Authenticate with AWS
@@ -73,7 +73,7 @@ jobs:
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           SERVICE_DIR: ${{ inputs.working-directory }}
           REPO_NAME: ${{ github.repository }}
-          ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', inputs.application-name) }}
+          ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', 'artifact') }}
         run: |
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
           if [ "$SERVICE_DIR" == "." ]; then

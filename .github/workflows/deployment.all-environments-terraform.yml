@@ -1,12 +1,8 @@
-name: Deploy All Environments (used for ECS Services)
+name: Deploy All Environments (only Terraform, e.g. Lambda deploys or -aws repos)
 
 on:
   workflow_call:
     inputs:
-      ecs-service-name:
-        description: The name of the ECS Service in your Terraform configuration.
-        type: string
-        required: false
       has-application-changes:
         description: All changes in application and infrastructure
         type: boolean
@@ -33,11 +29,6 @@ on:
         default: ${{ github.sha }} # Assume this workflow is only run in main branches
       skip-service-environment:
         description: Skip the service environment, if the repository does not deploy to the service environment.
-        type: boolean
-        default: false
-        required: false
-      skip-static-files-deployment:
-        description: Skip deployment of static files to S3 (if applicable). Used if application is built in Dockerfile.
         type: boolean
         default: false
         required: false
@@ -112,29 +103,6 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  test-application:
-    name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
-    needs:
-      - test-terraform
-      - get-environments
-    if: |
-      always()
-      && inputs.ecs-service-name
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && needs.test-terraform.result != 'failure'
-      && contains(needs.get-environments.outputs.environments, 'Test')
-    strategy:
-      matrix:
-        ecs-service-name: ${{ inputs.ecs-service-name }}
-    with:
-      ecs-service-name: ${{ matrix.ecs-service-name }}
-      environment: Test
-      deploy-application: ${{ inputs.has-application-changes }}
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
-
   stage-terraform:
     name: Stage - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
@@ -156,36 +124,11 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  stage-application:
-    name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
-    needs:
-      - stage-terraform
-      - get-environments
-    if: |
-      always()
-      && inputs.ecs-service-name
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && needs.stage-terraform.result != 'failure'
-      && contains(needs.get-environments.outputs.environments, 'Stage')
-    strategy:
-      matrix:
-        ecs-service-name: ${{ inputs.ecs-service-name }}
-    with:
-      ecs-service-name: ${{ matrix.ecs-service-name }}
-      environment: Stage
-      deploy-application: ${{ inputs.has-application-changes }}
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
-
   production-terraform:
     name: Prod - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
     needs:
-      - stage-application
       - stage-terraform
-      - test-application
       - test-terraform
     if: |
       always()
@@ -202,39 +145,14 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  production-application:
-    name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
-    needs:
-      - production-terraform
-      - get-environments
-    if: |
-      always()
-      && inputs.ecs-service-name
-      && !cancelled()
-      && !contains(needs.*.result, 'failure')
-      && contains(needs.get-environments.outputs.environments, 'Production')
-    strategy:
-      matrix:
-        ecs-service-name: ${{ inputs.ecs-service-name }}
-    with:
-      ecs-service-name: ${{ matrix.ecs-service-name }}
-      environment: Production
-      deploy-application: ${{ inputs.has-application-changes }}
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
-
   send-tracking-finished:
     name: Send finished metric to DORA service
     uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
     needs:
       - service-terraform
       - test-terraform
-      - test-application
       - stage-terraform
-      - stage-application
       - production-terraform
-      - production-application
     if: always()
     with:
       status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}
