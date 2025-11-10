@@ -71,6 +71,8 @@ jobs:
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
           if [ "$SERVICE_DIR" == "." ]; then
             SERVICE_DIR="base"
+          else
+            SERVICE_DIR="${SERVICE_DIR##*/}"
           fi
           PARAMETER_NAME="/__deployment__/${REPO_NAME_WITHOUT_OWNER}/${SERVICE_DIR}/lambda_version"
           

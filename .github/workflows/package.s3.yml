@@ -76,6 +76,8 @@ jobs:
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
           if [ "$SERVICE_DIR" == "." ]; then
             SERVICE_DIR="base"
+          else 
+            SERVICE_DIR="${SERVICE_DIR##*/}"
           fi
 
           aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
