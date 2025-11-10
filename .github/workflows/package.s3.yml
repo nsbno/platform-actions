@@ -1,11 +1,11 @@
 on:
   workflow_call:
     inputs:
-      application-name:
+      working-directory:
         required: false
         type: string
-        description: "Name of the S3 Folder to publish to."
-        default: ${{github.event.repository.name}}
+        description: "Directory containing the project files."
+        default: "."
       artifact-name:
         required: false
         type: string
@@ -71,10 +71,12 @@ jobs:
         env:
           S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          APPLICATION_NAME: ${{ inputs.application-name }}
           ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', inputs.application-name) }}
         run: |
-          BRANCH=$(echo $GITHUB_REF | cut -f3 -d/)
+          REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
+          if [ "$SERVICE_DIR" == "." ]; then
+            SERVICE_DIR="base"
+          fi
 
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$APPLICATION_NAME/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$BRANCH.zip" --metadata"tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
