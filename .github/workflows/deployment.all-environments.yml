@@ -14,7 +14,8 @@ on:
         default: true
       terraform-changes:
         type: string
-        required: true
+        required: false
+        default: '["Service", "Test", "Stage", "Production"]' # Assume all environments have changes if not specified
       working-directory:
         description: "Directory containing the project files"
         required: false
@@ -122,7 +123,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   test-application:
-    name: Test - Application
+    name: Test - ECS Service
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
     needs:
       - test-terraform
@@ -167,7 +168,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   stage-application:
-    name: Stage - Application
+    name: Stage - ECS Service
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
     needs:
       - stage-terraform
@@ -214,7 +215,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
 
   production-application:
-    name: Prod - Application
+    name: Prod - ECS Service
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
     needs:
       - production-terraform
@@ -237,7 +238,7 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   send-tracking-finished:
-    name: Send finsihed metric to DORA service
+    name: Send finished metric to DORA service
     uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
     needs:
       - service-terraform
