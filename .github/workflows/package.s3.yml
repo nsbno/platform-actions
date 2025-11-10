@@ -83,4 +83,8 @@ jobs:
           fi
 
           aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          if [ $BRANCH == "main" ] || [ $BRANCH == "master" ]; then
+            aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/main.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          else
+            aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$BRANCH.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          fi
