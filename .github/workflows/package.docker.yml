@@ -1,11 +1,6 @@
 on:
   workflow_call:
     inputs:
-      # TODO: ensure backwards compatibility. This should be replaced by `ecr-repo-name` in V2.
-      repo-name:
-        required: false
-        type: string
-        description: "Name of the ECR repository to publish to. To be deprecated, use ecr-repo-name instead"
       ecr-repo-name:
         required: false
         type: string
@@ -77,7 +72,7 @@ jobs:
         run: |
           aws ecr describe-repositories \
             --query 'repositories[].repositoryName' \
-            --repository-names "${{inputs.repo-name || inputs.ecr-repo-name }}"
+            --repository-names "${{inputs.ecr-repo-name }}"
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -95,8 +90,8 @@ jobs:
           file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name || inputs.ecr-repo-name }}:${{ github.event.pull_request.head.sha || github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.repo-name || inputs.ecr-repo-name }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repo-name }}:${{ github.event.pull_request.head.sha || github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repo-name }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # provenance and sbom are not supported for lambda images
