@@ -1,5 +1,4 @@
 name: Deploy only Terraform to single environment
-# We use this workflow so application deploy for service does not show up in the visualization graph in GH
 
 on:
   workflow_call:
