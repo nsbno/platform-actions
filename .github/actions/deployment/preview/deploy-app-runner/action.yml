@@ -76,8 +76,8 @@ runs:
           # Process each parameter
           ENV_VARS_JSON="{"
           FIRST=true
-        
-          for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
+
+          while IFS= read -r ROW; do
             # Extract last part of the path
             FULL_PATH=$(echo "$ROW" | jq -r '.Name')
             NAME=$(basename "$FULL_PATH")
@@ -104,8 +104,8 @@ runs:
             # Properly escape the value for JSON
             ESCAPED_VALUE=$(echo "$VALUE" | jq -R .)
             ENV_VARS_JSON="$ENV_VARS_JSON\"$NAME\":$ESCAPED_VALUE"
-          done
-        
+          done < <(echo "$PARAMS" | jq -c '.[]')
+
           ENV_VARS_JSON="$ENV_VARS_JSON}"
         fi
 
