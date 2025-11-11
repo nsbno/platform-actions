@@ -27,7 +27,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ inputs.aws-role-name-to-assume }}
       - name: Submit metric
-        uses: nsbno/platform-actions/.github/actions/helpers/dora-metrics@v1
+        uses: nsbno/platform-actions/.github/actions/helpers/dora-metrics@autodiscovery
         with:
           status: ${{ inputs.status }}
           topic_arn: ${{ vars.DORA_METRICS_SNS_TOPIC_ARN }}

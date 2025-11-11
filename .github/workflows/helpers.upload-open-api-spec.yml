@@ -5,7 +5,7 @@ on:
         type: string
         required: true
         description: "Path to your API spec"
-      application-name:
+      ecs-service-name:
         type: string
         required: true
         description: "Name of the service. Will be used as folder name in S3."
@@ -64,7 +64,7 @@ jobs:
         env:
           FILE_TO_UPLOAD: "converted.json"
           S3_BUCKET: "727646359971-api-portal-artifacts"
-          S3_FOLDER: ${{ inputs.application_name }}
+          S3_FOLDER: ${{ inputs.ecs-service-name }}
           S3_FILE_NAME: "openapi.json"
         run: |
             aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}"
@@ -75,7 +75,7 @@ jobs:
           SERVICE_ACCOUNT_ID: ${{ inputs.service_account_id }} # Used to determine ownership of the spec
           REGION: ${{ vars.AWS_REGION }}
           PERSIST_URL: ${{ inputs.persist_url }}
-          APPLICATION_NAME: ${{ inputs.application_name }}
+          APPLICATION_NAME: ${{ inputs.ecs-service-name }}
           SPEC_TYPE: "openapi"
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${SERVICE_NAME} in ${REGION} to ${PERSIST_URL}"

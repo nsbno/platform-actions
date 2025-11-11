@@ -2,11 +2,10 @@ name: Put Application Deployment Info
 description: Puts information about the version of the application being deployed
 
 inputs:
-  application-name:
+  ecs-service-name:
     description: "The name of the application"
   sha-to-deploy:
     description: "The SHA to deploy"
-    type: string
 
 runs:
   using: composite
@@ -15,4 +14,4 @@ runs:
       id: params
       shell: bash
       run: |
-        aws ssm put-parameter --name "/__platform__/versions/${{ inputs.application-name }}" --value "${{ inputs.sha-to-deploy }}" --type String --tier Standard --overwrite
+        aws ssm put-parameter --name "/__platform__/versions/${{ inputs.ecs-service-name }}" --value "${{ inputs.sha-to-deploy }}" --type String --tier Standard --overwrite
