@@ -38,7 +38,7 @@ concurrency:
   group: ${{ inputs.working-directory }}-${{ inputs.environment }}-terraform
 
 jobs:
-  deploy-terraform:
+  terraform-apply:
     runs-on: ubuntu-latest
     name: ${{ inputs.environment }} - Terraform
     environment: ${{ inputs.environment }}
