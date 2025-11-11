@@ -61,33 +61,13 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
 
-      - name: Update SSM Parameters before Terraform Apply for Lambda if exists
-        shell: bash
-        env:
-          SHA_TO_DEPLOY: ${{ inputs.sha-to-deploy }}
-          REPO_NAME: ${{ github.repository }}
-          SERVICE_DIR: ${{ inputs.working-directory }}
-        run: |
-          REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
-          if [ "$SERVICE_DIR" == "." ]; then
-            SERVICE_DIR="base"
-          else
-            SERVICE_DIR="${SERVICE_DIR##*/}"
-          fi
-          PARAMETER_NAME="/__deployment__/${REPO_NAME_WITHOUT_OWNER}/${SERVICE_DIR}/lambda_version"
-          
-          # Check if parameter exists and update it
-          if aws ssm get-parameter --name "$PARAMETER_NAME" --query 'Parameter.Value' --output text 2>/dev/null; then
-            echo "Parameter $PARAMETER_NAME exists, updating to $SHA_TO_DEPLOY"
-            aws ssm put-parameter \
-              --name "$PARAMETER_NAME" \
-              --value "$SHA_TO_DEPLOY" \
-              --type String \
-              --overwrite
-          echo "Updated SSM parameter"
-          else
-            echo "Parameter $PARAMETER_NAME does not exist yet, skipping update (Terraform will create it)"
-          fi
+      # This step will not do anything if nsbno/terraform-aws-lambda module is not used
+      - name: Conditional SSM Parameter Update for Lambda Version
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/bump-lambda-version@autodiscovery
+        with:
+          sha-to-deploy: ${{ inputs.sha-to-deploy }}
+          github-repo-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
 
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@v1
         name: Terraform Apply
