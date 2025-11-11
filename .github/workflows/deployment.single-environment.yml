@@ -30,7 +30,7 @@ on:
 jobs:
   deploy-terraform:
     name: Terraform Apply
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
     if: |
       always()
       && !cancelled()

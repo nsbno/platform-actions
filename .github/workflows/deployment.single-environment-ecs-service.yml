@@ -61,21 +61,21 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
         with:
           ecs-service-name: ${{ inputs.ecs-service-name }}
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.compute-target == 'ecs'
-        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@autodiscovery
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
@@ -87,7 +87,7 @@ jobs:
 
       - name: Put Application Deployment Version
         id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@autodiscovery
         with:
           ecs-service-name: ${{ inputs.ecs-service-name }}
           sha-to-deploy: ${{ inputs.sha-to-deploy }}

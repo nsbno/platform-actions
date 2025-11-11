@@ -52,7 +52,7 @@ run-name: Deploy Environments
 jobs:
   send-tracking-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
     with:
       status: started
       tracking-type: dora
@@ -66,7 +66,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@autodiscovery
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
@@ -226,7 +226,7 @@ jobs:
 
   send-tracking-finished:
     name: Send finished metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
     needs:
       - service-terraform
       - test-terraform

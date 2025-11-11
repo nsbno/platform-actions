@@ -53,7 +53,7 @@ jobs:
 
   send-tracking-started:
     name: Track deployment started
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
     needs: trigger
     if: needs.trigger.outputs.continue == 'true'
     with:
@@ -63,7 +63,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
     needs: trigger
     if: |
       always()
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@autodiscovery
         with:
           is-preview: false
           environment: Test
@@ -125,7 +125,7 @@ jobs:
 
   send-tracking-completed:
     name: Track deployment completed
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
     needs: [trigger, test-application, test-terraform]
     if: always() && needs.trigger.outputs.continue == 'true'
     with:
