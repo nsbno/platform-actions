@@ -63,7 +63,7 @@ jobs:
 
       # This step will not do anything if nsbno/terraform-aws-lambda module is not used
       - name: Conditional SSM Parameter Update for Lambda Version
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/bump-lambda-version@autodiscovery
+        uses: nsbno/platform-actions/.github/actions/deployment/lambda/bump-version@autodiscovery
         with:
           sha-to-deploy: ${{ inputs.sha-to-deploy }}
           github-repo-name: ${{ github.repository }}
