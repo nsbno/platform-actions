@@ -112,9 +112,9 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  test-application:
+  test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - test-terraform
       - get-environments
@@ -156,9 +156,9 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  stage-application:
+  stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - stage-terraform
       - get-environments
@@ -183,9 +183,9 @@ jobs:
     name: Prod - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
     needs:
-      - stage-application
+      - stage-ecs-service
       - stage-terraform
-      - test-application
+      - test-ecs-service
       - test-terraform
     if: |
       always()
@@ -202,9 +202,9 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  production-application:
+  production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - production-terraform
       - get-environments
@@ -230,11 +230,11 @@ jobs:
     needs:
       - service-terraform
       - test-terraform
-      - test-application
+      - test-ecs-service
       - stage-terraform
-      - stage-application
+      - stage-ecs-service
       - production-terraform
-      - production-application
+      - production-ecs-service
     if: always()
     with:
       status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}

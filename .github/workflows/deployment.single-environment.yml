@@ -42,7 +42,7 @@ jobs:
 
   deploy-application:
     name: Deploy Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - deploy-terraform
     if: |

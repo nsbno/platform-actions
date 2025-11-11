@@ -82,7 +82,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - test-terraform
       - trigger
@@ -100,7 +100,9 @@ jobs:
       environment: Test
       deploy-application: true
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}
-      skip-s3-deployment: true # Skip S3 deployment for branch deployments, assume it already is deployed before command
+      # Skip S3 deployment for branch deployments,
+      # Assume it already is deployed before from pull-request workflows using package.s3-static-files.yml
+      skip-s3-deployment: true
 
   comment-handler:
     needs: [ trigger, test-application, test-terraform ]
