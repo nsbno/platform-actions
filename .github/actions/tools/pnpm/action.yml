@@ -48,7 +48,7 @@ runs:
         NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
         NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
       run: |
-        pnpm install
+        pnpm install --frozen-lockfile
 
     - name: Run pnpm Command
       working-directory: ${{ inputs.working-directory }}
