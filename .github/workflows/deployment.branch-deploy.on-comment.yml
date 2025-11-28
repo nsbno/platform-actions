@@ -2,15 +2,11 @@ name: deployment.branch-deploy-test.yml
 on:
   workflow_call:
     inputs:
-      ecs-service-name:
-        description: The name of the application in your Terraform configuration. Comma-separated.
-        type: string
-        required: false
       working-directory:
         description: "Directory containing the project files"
         required: false
         type: string
-        default: "."
+        default: ""
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string
@@ -90,13 +86,9 @@ jobs:
       always()
       && needs.trigger.outputs.continue == 'true'
       && !contains(needs.test-terraform.result, 'failure')
-      && inputs.ecs-service-name
       && !cancelled()
-    strategy:
-      matrix:
-        ecs-service-name: ${{ inputs.ecs-service-name }}
     with:
-      ecs-service-name: ${{ matrix.ecs-service-name }}
+      working-directory: ${{ inputs.working-directory }}
       environment: Test
       deploy-application: true
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}

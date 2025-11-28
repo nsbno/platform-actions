@@ -2,13 +2,14 @@ name: Get Application Deployment Info
 description: Gets information about the deployable
 
 inputs:
-  ecs-service-name:
-    description: "The name of the application"
+  github-repository-name:
+    description: "The GitHub repository name"
+    required: true
+  working-directory:
+    description: "The working directory within the repository"
+    required: true
 
 outputs:
-  compute-target:
-    description: What kind of compute we are targeting (ECS or Lambda)
-    value: ${{ steps.params.outputs.compute_target }}
   ecs-cluster-name:
     description: The ECS Cluster Name
     value: ${{ steps.params.outputs.ecs_cluster_name }}
@@ -40,8 +41,12 @@ runs:
     - name: Get Parameters
       id: params
       shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ inputs.github-repository-name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.ecs-service-name }}/" --query "Parameters")
+        GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
           echo "NAME=$NAME"
@@ -49,14 +54,6 @@ runs:
           echo "VALUE=$VALUE"
           echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
         done
-
-    - name: Validate compute target exists
-      # Supported application deployments should have a compute_target defined as an SSM parameter set in Terraform
-      if: ${{ steps.params.outputs.compute_target == '' }}
-      shell: bash
-      run: |
-          echo "::error::ECS Service with name '${{ inputs.ecs-service-name }}' does not exist. Verify 'ecs-service-name' parameter in your GHA Workflows."
-          exit 1
 
     - name: Get central deployment account ID
       id: central-account

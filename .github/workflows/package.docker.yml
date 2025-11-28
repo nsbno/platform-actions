@@ -74,6 +74,14 @@ jobs:
             --query 'repositories[].repositoryName' \
             --repository-names "${{inputs.ecr-repo-name }}"
 
+      # naively register ECR Repo name for each run, can be improved later if needed
+      - name: Register ECR Repository to deployment version handler
+        uses: ./.github/actions/helpers/register-version
+        with:
+          operation: register-ecr-repository
+          ecr-repository-name: ${{ inputs.ecr-repo-name }}
+          compute-target: "${{ inputs.lambda-compatible == 'false' && 'ecs' || 'lambda' }}"
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2

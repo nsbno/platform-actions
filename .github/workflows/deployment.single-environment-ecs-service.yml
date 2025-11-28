@@ -3,10 +3,11 @@ name: Deploy ECS Service/SSR Service
 on:
   workflow_call:
     inputs:
-      ecs-service-name:
-        description: Name of the application to deploy
+      working-directory:
+        description: If monorepo. Directory where the service is located.
         type: string
-        required: true
+        required: false
+        default: ""
       environment:
         description: Environment to deploy
         type: string
@@ -63,7 +64,8 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
         with:
-          ecs-service-name: ${{ inputs.ecs-service-name }}
+          github-repository-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
@@ -85,9 +87,8 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           sha-version: ${{ inputs.sha-to-deploy }}
 
-      - name: Put Application Deployment Version
-        id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@autodiscovery
+      - name: Register ECS Version to deployment version handler
+        uses: ./.github/actions/helpers/register-version
         with:
-          ecs-service-name: ${{ inputs.ecs-service-name }}
-          sha-to-deploy: ${{ inputs.sha-to-deploy }}
+          operation: register-version
+          compute-target: "ecs"
