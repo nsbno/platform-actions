@@ -81,6 +81,7 @@ jobs:
           operation: register-ecr-repository
           ecr-repository-name: ${{ inputs.ecr-repo-name }}
           compute-target: "${{ inputs.lambda-compatible == 'false' && 'ecs' || 'lambda' }}"
+          working-directory: ${{ inputs.working-directory }}
 
       - name: Login to Amazon ECR
         id: login-ecr

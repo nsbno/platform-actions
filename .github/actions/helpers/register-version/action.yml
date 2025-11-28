@@ -2,6 +2,10 @@ name: Register Version with Handler API
 description: Registers repository metadata or version deployments with the version handler API
 
 inputs:
+  working-directory:
+    description: 'Working directory of the repository'
+    required: false
+    default: ''
   operation:
     description: 'Operation to perform: register-ecr-repository or register-version'
     required: true
@@ -45,6 +49,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         ECR_REPOSITORY_NAME: ${{ inputs.ecr-repository-name }}
         BRANCH: ${{ github.ref_name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
         set +e  # Don't fail on errors
 
@@ -60,6 +65,7 @@ runs:
           JSON_PAYLOAD=$(cat <<EOF
         {
           "github_repository_name": "$GIT_REPO_NAME",
+          "working_directory": "$WORKING_DIRECTORY",
           "ecr_repository_name": "$ECR_REPO_NAME",
           "compute_target": "$COMPUTE_TARGET"
         }
@@ -78,6 +84,7 @@ runs:
           JSON_PAYLOAD=$(cat <<EOF
         {
           "github_repository_name": "$GIT_REPO_NAME",
+          "working_directory": "$WORKING_DIRECTORY",
           "branch": "$BRANCH",
           "git_sha": "$GIT_SHA",
           "compute_target": "$COMPUTE_TARGET"

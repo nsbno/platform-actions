@@ -92,3 +92,4 @@ jobs:
         with:
           operation: register-version
           compute-target: "ecs"
+          working-directory: ${{ inputs.working-directory }}
