@@ -76,7 +76,7 @@ jobs:
 
       # naively register ECR Repo name for each run, can be improved later if needed
       - name: Register ECR Repository to deployment version handler
-        uses: ./.github/actions/helpers/register-version
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
         with:
           operation: register-ecr-repository
           ecr-repository-name: ${{ inputs.ecr-repo-name }}

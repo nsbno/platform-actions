@@ -88,7 +88,7 @@ jobs:
           sha-version: ${{ inputs.sha-to-deploy }}
 
       - name: Register ECS Version to deployment version handler
-        uses: ./.github/actions/helpers/register-version
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
         with:
           operation: register-version
           compute-target: "ecs"
