@@ -20,7 +20,7 @@ on:
         description: "Directory containing the project files"
         required: false
         type: string
-        default: "."
+        default: ""
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string
@@ -52,6 +52,6 @@ jobs:
       && needs.deploy-terraform.result != 'failure'
     with:
       environment: ${{ inputs.environment }}
+      working-directory: ${{ inputs.working-directory }}
       deploy-application: true
-      ecs-service-name: ${{ inputs.ecs-service-name }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
