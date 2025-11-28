@@ -58,7 +58,7 @@ runs:
           echo "service_exists=true" >> $GITHUB_OUTPUT
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
         else
-          echo "Service $SERVICE_NAME does not exist"
+          echo "Service $SERVICE_NAME does not exist. Will create a new one."
           echo "service_exists=false" >> $GITHUB_OUTPUT
         fi
 
@@ -68,16 +68,17 @@ runs:
       run: |
         ENV_VARS_JSON="{}"
         AUTH_URL_JSON="{}"
-        
+
         # Path is expected to include `env_vars` or `secrets` after `service_name`
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__${{ inputs.service-name }}__/" --recursive --query "Parameters")
-        
-        if [ -n "$PARAMS" ] && [ "$PARAMS" != "[]" ]; then
+        PARAMS_FILE=$(mktemp)
+        aws ssm get-parameters-by-path --path "/__${{ inputs.service-name }}__/" --recursive --query "Parameters" --output json > "$PARAMS_FILE"
+
+        if [ -s "$PARAMS_FILE" ] && [ "$(cat "$PARAMS_FILE")" != "[]" ]; then
           # Process each parameter
           ENV_VARS_JSON="{"
           FIRST=true
-        
-          for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
+
+          while IFS= read -r ROW; do
             # Extract last part of the path
             FULL_PATH=$(echo "$ROW" | jq -r '.Name')
             NAME=$(basename "$FULL_PATH")
@@ -85,7 +86,7 @@ runs:
             if [[ "$NAME" == "AUTH_URL" ]]; then
               ENV_VAR_VALUE=$(echo "$ROW" | jq -r '.Value')
               PR_PREFIX="pr-${{ inputs.git-event-number }}."
-              
+
               # Insert PR prefix right after https:// and before the first dot in the hostname
               AUTH_URL=$(echo "$ENV_VAR_VALUE" | sed -E "s#^(https://)([^./]+)#\1${PR_PREFIX}\2#")
 
@@ -94,20 +95,22 @@ runs:
             else
               VALUE=$(echo "$ROW" | jq -r '.ARN')
             fi
-        
+
             if [ "$FIRST" = true ]; then
               FIRST=false
             else
               ENV_VARS_JSON="$ENV_VARS_JSON,"
             fi
-        
+
             # Properly escape the value for JSON
             ESCAPED_VALUE=$(echo "$VALUE" | jq -R .)
             ENV_VARS_JSON="$ENV_VARS_JSON\"$NAME\":$ESCAPED_VALUE"
-          done
-        
+          done < <(jq -c '.[]' "$PARAMS_FILE")
+
           ENV_VARS_JSON="$ENV_VARS_JSON}"
         fi
+
+        rm -f "$PARAMS_FILE"
 
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
         echo "auth_url_json=$AUTH_URL_JSON" >> $GITHUB_OUTPUT
