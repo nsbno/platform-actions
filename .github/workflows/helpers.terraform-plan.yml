@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@autodiscovery
         if: ${{ inputs.environment == '' }}
         id: envs
         with:
@@ -70,7 +70,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v1
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@autodiscovery
         id: changed-files
         with:
           environment: ${{ matrix.environment }}
