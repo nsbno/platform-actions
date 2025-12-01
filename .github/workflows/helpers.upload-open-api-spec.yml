@@ -84,7 +84,7 @@ jobs:
       - name: Validate and persist the spec to the API portal
         env:
           REPO: ${{ github.event.repository.name }}
-          SERVICE_ACCOUNT_ID: ${{ vars.SERVICE_ACCOUNT_ID }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
           REGION: ${{ vars.AWS_REGION }}
           PERSIST_URL: ${{ inputs.api-reference-persist-url }}
           APPLICATION_NAME: ${{ inputs.application-name }}
@@ -92,12 +92,12 @@ jobs:
         run: |
           echo "=== Debug Info ==="
           echo "REPO: ${REPO}"
-          echo "SERVICE_ACCOUNT_ID: ${SERVICE_ACCOUNT_ID}"
+          echo "AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}"
           echo "REGION: ${REGION}"
           echo "PERSIST_URL: ${PERSIST_URL}"
           echo "APPLICATION_NAME: ${APPLICATION_NAME}"
           echo "SPEC_TYPE: ${SPEC_TYPE}"
-          echo "Full URL: https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}"
+          echo "Full URL: https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}"
           echo "=================="
 
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} in ${REGION} to ${PERSIST_URL}"
@@ -105,7 +105,7 @@ jobs:
             curl \
               --verbose \
               --write-out "%{http_code}" \
-              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}" \
+              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --data "{\"repository\": \"${REPO}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
