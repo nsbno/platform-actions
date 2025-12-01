@@ -76,7 +76,7 @@ jobs:
           git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Deploy ECS
-        if: steps.deployment-info.outputs.compute-target == 'ecs'
+        if: steps.deployment-info.outputs.ecs-service-name != ''
         uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@autodiscovery
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
