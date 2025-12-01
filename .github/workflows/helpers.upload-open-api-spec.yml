@@ -73,6 +73,12 @@ jobs:
           S3_FOLDER: ${{ inputs.application-name }}
           S3_FILE_NAME: "openapi.json"
         run: |
+            echo "=== S3 Upload Debug ==="
+            echo "S3_BUCKET: ${S3_BUCKET}"
+            echo "S3_FOLDER: ${S3_FOLDER}"
+            echo "S3_FILE_NAME: ${S3_FILE_NAME}"
+            echo "Destination: s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}"
+            echo "======================="
             aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}" --acl bucket-owner-full-control
 
       - name: Validate and persist the spec to the API portal
@@ -84,11 +90,20 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: "openapi"
         run: |
+          echo "=== Debug Info ==="
+          echo "REPO: ${REPO}"
+          echo "SERVICE_ACCOUNT_ID: ${SERVICE_ACCOUNT_ID}"
+          echo "REGION: ${REGION}"
+          echo "PERSIST_URL: ${PERSIST_URL}"
+          echo "APPLICATION_NAME: ${APPLICATION_NAME}"
+          echo "SPEC_TYPE: ${SPEC_TYPE}"
+          echo "Full URL: https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}"
+          echo "=================="
+
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} in ${REGION} to ${PERSIST_URL}"
           STATUS_CODE=$(\
             curl \
-              --silent \
-              --output /dev/stderr \
+              --verbose \
               --write-out "%{http_code}" \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}" \
               --data "{\"repository\": \"${REPO}\"}" \
@@ -96,9 +111,9 @@ jobs:
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
           )
-          
+
           echo "Response code: ${STATUS_CODE}"
-          
+
           if [ ${STATUS_CODE} -ne 200 ]; then
             exit 1
           fi
