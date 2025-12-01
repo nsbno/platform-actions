@@ -48,6 +48,7 @@ jobs:
     needs:
       - convert-to-yml
     runs-on: ubuntu-latest
+    environment: 'Service'
     steps:
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
