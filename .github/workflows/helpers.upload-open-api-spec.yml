@@ -9,14 +9,19 @@ on:
         type: string
         required: true
         description: "Name of the service. Will be used as folder name in S3."
-      api_referencepersist_url:
+      api-reference-persist-url:
         description: "The domain of the persist API"
         type: string
         default: "api-reference-persist.common-services.vydev.io"
-      api_reference_s3_bucket:
+      api-reference-s3-bucket:
         description: "The S3 Bucket of the API Reference Service"
         type: string
         default: "727646359971-api-portal-artifacts"
+      environment:
+        description: "GitHub environment to use for accessing secrets"
+        type: string
+        required: false
+        default: "Service"
 
 permissions:
   contents: read
@@ -64,36 +69,36 @@ jobs:
       - name: Upload API Spec
         env:
           FILE_TO_UPLOAD: "converted.json"
-          S3_BUCKET: "727646359971-api-portal-artifacts"
-          S3_FOLDER: ${{ inputs.application_name }}
+          S3_BUCKET: ${{ inputs.api-reference-s3-bucket }}
+          S3_FOLDER: ${{ inputs.application-name }}
           S3_FILE_NAME: "openapi.json"
         run: |
-            aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}"
+            aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}" --acl bucket-owner-full-control
 
       - name: Validate and persist the spec to the API portal
         env:
           REPO: ${{ github.event.repository.name }}
-          SERVICE_ACCOUNT_ID: ${{ inputs.service_account_id }} # Used to determine ownership of the spec
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
           REGION: ${{ vars.AWS_REGION }}
-          PERSIST_URL: ${{ inputs.persist_url }}
-          APPLICATION_NAME: ${{ inputs.application_name }}
+          PERSIST_URL: ${{ inputs.api-reference-persist-url }}
+          APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: "openapi"
         run: |
-          echo "Persisting ${SPEC_TYPE} spec for ${SERVICE_NAME} in ${REGION} to ${PERSIST_URL}"
+          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
           STATUS_CODE=$(\
             curl \
               --silent \
-              --output /dev/stderr \
               --write-out "%{http_code}" \
-              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${SERVICE_ACCOUNT_ID}/${SPEC_TYPE}" \
+              --output /dev/null \
+              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --data "{\"repository\": \"${REPO}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
           )
-          
-          echo "Response code: ${STATUS_CODE}"
-          
+
           if [ ${STATUS_CODE} -ne 200 ]; then
+            echo "Failed to persist API spec. Response code: ${STATUS_CODE}"
             exit 1
           fi
+          echo "Successfully persisted API spec"
