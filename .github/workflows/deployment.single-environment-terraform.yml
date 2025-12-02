@@ -60,13 +60,6 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
 
-      # This will register the GitHub repository name and working directory to be used in Terraform version tracking
-      - name: Register version to deployment version handler
-        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
-        with:
-          working-directory: ${{ inputs.working-directory }}
-          git-sha-to-register: ${{ inputs.sha-to-deploy }}
-
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@autodiscovery
         name: Terraform Apply
         with:

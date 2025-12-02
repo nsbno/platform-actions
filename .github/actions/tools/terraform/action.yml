@@ -24,7 +24,7 @@ inputs:
   working-directory:
     description: "Directory containing the project files"
     required: false
-    default: "."
+    default: ""
   terraform-directory:
     description: "Directory where Terraform environment directories are located"
     required: true
@@ -100,6 +100,13 @@ runs:
         key: ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-${{ inputs.git-sha }}
         restore-keys: |
           ${{runner.os}}-${{ steps.tf-dir.outputs.dir }}-terraform-${{ inputs.git-sha }}
+
+    # This will register the GitHub repository name and working directory to be used in Terraform version tracking
+    - name: Register version to deployment version handler
+      uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        git-sha-to-register: ${{ inputs.git-sha }}
 
     - name: Terraform Init
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'

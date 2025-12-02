@@ -74,7 +74,7 @@ runs:
         echo "json-payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
 
     - name: Call version handler API
-      uses: ./.github/actions/helpers/make-aws-api-call
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@autodiscovery
       with:
         endpoint: ${{ steps.prepare.outputs.endpoint }}
         json-body: ${{ steps.prepare.outputs.json-payload }}
