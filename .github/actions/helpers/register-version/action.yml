@@ -17,7 +17,7 @@ inputs:
   continue-on-error:
     description: 'Continue workflow even if registration fails'
     required: false
-    default: 'true'
+    default: 'false'
   git-sha-to-register:
     description: 'Git SHA to register.'
     required: false

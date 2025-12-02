@@ -21,14 +21,6 @@ inputs:
     required: false
     default: 'eu-west-1'
 
-outputs:
-  status:
-    description: 'Status of the API call (success or failed)'
-    value: ${{ steps.api-call.outputs.status }}
-  error:
-    description: 'Error message if call failed'
-    value: ${{ steps.api-call.outputs.error }}
-
 runs:
   using: composite
   steps:
@@ -43,10 +35,11 @@ runs:
       run: |
         set +e  # Don't fail on errors
 
+        # Make the API call and capture status code
         STATUS_CODE=$(curl \
           --silent \
           --write-out "%{http_code}" \
-          --output "$RESPONSE_FILE" \
+          --output /dev/null \
           --request POST "$ENDPOINT" \
           --data "$JSON_BODY" \
           --aws-sigv4 "aws:amz:${REGION}:${SERVICE}" \
@@ -55,10 +48,11 @@ runs:
           --header "Content-Type: application/json")
 
         if [ ${STATUS_CODE} -ne 200 ]; then
-          echo "Failed to persist API spec. Response code: ${STATUS_CODE}"
-            if [ "${{ inputs.continue-on-error }}" != "true" ]; then
-                exit 1
-            fi
+          echo "API call failed. Response code: ${STATUS_CODE}"
+
+          if [ "${{ inputs.continue-on-error }}" != "true" ]; then
+            exit 1
+          fi
+        else
+          echo "API call successful"
         fi
-        echo "Successfully made API call"
-        echo "status=success" >> $GITHUB_OUTPUT
