@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   ecs-service:
-    name: ${{ inputs.ecs-service-name }} (${{ inputs.environment }})
+    name: ${{ inputs.environment }} - ECS
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |
