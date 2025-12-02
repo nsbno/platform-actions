@@ -73,12 +73,6 @@ jobs:
           S3_FOLDER: ${{ inputs.application-name }}
           S3_FILE_NAME: "openapi.json"
         run: |
-            echo "=== S3 Upload Debug ==="
-            echo "S3_BUCKET: ${S3_BUCKET}"
-            echo "S3_FOLDER: ${S3_FOLDER}"
-            echo "S3_FILE_NAME: ${S3_FILE_NAME}"
-            echo "Destination: s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}"
-            echo "======================="
             aws s3 cp "${FILE_TO_UPLOAD}" "s3://${S3_BUCKET}/${S3_FOLDER}/${S3_FILE_NAME}" --acl bucket-owner-full-control
 
       - name: Validate and persist the spec to the API portal
@@ -90,21 +84,12 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: "openapi"
         run: |
-          echo "=== Debug Info ==="
-          echo "REPO: ${REPO}"
-          echo "AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}"
-          echo "REGION: ${REGION}"
-          echo "PERSIST_URL: ${PERSIST_URL}"
-          echo "APPLICATION_NAME: ${APPLICATION_NAME}"
-          echo "SPEC_TYPE: ${SPEC_TYPE}"
-          echo "Full URL: https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}"
-          echo "=================="
-
-          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} in ${REGION} to ${PERSIST_URL}"
+          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
           STATUS_CODE=$(\
             curl \
-              --verbose \
+              --silent \
               --write-out "%{http_code}" \
+              --output /dev/null \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --data "{\"repository\": \"${REPO}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
@@ -112,8 +97,8 @@ jobs:
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
           )
 
-          echo "Response code: ${STATUS_CODE}"
-
           if [ ${STATUS_CODE} -ne 200 ]; then
+            echo "Failed to persist API spec. Response code: ${STATUS_CODE}"
             exit 1
           fi
+          echo "Successfully persisted API spec"
