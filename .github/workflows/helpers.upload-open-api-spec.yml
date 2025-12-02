@@ -17,11 +17,6 @@ on:
         description: "The S3 Bucket of the API Reference Service"
         type: string
         default: "727646359971-api-portal-artifacts"
-      environment:
-        description: "GitHub environment to use for accessing secrets"
-        type: string
-        required: false
-        default: "Service"
 
 permissions:
   contents: read
