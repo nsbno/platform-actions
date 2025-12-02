@@ -90,6 +90,6 @@ jobs:
       - name: Register ECS Version to deployment version handler
         uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
         with:
-          operation: register-version
           compute-target: "ecs"
           working-directory: ${{ inputs.working-directory }}
+          git-sha-to-register: ${{ inputs.sha-to-deploy }}

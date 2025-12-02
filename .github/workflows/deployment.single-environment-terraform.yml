@@ -60,13 +60,12 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
 
-      # This step will not do anything if nsbno/terraform-aws-lambda module is not used
-      - name: Conditional SSM Parameter Update for Lambda Version
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/bump-version@autodiscovery
+      # This will register the GitHub repository name and working directory to be used in Terraform version tracking
+      - name: Register version to deployment version handler
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
         with:
-          sha-to-deploy: ${{ inputs.sha-to-deploy }}
-          github-repo-name: ${{ github.repository }}
           working-directory: ${{ inputs.working-directory }}
+          git-sha-to-register: ${{ inputs.sha-to-deploy }}
 
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@autodiscovery
         name: Terraform Apply

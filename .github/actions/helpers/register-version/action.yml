@@ -1,122 +1,82 @@
 name: Register Version with Handler API
-description: Registers repository metadata or version deployments with the version handler API
+description: Registers version deployments with the version handler API
 
 inputs:
   working-directory:
     description: 'Working directory of the repository'
     required: false
     default: ''
-  operation:
-    description: 'Operation to perform: register-ecr-repository or register-version'
-    required: true
   api-endpoint:
     description: 'Version handler API endpoint'
     required: false
     default: 'https://version-handler.vydeployment.vydev.io'
   compute-target:
-    description: 'Compute target (ecs or lambda). Auto-detected if not provided.'
-    required: true
-  ecr-repository-name:
-    description: 'ECR repository name (required for register-ecr-repository operation)'
+    description: 'Compute target (ecs or lambda)'
     required: false
+    default: ''
   continue-on-error:
     description: 'Continue workflow even if registration fails'
     required: false
     default: 'true'
+  git-sha-to-register:
+    description: 'Git SHA to register.'
+    required: false
+    default: '${{ github.event.pull_request.head.sha || github.sha }}'
 
 runs:
   using: composite
   steps:
-    - name: Install awscurl
-      id: install-awscurl
-      shell: bash
-      run: |
-        if ! command -v awscurl &> /dev/null; then
-          echo "::notice::awscurl not found, installing..."
-          pip install awscurl || {
-            echo "::warning::Failed to install awscurl, skipping version registration"
-            echo "skip=true" >> $GITHUB_OUTPUT
-            exit 0
-          }
-        fi
-        echo "skip=false" >> $GITHUB_OUTPUT
-
-    - name: Register with version handler
-      id: register
-      if: steps.install-awscurl.outputs.skip != 'true'
+    - name: Prepare API request
+      id: prepare
       shell: bash
       env:
         GITHUB_REPOSITORY: ${{ github.repository }}
-        ECR_REPOSITORY_NAME: ${{ inputs.ecr-repository-name }}
         BRANCH: ${{ github.ref_name }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        COMPUTE_TARGET: ${{ inputs.compute-target }}
+        GIT_SHA: ${{ inputs.git-sha-to-register }}
+        API_ENDPOINT: ${{ inputs.api-endpoint }}
       run: |
-        set +e  # Don't fail on errors
-
         # Extract repository name from github.repository (owner/repo-name)
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
 
-        # Auto-detect compute target if not provided
-        COMPUTE_TARGET="${{ inputs.compute-target }}"
+        ENDPOINT="${API_ENDPOINT}/v2/versions"
 
-        if [ "${{ inputs.operation }}" = "register-ecr-repository" ]; then
-          ECR_REPO_NAME="${ECR_REPOSITORY_NAME}"
-          ENDPOINT="${{ inputs.api-endpoint }}/v2/ecr-repository-name"
-          JSON_PAYLOAD=$(cat <<EOF
-        {
-          "github_repository_name": "$GIT_REPO_NAME",
-          "working_directory": "$WORKING_DIRECTORY",
-          "ecr_repository_name": "$ECR_REPO_NAME",
-          "compute_target": "$COMPUTE_TARGET"
-        }
-        EOF
-        )
-        elif [ "${{ inputs.operation }}" = "register-version" ]; then
-          ENDPOINT="${{ inputs.api-endpoint }}/v2/versions"
-
-          # Determine git SHA (prefer PR head SHA if available)
-          if [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-            GIT_SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            GIT_SHA="${{ github.sha }}"
-          fi
-
-          JSON_PAYLOAD=$(cat <<EOF
-        {
-          "github_repository_name": "$GIT_REPO_NAME",
-          "working_directory": "$WORKING_DIRECTORY",
-          "branch": "$BRANCH",
-          "git_sha": "$GIT_SHA",
-          "compute_target": "$COMPUTE_TARGET"
-        }
-        EOF
-        )
+        if [ -n "$COMPUTE_TARGET" ]; then
+          JSON_PAYLOAD=$(jq -n -c \
+            --arg repo "$GIT_REPO_NAME" \
+            --arg workdir "$WORKING_DIRECTORY" \
+            --arg branch "$BRANCH" \
+            --arg sha "$GIT_SHA" \
+            --arg target "$COMPUTE_TARGET" \
+            '{
+              github_repository_name: $repo,
+              working_directory: $workdir,
+              branch: $branch,
+              git_sha: $sha,
+              compute_target: $target
+            }')
         else
-          echo "::error::Invalid operation: ${{ inputs.operation }}. Must be 'register-ecr-repository' or 'register-version'"
-          echo "status=failed" >> $GITHUB_OUTPUT
-          exit 0
+          JSON_PAYLOAD=$(jq -n -c \
+            --arg repo "$GIT_REPO_NAME" \
+            --arg workdir "$WORKING_DIRECTORY" \
+            --arg branch "$BRANCH" \
+            --arg sha "$GIT_SHA" \
+            '{
+              github_repository_name: $repo,
+              working_directory: $workdir,
+              branch: $branch,
+              git_sha: $sha
+            }')
         fi
 
-        # Make API call with timeout
-        RESPONSE=$(awscurl --service execute-api \
-          -d "$JSON_PAYLOAD" \
-          -H "Content-Type: application/json" \
-          -X POST \
-          "$ENDPOINT" \
-          2>&1)
-        EXIT_CODE=$?
+        echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+        echo "json-payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
 
-        if [ $EXIT_CODE -eq 0 ]; then
-          echo "::notice::Version handler registration successful"
-          echo "status=success" >> $GITHUB_OUTPUT
-          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
-        else
-          echo "::warning::Version handler API call failed with exit code $EXIT_CODE"
-          echo "::warning::Response: $RESPONSE"
-          echo "status=failed" >> $GITHUB_OUTPUT
-          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
-
-          if [ "${{ inputs.continue-on-error }}" != "true" ]; then
-            exit 1
-          fi
-        fi
+    - name: Call version handler API
+      uses: ./.github/actions/helpers/make-aws-api-call
+      with:
+        endpoint: ${{ steps.prepare.outputs.endpoint }}
+        json-body: ${{ steps.prepare.outputs.json-payload }}
+        continue-on-error: ${{ inputs.continue-on-error }}
+        aws-service-name: execute-api
