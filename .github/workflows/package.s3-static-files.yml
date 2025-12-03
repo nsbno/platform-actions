@@ -1,6 +1,10 @@
 on:
   workflow_call:
     inputs:
+      service-name:
+        required: true
+        type: string
+        description: "Name of the application to upload static files for."
       artifact-name:
         required: true
         type: string
@@ -10,6 +14,11 @@ on:
         type: string
         description: "Path to artifact files from previous workflow."
         default: 'build/client' # Default path to the client build files
+      working-directory:
+        required: false
+        type: string
+        description: "Directory to run the zip-command from."
+        default: '.'
       aws-region:
         required: false
         type: string
@@ -24,14 +33,14 @@ on:
         required: false
         type: string
         description: "Environment to deploy to."
-        default: 'Service'
+        default: 'Test'
       s3-static-files-path:
         required: false
         type: string
         description: "Path in S3 bucket to upload static files to."
         default: "static"
 
-name: Upload Frontend Static Files to S3.
+name: Upload Frontend Static Files to S3. For Pull Requests.
 
 jobs:
   upload-zip-to-s3:
@@ -48,12 +57,19 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
+      # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
+      - name: Get Application Deployment Information
+        id: deployment-info
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
+        with:
+          ecs-service-name: ${{ inputs.service-name }}
+
       - name: Upload Static Files/Web Build to S3
+        if: steps.deployment-info.outputs.static-files-bucket-name != ''
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
         with:
-          s3-bucket-name: ${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts
+          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: ${{ inputs.git-sha }}
-          github-repository-name: ${{ github.repository }}
           artifact-name: ${{ inputs.artifact-name }}
           artifact-path: ${{ inputs.artifact-path }}
           s3-static-files-path: ${{ inputs.s3-static-files-path }}
