@@ -75,7 +75,7 @@ jobs:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
 
-      - name: Monitor ECS
+      - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''
         uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@autodiscovery
         with:
@@ -87,9 +87,9 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           sha-version: ${{ inputs.sha-to-deploy }}
 
-#      - name: Register ECS Version to deployment version handler
-#        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
-#        with:
-#          compute-target: "ecs"
-#          working-directory: ${{ inputs.working-directory }}
-#          git-sha-to-register: ${{ inputs.sha-to-deploy }}
+      - name: Register ECS Version to deployment version handler
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
+        with:
+          compute-target: "ecs"
+          working-directory: ${{ inputs.working-directory }}
+          git-sha-to-register: ${{ inputs.sha-to-deploy }}

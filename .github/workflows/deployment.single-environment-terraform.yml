@@ -60,13 +60,6 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
 
-      - name: Register ECS Version to deployment version handler
-        uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
-        with:
-          compute-target: "ecs"
-          working-directory: ${{ inputs.working-directory }}
-          git-sha-to-register: ${{ inputs.sha-to-deploy }}
-
       - uses: nsbno/platform-actions/.github/actions/tools/terraform@autodiscovery
         name: Terraform Apply
         with:
