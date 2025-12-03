@@ -32,6 +32,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-production-environment:
+        description: Skip the production environment, if the repository does not deploy to the production environment.
+        type: boolean
+        default: false
+        required: false
       skip-static-files-deployment:
         description: Skip deployment of static files to S3 (if applicable). Used if application is built in Dockerfile.
         type: boolean
@@ -178,6 +183,7 @@ jobs:
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
@@ -199,6 +205,7 @@ jobs:
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     with:
