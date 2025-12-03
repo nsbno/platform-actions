@@ -10,58 +10,50 @@ on:
         type: string
         description: "Path to artifact files from previous workflow."
         default: 'build/client' # Default path to the client build files
-      s3-bucket-name:
-        required: false
-        type: string
-        description: "Name of the S3 bucket to upload to."
-        default: ''
       aws-region:
         required: false
         type: string
         description: "AWS region to use."
         default: 'eu-west-1'
+      git-sha:
+        required: false
+        type: string
+        description: "Git SHA to use for versioning"
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+      environment:
+        required: false
+        type: string
+        description: "Environment to deploy to."
+        default: 'Service'
+      s3-static-files-path:
+        required: false
+        type: string
+        description: "Path in S3 bucket to upload static files to."
+        default: "static"
 
-name: Package and Upload Static Files to central S3 Bucket to be used in Terraform
-
-permissions:
-  id-token: write
-  contents: read
+name: Upload Frontend Static Files to S3.
 
 jobs:
-  upload-static-files-to-s3:
-    name: Upload static files to S3
-    environment: Service
+  upload-zip-to-s3:
+    name: Upload static files build to S3
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: "./temp-artifact"
-
-      - name: Create zip file
-        run: |
-          cd ./temp-artifact/${{ inputs.artifact-path }}
-          zip -r "$GITHUB_WORKSPACE/static-files.zip" .
-
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      - name: Upload to S3
-        env:
-          S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
-          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          REPO_NAME: ${{ github.repository }}
-        run: |
-          REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
-
-          aws s3 cp "./static-files.zip" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/static/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\"]'"
+      - name: Upload Static Files/Web Build to S3
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
+        with:
+          s3-bucket-name: ${{ vars.AWS_ACCOUNT_ID }}-deployment-delivery-pipeline-artifacts
+          git-sha: ${{ inputs.git-sha }}
+          github-repository-name: ${{ github.repository }}
+          artifact-name: ${{ inputs.artifact-name }}
+          artifact-path: ${{ inputs.artifact-path }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}
