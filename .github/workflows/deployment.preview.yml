@@ -2,10 +2,9 @@ name: deployment.preview.yml
 on:
   workflow_call:
     inputs:
-      service-name:
+      working-directory:
         required: true
         type: string
-        description: "The name of the service to deploy"
       service-port:
         required: false
         type: string
@@ -89,14 +88,15 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
         with:
-          ecs-service-name: ${{ inputs.service-name }}
+          github-repository-name: ${{ inputs.git-repository }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
         uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@autodiscovery
         with:
-          service-name: ${{ inputs.service-name }}
+          service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
           git-sha: ${{ inputs.git-sha }}
           service-port: ${{ inputs.service-port }}

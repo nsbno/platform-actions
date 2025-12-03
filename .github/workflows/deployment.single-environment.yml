@@ -3,11 +3,6 @@ name: Deploy to single environment (Terraform + Service)
 on:
   workflow_call:
     inputs:
-      ecs-service-name:
-        description: The name of the application to deploy.
-        type: string
-        required: true
-        default: ${{ github.event.repository.name }}
       environment:
         description: The environment to deploy to.
         type: string

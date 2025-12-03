@@ -2,10 +2,11 @@ name: Branch Preview Deployment
 on:
   workflow_call:
     inputs:
-      service-name:
-        required: true
+      working-directory:
+        required: false
+        description: The working directory for the service to deploy.
         type: string
-        description: "The name of the service to deploy"
+        default: ""
 
 jobs:
   trigger:
@@ -37,7 +38,7 @@ jobs:
     needs: trigger
     uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@autodiscovery
     with:
-      service-name: ${{ inputs.service-name }}
+      working-directory: ${{ inputs.working-directory }}
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}

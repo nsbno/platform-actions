@@ -1,10 +1,6 @@
 on:
   workflow_call:
     inputs:
-      service-name:
-        required: true
-        type: string
-        description: "Name of the application to upload static files for."
       artifact-name:
         required: true
         type: string
