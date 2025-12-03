@@ -1,0 +1,62 @@
+on:
+  workflow_call:
+    inputs:
+      s3-bucket-name:
+        required: true
+        type: string
+        description: "Name of the S3 bucket to upload to."
+      artifact-name:
+        required: true
+        type: string
+        description: "Name of the artifact storing the build files."
+      artifact-path:
+        required: false
+        type: string
+        description: "Path to artifact files from previous workflow."
+        default: 'build/client' # Default path to the client build files
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region to use."
+        default: 'eu-west-1'
+      git-sha:
+        required: false
+        type: string
+        description: "Git SHA to use for versioning"
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+      environment:
+        required: false
+        type: string
+        description: "Environment to deploy to."
+        default: 'Test'
+      s3-static-files-path:
+        required: false
+        type: string
+        description: "Path in S3 bucket to upload static files to."
+        default: "static"
+
+name: Upload Frontend Static Files to S3.
+
+jobs:
+  upload-zip-to-s3:
+    name: Upload static files build to S3
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Upload Static Files/Web Build to S3
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
+        with:
+          s3-bucket-name: ${{ inputs.s3-bucket-name }}
+          git-sha: ${{ inputs.git-sha }}
+          artifact-name: ${{ inputs.artifact-name }}
+          artifact-path: ${{ inputs.artifact-path }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}

@@ -15,9 +15,6 @@ inputs:
   git-sha:
     required: true
     description: "Git SHA to use for versioning"
-  github-repository-name:
-    description: "GitHub repository name (owner/repo)."
-    required: true
   s3-static-files-path:
     description: "Path in S3 bucket to upload static files to."
     required: false
@@ -42,13 +39,9 @@ runs:
     - name: Upload build files to S3
       shell: bash
       id: upload
-      env:
-        REPO_NAME: ${{ inputs.github-repository-name }}
       run: |
-        REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
-
         python3 ${{ github.action_path }}/upload.py \
           "${{ inputs.artifact-path }}" \
           "${{ inputs.s3-bucket-name }}" \
-          "${REPO_NAME_WITHOUT_OWNER}/${{ inputs.s3-static-files-path }}/${{ inputs.git-sha }}" \
+          "${{ inputs.s3-static-files-path }}/${{ inputs.git-sha }}" \
           "${{ inputs.cache-control-config }}"
