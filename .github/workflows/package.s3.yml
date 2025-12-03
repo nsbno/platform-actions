@@ -5,7 +5,7 @@ on:
         required: false
         type: string
         description: "Directory containing the project files."
-        default: "."
+        default: ""
       artifact-name:
         required: false
         type: string
@@ -76,13 +76,10 @@ jobs:
           ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', 'artifact') }}
         run: |
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
-          if [ "$SERVICE_DIR" == "." ]; then
-            SERVICE_DIR="base"
+          if [ "$SERVICE_DIR" == "" ]; then
+            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$GIT_SHA.zip"
           else 
-            SERVICE_DIR="${SERVICE_DIR##*/}"
+            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip"
           fi
 
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
-          
-          # Latest is used for handling first time deploys
-          aws s3 cp "./$ZIP_FILE_NAME" "s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/latest.zip" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          aws s3 cp "./$ZIP_FILE_NAME" "${S3_URI}" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
