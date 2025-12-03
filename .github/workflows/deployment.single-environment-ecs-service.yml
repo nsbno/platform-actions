@@ -68,13 +68,12 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
 
       # Needs to be available before the frontend server deploys
-#      # TODO: Fiks static file deploy, kanskje bruk provider igjen
-#      - name: Deploy Static S3/Website
-#        if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-#        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
-#        with:
-#          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
-#          git-sha: '${{ inputs.sha-to-deploy }}'
+      - name: Deploy Static S3/Website
+        if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@autodiscovery
+        with:
+          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
+          git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Monitor ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''

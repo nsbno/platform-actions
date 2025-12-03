@@ -18,7 +18,7 @@ on:
         required: false
         type: string
         description: "Directory to run the zip-command from."
-        default: '.'
+        default: ''
       aws-region:
         required: false
         type: string
@@ -62,7 +62,8 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
         with:
-          ecs-service-name: ${{ inputs.service-name }}
+          github-repository-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: Upload Static Files/Web Build to S3
         if: steps.deployment-info.outputs.static-files-bucket-name != ''
