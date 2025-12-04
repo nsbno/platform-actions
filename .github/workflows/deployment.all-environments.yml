@@ -228,6 +228,6 @@ jobs:
       - production-ecs-service
     if: always()
     with:
-      status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}
+      status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failed' || 'succeeded' }}
       tracking-type: dora
       aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
