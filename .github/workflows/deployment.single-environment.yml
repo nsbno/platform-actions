@@ -1,12 +1,8 @@
-name: Deploy to single environment (Terraform + App)
+name: Deploy to single environment (Terraform + Service)
+
 on:
   workflow_call:
     inputs:
-      application-name:
-        description: The name of the application to deploy.
-        type: string
-        required: true
-        default: ${{ github.event.repository.name }}
       environment:
         description: The environment to deploy to.
         type: string
@@ -19,7 +15,7 @@ on:
         description: "Directory containing the project files"
         required: false
         type: string
-        default: "."
+        default: ""
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string
@@ -29,7 +25,7 @@ on:
 jobs:
   deploy-terraform:
     name: Terraform Apply
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
     if: |
       always()
       && !cancelled()
@@ -42,7 +38,7 @@ jobs:
 
   deploy-application:
     name: Deploy Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
     needs:
       - deploy-terraform
     if: |
@@ -51,6 +47,6 @@ jobs:
       && needs.deploy-terraform.result != 'failure'
     with:
       environment: ${{ inputs.environment }}
+      working-directory: ${{ inputs.working-directory }}
       deploy-application: true
-      application-name: ${{ inputs.application-name }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
