@@ -32,6 +32,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-production-environment:
+        description: Skip the production environment, if the repository does not deploy to the production environment.
+        type: boolean
+        default: false
+        required: false
       aws-role-name-to-assume:
         description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
         required: false
@@ -121,6 +126,7 @@ jobs:
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     with:
