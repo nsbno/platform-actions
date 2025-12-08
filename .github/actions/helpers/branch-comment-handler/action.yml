@@ -71,9 +71,14 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
       shell: bash
       run: |
-        gh api \
-          --method DELETE \
-          repos/{owner}/{repo}/git/refs/heads/${{ inputs.environment }}-branch-deploy-lock
+        if gh api repos/{owner}/{repo}/git/refs/heads/${{ inputs.environment }}-branch-deploy-lock 2>/dev/null; then
+         echo "Lock exists, removing it..."
+         gh api \
+           --method DELETE \
+           repos/{owner}/{repo}/git/refs/heads/${{ inputs.environment }}-branch-deploy-lock
+        else
+         echo "Lock does not exist (already cleaned up or never created), skipping deletion..."
+        fi
 
     # remove the default 'eyes' reaction from the comment that triggered the deployment
     # this reaction is added by the branch-comment-handler action by default
@@ -111,7 +116,7 @@ runs:
         issue-number: ${{ inputs.issue-number }}
         body: |
           ### Deployment Results ✅
-    
+          
           **${{ inputs.actor-handle }}** successfully deployed branch `${{ inputs.ref }}` to **${{ inputs.environment }}**
 
     # if the deployment was not successful, add a 'failure' comment
@@ -122,5 +127,5 @@ runs:
         issue-number: ${{ inputs.issue-number }}
         body: |
           ### Deployment Results ❌
-        
+          
           **${{ inputs.actor-handle }}** had a failure when deploying `${{ inputs.ref }}` to **${{ inputs.environment }}**
