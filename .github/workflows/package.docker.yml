@@ -9,7 +9,7 @@ on:
       working-directory:
         required: false
         type: string
-        default: "."
+        default: ""
         description: "What working directory we are in"
       dockerfile:
         required: false
