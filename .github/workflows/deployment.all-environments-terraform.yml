@@ -16,7 +16,7 @@ on:
         description: "Directory containing the project files"
         required: false
         type: string
-        default: ""
+        default: "."
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string

@@ -40,7 +40,6 @@ runs:
         # Extract repository name from github.repository (owner/repo-name)
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
         WORKING_DIRECTORY="${WORKING_DIRECTORY#./}" # Remove leading ./
-        WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
         WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
 
         ENDPOINT="${API_ENDPOINT}/v2/versions"
