@@ -16,12 +16,12 @@ on:
         description: "Directory containing the project files"
         required: false
         type: string
-        default: ""
+        default: "."
       terraform-directory:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: ''
+        default: ""
       sha-to-deploy:
         description: The SHA to deploy. If not provided, the current commit SHA will be used.
         type: string

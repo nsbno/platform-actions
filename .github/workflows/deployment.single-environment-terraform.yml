@@ -20,7 +20,7 @@ on:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: ''
+        default: ""
       sha-to-deploy:
         description: The SHA to deploy. Defaults to the current commit SHA.
         type: string

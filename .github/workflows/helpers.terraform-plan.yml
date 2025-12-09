@@ -10,7 +10,7 @@ on:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: ''
+        default: ""
       skip-service-environment:
         description: Skip the service environment, if the repository does not deploy to the service environment.
         type: boolean
@@ -25,7 +25,7 @@ on:
         description: (Optional) If provided, only plan for this environment.
         type: string
         required: false
-        default: ''
+        default: ""
 
 jobs:
   get-environments:

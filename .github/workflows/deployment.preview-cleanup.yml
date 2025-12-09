@@ -6,7 +6,7 @@ on:
         required: false
         type: string
         description: "Directory containing the project files."
-        default: ""
+        default: "."
 
 permissions:
   contents: read

@@ -14,12 +14,12 @@ on:
         required: false
         type: string
         description: "Name of the zip file to upload."
-        default: ''
+        default: ""
       s3-bucket-name:
         required: false
         type: string
         description: "Name of the S3 bucket to upload to."
-        default: ''
+        default: ""
       aws-region:
         required: false
         type: string

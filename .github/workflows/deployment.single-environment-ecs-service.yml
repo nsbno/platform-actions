@@ -7,7 +7,7 @@ on:
         description: If monorepo. Directory where the service is located.
         type: string
         required: false
-        default: ""
+        default: "."
       environment:
         description: Environment to deploy
         type: string
