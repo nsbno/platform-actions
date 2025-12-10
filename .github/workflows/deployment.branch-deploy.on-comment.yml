@@ -78,7 +78,7 @@ jobs:
 
   test-application:
     name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs-service.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@autodiscovery
     needs:
       - test-terraform
       - trigger
