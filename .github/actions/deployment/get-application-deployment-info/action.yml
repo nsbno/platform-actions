@@ -46,6 +46,11 @@ runs:
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
+
+        if [ -z "$WORKING_DIRECTORY" ] || [ "$WORKING_DIRECTORY" == "." ] || [ "$WORKING_DIRECTORY" == "./" ]; then
+          WORKING_DIRECTORY=""
+        fi
+
         PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
