@@ -1,0 +1,58 @@
+name: Make AWS API Call
+description: Makes an AWS IAM-authenticated POST request to an API endpoint using curl
+
+inputs:
+  endpoint:
+    description: 'Full API endpoint URL'
+    required: true
+  json-body:
+    description: 'JSON string for request body'
+    required: true
+  continue-on-error:
+    description: 'Continue workflow even if API call fails'
+    required: false
+    default: 'true'
+  aws-service-name:
+    description: 'AWS service name for IAM signing'
+    required: false
+    default: 'execute-api'
+  region:
+    description: 'AWS region for signing'
+    required: false
+    default: 'eu-west-1'
+
+runs:
+  using: composite
+  steps:
+    - name: Make API call
+      id: api-call
+      shell: bash
+      env:
+        ENDPOINT: ${{ inputs.endpoint }}
+        JSON_BODY: ${{ inputs.json-body }}
+        SERVICE: ${{ inputs.aws-service-name }}
+        REGION: ${{ inputs.region }}
+      run: |
+        set +e  # Don't fail on errors
+
+        # Make the API call and capture status code
+        STATUS_CODE=$(curl \
+          --silent \
+          --write-out "%{http_code}" \
+          --output /dev/null \
+          --request POST "$ENDPOINT" \
+          --data "$JSON_BODY" \
+          --aws-sigv4 "aws:amz:${REGION}:${SERVICE}" \
+          --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+          --header "X-Amz-Security-Token: $AWS_SESSION_TOKEN" \
+          --header "Content-Type: application/json")
+
+        if [ ${STATUS_CODE} -ne 200 ]; then
+          echo "API call failed. Response code: ${STATUS_CODE}"
+
+          if [ "${{ inputs.continue-on-error }}" != "true" ]; then
+            exit 1
+          fi
+        else
+          echo "API call successful"
+        fi

@@ -1,12 +1,13 @@
-name: Deploy to single environment
+name: Deploy ECS Service/SSR Service
 
 on:
   workflow_call:
     inputs:
-      application-name:
-        description: Name of the application to deploy
+      working-directory:
+        description: If monorepo. Directory where the service is located.
         type: string
-        required: true
+        required: false
+        default: "."
       environment:
         description: Environment to deploy
         type: string
@@ -25,10 +26,6 @@ on:
         type: boolean
         required: false
         default: false
-      lambda-file-extension:
-        description: File extension for Lambda deployment package (zip or jar)
-        type: string
-        required: false
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -37,12 +34,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy-${{ inputs.application-name }}
+  group: ${{ inputs.environment }}-deploy-${{ inputs.ecs-service-name }}
   cancel-in-progress: true
 
 jobs:
-  deploy-applications:
-    name: ${{ inputs.application-name }} (${{ inputs.environment }})
+  ecs-service:
+    name: ${{ inputs.environment }} - ECS
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     if: |
@@ -65,21 +62,28 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
-          application-name: ${{ inputs.application-name }}
+          github-repository-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Warn if no ECS service found
+        if: steps.deployment-info.outputs.ecs-service-name == ''
+        run: |
+          echo "::warning::No ECS found in environment ${{ inputs.environment }}. Skipping ECS deployment."
+          echo "::warning::Use `deployment.all-environments-terraform.yml` workflow if not deploying ECS."
 
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v1
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
 
       - name: Deploy ECS
-        if: steps.deployment-info.outputs.compute-target == 'ecs'
-        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@v1
+        if: steps.deployment-info.outputs.ecs-service-name != ''
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@v2
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
@@ -89,26 +93,10 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           sha-version: ${{ inputs.sha-to-deploy }}
 
-      - name: Deploy Lambda (ECR Image)
-        if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-ecr-image-base != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-image@v1
+      - name: Register ECS Version to deployment version handler
+        if: steps.deployment-info.outputs.ecs-service-name != ''
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@v2
         with:
-          function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          image-uri: "${{ steps.deployment-info.outputs.lambda-ecr-image-base }}:${{ inputs.sha-to-deploy }}"
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Deploy Lambda (S3 Zip/jar)
-        if: steps.deployment-info.outputs.compute-target == 'lambda' && steps.deployment-info.outputs.lambda-s3-bucket != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/lambda/deploy-lambda-s3@v1
-        with:
-          function-name: ${{ steps.deployment-info.outputs.lambda-function-name }}
-          lambda-s3-bucket: ${{ steps.deployment-info.outputs.lambda-s3-bucket }}
-          aws-region: ${{ vars.AWS_REGION }}
-          file-extension: ${{ inputs.lambda-file-extension }}
-
-      - name: Put Application Deployment Version
-        id: deployment-version
-        uses: nsbno/platform-actions/.github/actions/deployment/put-application-version-info@v1
-        with:
-          application-name: ${{ inputs.application-name }}
-          sha-to-deploy: ${{ inputs.sha-to-deploy }}
+          compute-target: "ecs"
+          working-directory: ${{ inputs.working-directory }}
+          git-sha-to-register: ${{ inputs.sha-to-deploy }}

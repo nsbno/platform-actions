@@ -1,12 +1,8 @@
-name: Deploy All Environments
+name: Deploy All Environments (used for ECS Services)
 
 on:
   workflow_call:
     inputs:
-      applications:
-        description: The name of the application in your Terraform configuration. Comma-separated.
-        type: string
-        required: false
       has-application-changes:
         description: All changes in application and infrastructure
         type: boolean
@@ -14,7 +10,8 @@ on:
         default: true
       terraform-changes:
         type: string
-        required: true
+        required: false
+        default: '["Service", "Test", "Stage", "Production"]' # Assume all environments have changes if not specified
       working-directory:
         description: "Directory containing the project files"
         required: false
@@ -24,7 +21,7 @@ on:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: ''
+        default: ""
       sha-to-deploy:
         description: The SHA to deploy. If not provided, the current commit SHA will be used.
         type: string
@@ -32,6 +29,11 @@ on:
         default: ${{ github.sha }} # Assume this workflow is only run in main branches
       skip-service-environment:
         description: Skip the service environment, if the repository does not deploy to the service environment.
+        type: boolean
+        default: false
+        required: false
+      skip-production-environment:
+        description: Skip the production environment, if the repository does not deploy to the production environment.
         type: boolean
         default: false
         required: false
@@ -45,17 +47,13 @@ on:
         required: false
         type: string
         default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
-      lambda-file-extension:
-        description: File extension for Lambda deployment package (zip or jar)
-        type: string
-        required: false
 
 run-name: Deploy Environments
 
 jobs:
   send-tracking-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
     with:
       status: started
       tracking-type: dora
@@ -66,24 +64,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}
-      application-names: ${{ steps.parse-app-names.outputs.apps_json }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
-      - name: Parse application names
-        id: parse-app-names
-        run: |
-          APPS_JSON=$(echo '${{ inputs.applications }}' | jq -Rc 'split(",") | map(select(length > 0) | ltrimstr(" ") | rtrimstr(" "))')
-          echo "apps_json=${APPS_JSON}" >> $GITHUB_OUTPUT
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs: get-environments
     if: |
       always()
@@ -102,7 +94,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -121,33 +113,28 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  test-application:
-    name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+  test-ecs-service:
+    name: Test - ECS Service
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - test-terraform
       - get-environments
     if: |
       always()
-      && inputs.applications
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && needs.test-terraform.result != 'failure'
       && contains(needs.get-environments.outputs.environments, 'Test')
-    strategy:
-      matrix:
-        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application-name: ${{ matrix.application-name }}
+      working-directory: ${{ inputs.working-directory }}
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      lambda-file-extension: ${{ inputs.lambda-file-extension }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -166,41 +153,37 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  stage-application:
-    name: Stage - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+  stage-ecs-service:
+    name: Stage - ECS Service
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - stage-terraform
       - get-environments
     if: |
       always()
-      && inputs.applications
       && !cancelled()
       && !contains(needs.*.result, 'failure')
       && needs.stage-terraform.result != 'failure'
       && contains(needs.get-environments.outputs.environments, 'Stage')
-    strategy:
-      matrix:
-        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application-name: ${{ matrix.application-name }}
+      working-directory: ${{ inputs.working-directory }}
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      lambda-file-extension: ${{ inputs.lambda-file-extension }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
-      - stage-application
+      - stage-ecs-service
       - stage-terraform
-      - test-application
+      - test-ecs-service
       - test-terraform
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
@@ -213,42 +196,38 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
 
-  production-application:
-    name: Prod - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-application.yml@v1
+  production-ecs-service:
+    name: Prod - ECS Service
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - production-terraform
       - get-environments
     if: |
       always()
-      && inputs.applications
       && !cancelled()
+      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
-    strategy:
-      matrix:
-        application-name: ${{ fromJSON(needs.get-environments.outputs.application-names) }}
     with:
-      application-name: ${{ matrix.application-name }}
+      working-directory: ${{ inputs.working-directory }}
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      lambda-file-extension: ${{ inputs.lambda-file-extension }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
 
   send-tracking-finished:
-    name: Send finsihed metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v1
+    name: Send finished metric to DORA service
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
     needs:
       - service-terraform
       - test-terraform
-      - test-application
+      - test-ecs-service
       - stage-terraform
-      - stage-application
+      - stage-ecs-service
       - production-terraform
-      - production-application
+      - production-ecs-service
     if: always()
     with:
-      status: ${{ (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped' || contains(needs.*.result, 'neutral'))) && 'succeeded' || 'failed' }}
+      status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failed' || 'succeeded' }}
       tracking-type: dora
       aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}

@@ -2,10 +2,11 @@ name: Branch Preview Deployment
 on:
   workflow_call:
     inputs:
-      service-name:
-        required: true
+      working-directory:
+        required: false
+        description: The working directory for the service to deploy.
         type: string
-        description: "The name of the service to deploy"
+        default: "."
 
 jobs:
   trigger:
@@ -35,9 +36,9 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v1
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
     with:
-      service-name: ${{ inputs.service-name }}
+      working-directory: ${{ inputs.working-directory }}
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
@@ -47,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
         with:
           is-preview: true
           environment: Test

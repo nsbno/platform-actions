@@ -2,13 +2,14 @@ name: Get Application Deployment Info
 description: Gets information about the deployable
 
 inputs:
-  application-name:
-    description: "The name of the application"
+  github-repository-name:
+    description: "The GitHub repository name"
+    required: true
+  working-directory:
+    description: "The working directory within the repository"
+    required: true
 
 outputs:
-  compute-target:
-    description: What kind of compute we are targeting (ECS or Lambda)
-    value: ${{ steps.params.outputs.compute_target }}
   ecs-cluster-name:
     description: The ECS Cluster Name
     value: ${{ steps.params.outputs.ecs_cluster_name }}
@@ -24,24 +25,12 @@ outputs:
   ecs-container-port:
     description: The container port to use
     value: ${{ steps.params.outputs.ecs_container_port }}
-  lambda-function-name:
-    description: The name of the Lambda function
-    value: ${{ steps.params.outputs.lambda_function_name }}
-  lambda-s3-bucket:
-    description: The S3 Bucket Name
-    value: ${{ steps.params.outputs.lambda_s3_bucket }}
-  lambda-s3-folder:
-    description: The folder within the S3 Bucket
-    value: ${{ steps.params.outputs.lambda_s3_folder }}
-  lambda-ecr-image-base:
-    description: The ECR Image URI for the Lambda function
-    value: ${{ steps.params.outputs.lambda_ecr_image_base }}
   static-files-bucket-name:
     description: The S3 Bucket Name for static files
-    value: ${{ steps.params.outputs.static_files_bucket_name }}
+    value: ${{ steps.frontend-params.outputs.static_files_bucket_name }}
   cloudfront-domain-name:
     description: The CloudFront Domain Name for a web application
-    value: ${{ steps.params.outputs.cloudfront_domain_name }}
+    value: ${{ steps.frontend-params.outputs.cloudfront_domain_name }}
   central-deployment-account-id:
     description: The AWS Account ID to use for the central deployment account. Used for testing purposes
     value: ${{ steps.central-account.outputs.central_deployment_account_id }}
@@ -52,8 +41,17 @@ runs:
     - name: Get Parameters
       id: params
       shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ inputs.github-repository-name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${{ inputs.application-name }}/" --query "Parameters")
+        GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
+
+        if [ -z "$WORKING_DIRECTORY" ] || [ "$WORKING_DIRECTORY" == "." ] || [ "$WORKING_DIRECTORY" == "./" ]; then
+          WORKING_DIRECTORY=""
+        fi
+
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
           echo "NAME=$NAME"
@@ -62,13 +60,20 @@ runs:
           echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
         done
 
-    - name: Validate compute target exists
-      # Supported application deployments should have a compute_target defined as an SSM parameter set in Terraform
-      if: ${{ steps.params.outputs.compute_target == '' }}
+    - name: Get Other parameters for ECS Service (Frontend SSR)
+      id: frontend-params
       shell: bash
+      if: steps.params.outputs.ecs_service_name != ''
       run: |
-          echo "::error::Application name '${{ inputs.application-name }}' does not exist. Verify 'applications' parameter in your GHA Workflows."
-          exit 1
+        ECS_SERVICE_NAME=${{ steps.params.outputs.ecs_service_name }}
+        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/applications/${ECS_SERVICE_NAME}/" --query "Parameters")
+        for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
+          NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
+          echo "NAME=$NAME"
+          VALUE=$(echo "$ROW" | jq -r '.Value')
+          echo "VALUE=$VALUE"
+          echo "$NAME=$VALUE" >> $GITHUB_OUTPUT
+        done
 
     - name: Get central deployment account ID
       id: central-account

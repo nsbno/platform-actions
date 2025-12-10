@@ -15,7 +15,7 @@ on:
         description: Directory where Terraform environment directories are located
         type: string
         required: false
-        default: ''
+        default: ""
       skip-service-environment:
         description: Skip the service environment, if the repository does not deploy to the service environment.
         type: boolean
@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
@@ -72,7 +72,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v1
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v2
         id: changed-files
         with:
           environment: ${{ matrix.environment }}

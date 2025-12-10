@@ -1,0 +1,150 @@
+name: Deploy All Environments (only Terraform, e.g. Lambda deploys or -aws repos)
+
+on:
+  workflow_call:
+    inputs:
+      has-application-changes:
+        description: All changes in application and infrastructure
+        type: boolean
+        required: false
+        default: true
+      terraform-changes:
+        type: string
+        required: false
+        default: '["Service", "Test", "Stage", "Production"]' # Assume all environments have changes if not specified
+      working-directory:
+        description: "Directory containing the project files"
+        required: false
+        type: string
+        default: "."
+      terraform-directory:
+        description: Directory where Terraform environment directories are located
+        type: string
+        required: false
+        default: ""
+      sha-to-deploy:
+        description: The SHA to deploy. If not provided, the current commit SHA will be used.
+        type: string
+        required: false
+        default: ${{ github.sha }} # Assume this workflow is only run in main branches
+      skip-service-environment:
+        description: Skip the service environment, if the repository does not deploy to the service environment.
+        type: boolean
+        default: false
+        required: false
+      skip-production-environment:
+        description: Skip the production environment, if the repository does not deploy to the production environment.
+        type: boolean
+        default: false
+        required: false
+      aws-role-name-to-assume:
+        description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
+        required: false
+        type: string
+        default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+
+run-name: Deploy Environments
+
+jobs:
+  send-tracking-started:
+    name: Send "started" metric to DORA service
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
+    with:
+      status: started
+      tracking-type: dora
+      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
+
+  get-environments:
+    name: Find Relevant GH Environments
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.envs.outputs.environments }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
+        id: envs
+        with:
+          skip-service-environment: ${{ inputs.skip-service-environment }}
+
+  # Service always needs to be deployed first, and we only deploy Terraform changes.
+  service-terraform:
+    name: Service - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs: get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Service')
+    with:
+      environment: Service
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+
+  test-terraform:
+    name: Test - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs:
+      - service-terraform
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Test')
+    with:
+      environment: Test
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+
+  stage-terraform:
+    name: Stage - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs:
+      - service-terraform
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Stage')
+    with:
+      environment: Stage
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+
+  production-terraform:
+    name: Prod - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs:
+      - stage-terraform
+      - test-terraform
+    if: |
+      always()
+      && !cancelled()
+      && !inputs.skip-production-environment
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Production')
+    with:
+      environment: Production
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+
+  send-tracking-finished:
+    name: Send finished metric to DORA service
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
+    needs:
+      - service-terraform
+      - test-terraform
+      - stage-terraform
+      - production-terraform
+    if: always()
+    with:
+      status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failed' || 'succeeded' }}
+      tracking-type: dora
+      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}

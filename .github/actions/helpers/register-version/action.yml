@@ -1,0 +1,85 @@
+name: Register Version with Handler API
+description: Registers version deployments with the version handler API
+
+inputs:
+  working-directory:
+    description: 'Working directory of the repository'
+    required: false
+    default: ''
+  api-endpoint:
+    description: 'Version handler API endpoint'
+    required: false
+    default: 'https://version-handler.vydeployment.vydev.io'
+  compute-target:
+    description: 'Compute target (ecs or lambda)'
+    required: false
+    default: ''
+  continue-on-error:
+    description: 'Continue workflow even if registration fails'
+    required: false
+    default: 'false'
+  git-sha-to-register:
+    description: 'Git SHA to register.'
+    required: false
+    default: '${{ github.event.pull_request.head.sha || github.sha }}'
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare API request
+      id: prepare
+      shell: bash
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        BRANCH: ${{ github.ref_name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        COMPUTE_TARGET: ${{ inputs.compute-target }}
+        GIT_SHA: ${{ inputs.git-sha-to-register }}
+        API_ENDPOINT: ${{ inputs.api-endpoint }}
+      run: |
+        # Extract repository name from github.repository (owner/repo-name)
+        GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#./}" # Remove leading ./
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
+
+        ENDPOINT="${API_ENDPOINT}/v2/versions"
+
+        if [ -n "$COMPUTE_TARGET" ]; then
+          JSON_PAYLOAD=$(jq -n -c \
+            --arg repo "$GIT_REPO_NAME" \
+            --arg workdir "$WORKING_DIRECTORY" \
+            --arg branch "$BRANCH" \
+            --arg sha "$GIT_SHA" \
+            --arg target "$COMPUTE_TARGET" \
+            '{
+              github_repository_name: $repo,
+              working_directory: $workdir,
+              branch: $branch,
+              git_sha: $sha,
+              compute_target: $target
+            }')
+        else
+          JSON_PAYLOAD=$(jq -n -c \
+            --arg repo "$GIT_REPO_NAME" \
+            --arg workdir "$WORKING_DIRECTORY" \
+            --arg branch "$BRANCH" \
+            --arg sha "$GIT_SHA" \
+            '{
+              github_repository_name: $repo,
+              working_directory: $workdir,
+              branch: $branch,
+              git_sha: $sha
+            }')
+        fi
+
+        echo "endpoint=$ENDPOINT" >> $GITHUB_OUTPUT
+        echo "json-payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
+
+    - name: Call version handler API
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@autodiscovery
+      with:
+        endpoint: ${{ steps.prepare.outputs.endpoint }}
+        json-body: ${{ steps.prepare.outputs.json-payload }}
+        continue-on-error: ${{ inputs.continue-on-error }}
+        aws-service-name: execute-api
