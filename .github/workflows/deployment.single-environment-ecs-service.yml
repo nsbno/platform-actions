@@ -67,6 +67,12 @@ jobs:
           github-repository-name: ${{ github.repository }}
           working-directory: ${{ inputs.working-directory }}
 
+      - name: Warn if no ECS service found
+        if: steps.deployment-info.outputs.ecs-service-name == ''
+        run: |
+          echo "::warning::No ECS found in environment ${{ inputs.environment }}. Skipping ECS deployment."
+          echo "::warning::Use `deployment.all-environments-terraform.yml` workflow if not deploying ECS."
+
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
@@ -88,6 +94,7 @@ jobs:
           sha-version: ${{ inputs.sha-to-deploy }}
 
       - name: Register ECS Version to deployment version handler
+        if: steps.deployment-info.outputs.ecs-service-name != ''
         uses: nsbno/platform-actions/.github/actions/helpers/register-version@autodiscovery
         with:
           compute-target: "ecs"
