@@ -48,7 +48,7 @@ run-name: Deploy Environments
 jobs:
   send-tracking-started:
     name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
     with:
       status: started
       tracking-type: dora
@@ -62,7 +62,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@autodiscovery
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
@@ -70,7 +70,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs: get-environments
     if: |
       always()
@@ -85,7 +85,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -102,7 +102,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -119,7 +119,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - stage-terraform
       - test-terraform
@@ -137,7 +137,7 @@ jobs:
 
   send-tracking-finished:
     name: Send finished metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
     needs:
       - service-terraform
       - test-terraform

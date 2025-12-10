@@ -36,7 +36,7 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
     with:
       working-directory: ${{ inputs.working-directory }}
       git-event-number: ${{ github.event.issue.number }}
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@autodiscovery
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
         with:
           is-preview: true
           environment: Test

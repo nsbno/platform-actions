@@ -86,7 +86,7 @@ jobs:
 
   plan:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@v2
     with:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}

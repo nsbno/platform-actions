@@ -86,7 +86,7 @@ jobs:
       - name: Get Application Deployment Information
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@autodiscovery
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
           github-repository-name: ${{ inputs.git-repository }}
           working-directory: ${{ inputs.working-directory }}
@@ -94,7 +94,7 @@ jobs:
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@autodiscovery
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@v2
         with:
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
@@ -106,7 +106,7 @@ jobs:
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@autodiscovery
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@v2
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
           domain-name: "pr-${{ inputs.git-event-number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"
@@ -120,7 +120,7 @@ jobs:
     name: Report Preview Deployment Status
     if: ${{ needs.build.outputs.deployment-successful == 'true' }}
     needs: build
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
     secrets: inherit
     with:
       status: "succeeded"

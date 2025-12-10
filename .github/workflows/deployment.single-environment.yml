@@ -25,7 +25,7 @@ on:
 jobs:
   deploy-terraform:
     name: Terraform Apply
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     if: |
       always()
       && !cancelled()
@@ -38,7 +38,7 @@ jobs:
 
   deploy-application:
     name: Deploy Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@autodiscovery
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - deploy-terraform
     if: |
