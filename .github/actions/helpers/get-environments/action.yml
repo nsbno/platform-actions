@@ -108,7 +108,7 @@ runs:
           # Add to filtered list if directory exists
           if [ "$DIR_EXISTS" = "true" ]; then
             echo "  ✓ Terraform directory found for $env"
-            FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq --arg env "$env" '. + [$env]')
+            FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq -c --arg env "$env" '. + [$env]')
           else
             echo "::notice::Environment '$env' has no terraform directory, skipping"
           fi
@@ -117,7 +117,7 @@ runs:
         # Apply skip-production-environment override
         if [ "${{ inputs.skip-production-environment }}" = "true" ]; then
           echo "Applying skip-production-environment override"
-          FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq 'map(select(. != "Production"))')
+          FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq -c 'map(select(. != "Production"))')
         fi
 
         if [ "$FILTERED_ENVS" = "[]" ]; then
