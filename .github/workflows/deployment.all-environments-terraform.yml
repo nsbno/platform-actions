@@ -28,7 +28,7 @@ on:
         required: false
         default: ${{ github.sha }} # Assume this workflow is only run in main branches
       skip-service-environment:
-        description: Skip the service environment, if the repository does not deploy to the service environment.
+        description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
         default: false
         required: false
@@ -65,7 +65,9 @@ jobs:
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
-          skip-service-environment: ${{ inputs.skip-service-environment }}
+          working-directory: ${{ inputs.working-directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
+          skip-production-environment: ${{ inputs.skip-production-environment }}
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:

@@ -1,0 +1,54 @@
+name: Terraform Directory Autodiscovery
+description: Finds the terraform directory for a given environment using standardized autodiscovery logic
+
+inputs:
+  working-directory:
+    description: "Directory containing the project files"
+    required: true
+  terraform-directory:
+    description: "Directory where Terraform environment directories are located (optional)"
+    required: false
+    default: ""
+  env-mapping-directory:
+    description: "Environment directory name (e.g., 'service', 'test', 'stage', 'prod')"
+    required: true
+
+outputs:
+  directory:
+    description: "Full path to the terraform directory, or empty string if not found"
+    value: ${{ steps.find-dir.outputs.directory }}
+  exists:
+    description: "Boolean string - 'true' if directory exists, 'false' otherwise"
+    value: ${{ steps.find-dir.outputs.exists }}
+
+runs:
+  using: composite
+  steps:
+    - name: Find Terraform Directory
+      id: find-dir
+      shell: bash
+      run: |
+        # Check if explicit terraform-directory is provided
+        if [[ -n "${{ inputs.terraform-directory }}" ]]; then
+          CANDIDATE="${{ inputs.working-directory }}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory }}"
+          if [ -d "$CANDIDATE" ]; then
+            echo "directory=$CANDIDATE" >> $GITHUB_OUTPUT
+            echo "exists=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+        fi
+
+        # Check standard locations
+        if [ -d "${{ inputs.working-directory }}/environments/${{ inputs.env-mapping-directory }}" ]; then
+          echo "directory=${{ inputs.working-directory }}/environments/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
+          echo "exists=true" >> $GITHUB_OUTPUT
+          exit 0
+        elif [ -d "${{ inputs.working-directory }}/terraform/${{ inputs.env-mapping-directory }}" ]; then
+          echo "directory=${{ inputs.working-directory }}/terraform/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
+          echo "exists=true" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Not found
+        echo "directory=" >> $GITHUB_OUTPUT
+        echo "exists=false" >> $GITHUB_OUTPUT

@@ -46,21 +46,23 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Determine Terraform directory (terraform or environment)
+    - name: Determine Terraform directory using autodiscovery
+      id: tf-dir-autodiscovery
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: ${{ inputs.env-mapping-directory }}
+
+    - name: Validate Terraform directory exists
       id: tf-dir
       shell: bash
       run: |
-        echo "Working directory: ${{ inputs.working-directory }}"
-        if [[ -n "${{ inputs.terraform-directory }}" ]]; then
-          echo "dir=${{inputs.working-directory}}/${{ inputs.terraform-directory }}/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
-        elif [ -d "${{ inputs.working-directory }}/environments/${{ inputs.env-mapping-directory }}" ]; then
-          echo "dir=${{inputs.working-directory}}/environments/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
-        elif [ -d "${{ inputs.working-directory }}/terraform/${{ inputs.env-mapping-directory }}" ]; then
-          echo "dir=${{inputs.working-directory}}/terraform/${{ inputs.env-mapping-directory }}" >> $GITHUB_OUTPUT
-        else
-          echo "No valid Terraform directory found"
+        if [ "${{ steps.tf-dir-autodiscovery.outputs.exists }}" != "true" ]; then
+          echo "::error::No valid Terraform directory found for environment '${{ inputs.env-mapping-directory }}'"
           exit 1
         fi
+        echo "dir=${{ steps.tf-dir-autodiscovery.outputs.directory }}" >> $GITHUB_OUTPUT
 
     - name: Find Terraform version
       shell: bash

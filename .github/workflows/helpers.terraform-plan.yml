@@ -12,7 +12,7 @@ on:
         required: false
         default: ""
       skip-service-environment:
-        description: Skip the service environment, if the repository does not deploy to the service environment.
+        description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
         default: false
         required: false
@@ -40,7 +40,8 @@ jobs:
         if: ${{ inputs.environment == '' }}
         id: envs
         with:
-          skip-service-environment: ${{ inputs.skip-service-environment }}
+          working-directory: ${{ inputs.working-directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
       - name: Set single environment
         if: ${{ inputs.environment != '' }}
         id: single-env
