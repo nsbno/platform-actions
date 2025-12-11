@@ -10,6 +10,11 @@ on:
         required: false
         type: string
         description: "Name of the artifact storing the build files."
+      artifact-path:
+        required: false
+        type: string
+        description: "Path where files should be zipped from"
+        default: ""
       zip-file-name:
         required: false
         type: string
@@ -54,12 +59,18 @@ jobs:
       - name: Create zip file if not specified
         if: inputs.zip-file-name == ''
         run: |
+          ZIP_FILE="$(pwd)/artifact.zip"
+
           if [ -d "./temp-artifact" ]; then
-            cd ./temp-artifact
-            zip -r "../artifact.zip" ./*
-          else
-            zip -r "artifact.zip" ./*
+            # Navigate to artifact directory (with optional subdirectory)
+            if [ -n "${{ inputs.artifact-path }}" ]; then
+              cd "./temp-artifact/${{ inputs.artifact-path }}"
+            else
+              cd "./temp-artifact"
+            fi
           fi
+
+          zip -r "$ZIP_FILE" ./*
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
