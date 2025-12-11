@@ -1,13 +1,17 @@
 name: Make AWS API Call
-description: Makes an AWS IAM-authenticated POST request to an API endpoint using curl
+description: Makes an AWS IAM-authenticated HTTP request to an API endpoint using curl
 
 inputs:
   endpoint:
     description: 'Full API endpoint URL'
     required: true
+  http-method:
+    description: 'HTTP method (GET, POST, PUT, DELETE, etc.)'
+    required: false
+    default: 'POST'
   json-body:
-    description: 'JSON string for request body'
-    required: true
+    description: 'JSON string for request body (optional for GET requests)'
+    required: false
   continue-on-error:
     description: 'Continue workflow even if API call fails'
     required: false
@@ -21,6 +25,11 @@ inputs:
     required: false
     default: 'eu-west-1'
 
+outputs:
+  response:
+    description: 'Response body from the API call'
+    value: ${{ steps.api-call.outputs.response }}
+
 runs:
   using: composite
   steps:
@@ -29,23 +38,46 @@ runs:
       shell: bash
       env:
         ENDPOINT: ${{ inputs.endpoint }}
+        HTTP_METHOD: ${{ inputs.http-method }}
         JSON_BODY: ${{ inputs.json-body }}
         SERVICE: ${{ inputs.aws-service-name }}
         REGION: ${{ inputs.region }}
       run: |
         set +e  # Don't fail on errors
 
+        RESPONSE_FILE=$(mktemp)
+
+        # Build curl arguments
+        CURL_ARGS=(
+          --silent
+          --write-out "%{http_code}"
+          --output "$RESPONSE_FILE"
+          --request "$HTTP_METHOD"
+          "$ENDPOINT"
+          --aws-sigv4 "aws:amz:${REGION}:${SERVICE}"
+          --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY"
+          --header "X-Amz-Security-Token: $AWS_SESSION_TOKEN"
+        )
+
+        # Add data and content-type for requests with body
+        if [ -n "$JSON_BODY" ]; then
+          CURL_ARGS+=(--data "$JSON_BODY")
+          CURL_ARGS+=(--header "Content-Type: application/json")
+        fi
+
         # Make the API call and capture status code
-        STATUS_CODE=$(curl \
-          --silent \
-          --write-out "%{http_code}" \
-          --output /dev/null \
-          --request POST "$ENDPOINT" \
-          --data "$JSON_BODY" \
-          --aws-sigv4 "aws:amz:${REGION}:${SERVICE}" \
-          --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
-          --header "X-Amz-Security-Token: $AWS_SESSION_TOKEN" \
-          --header "Content-Type: application/json")
+        STATUS_CODE=$(curl "${CURL_ARGS[@]}")
+
+        # Capture response body
+        RESPONSE_BODY=$(cat "$RESPONSE_FILE")
+        rm -f "$RESPONSE_FILE"
+
+        # Set response output
+        {
+          echo "response<<EOF"
+          echo "$RESPONSE_BODY"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
 
         if [ ${STATUS_CODE} -ne 200 ]; then
           echo "API call failed. Response code: ${STATUS_CODE}"

@@ -76,10 +76,12 @@ jobs:
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@ssr-deploy
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
+          github-repository-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''
