@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@auto-skip-service
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         if: ${{ inputs.environment == '' }}
         id: envs
         with:

@@ -39,7 +39,7 @@ runs:
     - name: Check Service Directory
       id: check-service
       if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Service')
-      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}
@@ -48,7 +48,7 @@ runs:
     - name: Check Test Directory
       id: check-test
       if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Test')
-      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}
@@ -57,7 +57,7 @@ runs:
     - name: Check Stage Directory
       id: check-stage
       if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Stage')
-      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}
@@ -66,7 +66,7 @@ runs:
     - name: Check Production Directory
       id: check-production
       if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Production')
-      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}

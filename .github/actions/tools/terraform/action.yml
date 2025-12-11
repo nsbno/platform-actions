@@ -48,7 +48,7 @@ runs:
   steps:
     - name: Determine Terraform directory using autodiscovery
       id: tf-dir-autodiscovery
-      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}
