@@ -1,14 +1,23 @@
 name: Get All Environments in this repository
 
 inputs:
-  skip-service-environment:
-    description: 'Skip deployment to the service environment. Use if the repository does not deploy to the service environment.'
-    required: true
+  skip-production-environment:
+    description: 'Skip production environment (manual override)'
+    required: false
+    default: 'false'
+  working-directory:
+    description: 'Directory containing the project files'
+    required: false
+    default: '.'
+  terraform-directory:
+    description: 'Directory where Terraform environment directories are located'
+    required: false
+    default: ''
 
 outputs:
   environments:
-    description: 'All environments in this repository.'
-    value: ${{ steps.get-environments.outputs.environments }}
+    description: 'All environments in this repository that have terraform directories.'
+    value: ${{ steps.filter-environments.outputs.environments }}
 
 runs:
   using: composite
@@ -25,9 +34,96 @@ runs:
           echo "::error title=No environments found::Check if you have any GitHub environments configured."
           exit 1
         fi
+        echo "all-environments=$environments" >> $GITHUB_OUTPUT
 
-        if [ "${{ inputs.skip-service-environment }}" = "true" ]; then
-          # Filter out the "service" case insensitive environment if it exists
-          environments=$(echo "$environments" | jq 'map(select(test("^service$"; "i") | not))')
+    - name: Check Service Directory
+      id: check-service
+      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Service')
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: service
+
+    - name: Check Test Directory
+      id: check-test
+      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Test')
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: test
+
+    - name: Check Stage Directory
+      id: check-stage
+      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Stage')
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: stage
+
+    - name: Check Production Directory
+      id: check-production
+      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Production')
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@auto-skip-service
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: prod
+
+    - name: Filter Environments by Terraform Directory Existence
+      id: filter-environments
+      shell: bash
+      run: |
+        set -e
+
+        ALL_ENVS='${{ steps.get-environments.outputs.all-environments }}'
+        FILTERED_ENVS="[]"
+
+        # Check each environment based on autodiscovery results
+        for env in $(echo "$ALL_ENVS" | jq -r '.[]'); do
+          echo "Checking environment: $env"
+
+          DIR_EXISTS="false"
+          case "$env" in
+            Service)
+              DIR_EXISTS="${{ steps.check-service.outputs.exists || 'false' }}"
+              ;;
+            Test)
+              DIR_EXISTS="${{ steps.check-test.outputs.exists || 'false' }}"
+              ;;
+            Stage)
+              DIR_EXISTS="${{ steps.check-stage.outputs.exists || 'false' }}"
+              ;;
+            Production)
+              DIR_EXISTS="${{ steps.check-production.outputs.exists || 'false' }}"
+              ;;
+            *)
+              echo "::warning::Unknown environment name: $env, skipping"
+              continue
+              ;;
+          esac
+
+          # Add to filtered list if directory exists
+          if [ "$DIR_EXISTS" = "true" ]; then
+            echo "  ✓ Terraform directory found for $env"
+            FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq --arg env "$env" '. + [$env]')
+          else
+            echo "::notice::Environment '$env' has no terraform directory, skipping"
+          fi
+        done
+
+        # Apply skip-production-environment override
+        if [ "${{ inputs.skip-production-environment }}" = "true" ]; then
+          echo "Applying skip-production-environment override"
+          FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq 'map(select(. != "Production"))')
         fi
-        echo "environments=$(echo "$environments" | jq -c)" >> $GITHUB_OUTPUT
+
+        if [ "$FILTERED_ENVS" = "[]" ]; then
+          echo "::error title=No valid environments::No environments with terraform directories found."
+          exit 1
+        fi
+
+        echo "Final environments: $FILTERED_ENVS"
+        echo "environments=$FILTERED_ENVS" >> $GITHUB_OUTPUT

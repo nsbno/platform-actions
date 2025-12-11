@@ -13,7 +13,7 @@ on:
         required: false
         default: ""
       skip-service-environment:
-        description: Skip the service environment, if the repository does not deploy to the service environment.
+        description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
         default: false
         required: false
@@ -90,7 +90,6 @@ jobs:
     with:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
-      skip-service-environment: ${{ inputs.skip-service-environment }}
       git-sha: ${{ needs.trigger.outputs.git_sha }}
       environment: ${{ needs.trigger.outputs.environment || '' }}
 

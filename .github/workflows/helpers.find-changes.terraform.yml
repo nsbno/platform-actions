@@ -17,7 +17,7 @@ on:
         required: false
         default: ""
       skip-service-environment:
-        description: Skip the service environment, if the repository does not deploy to the service environment.
+        description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
         default: false
         required: false
@@ -45,10 +45,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@auto-skip-service
         id: envs
         with:
-          skip-service-environment: ${{ inputs.skip-service-environment }}
+          working-directory: ${{ inputs.working-directory }}
+          terraform-directory: ${{ inputs.terraform-directory }}
 
   has-terraform-changed:
     name: Detect Changes
