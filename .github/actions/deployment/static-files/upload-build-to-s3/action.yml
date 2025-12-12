@@ -35,7 +35,7 @@ runs:
       with:
         http-method: GET
         # using '/lambda' is a bit misleading, but it just means the version is set before Terraform runs
-        endpoint: https://version-handler.vydeployment.vydev.io/v2/versions/${{inputs.github-repository-name}}/lambda?working_directory=${{input.working-directory}}
+        endpoint: https://version-handler.vydeployment.vydev.io/v2/versions/${{inputs.github-repository-name}}/lambda?working_directory=${{inputs.working-directory}}
 
     - name: Download and unzip artifact from S3
       shell: bash
