@@ -42,6 +42,8 @@ jobs:
     name: ${{ inputs.environment }} - ECS
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      GITHUB_REPOSITORY: ${{ github.repository }}
     if: |
       inputs.deploy-application
       && always()
@@ -54,6 +56,12 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
           ref: ${{ inputs.sha-to-deploy }}
 
+      - name: Get GitHub Repository Name Without Owner
+        id: repo-name-without-owner
+        run: |
+            echo "value=${GITHUB_REPOSITORY##*/}" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -64,7 +72,7 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
-          github-repository-name: ${{ github.repository }}
+          github-repository-name: ${{ steps.repo-name-without-owner.outputs.value }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Warn if no ECS service found
@@ -80,7 +88,7 @@ jobs:
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
-          github-repository-name: ${{ github.repository }}
+          github-repository-name: ${{ steps.repo-name-without-owner.outputs.value }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Deploy ECS

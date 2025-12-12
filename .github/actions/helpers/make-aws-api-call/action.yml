@@ -83,6 +83,8 @@ runs:
           echo "API call failed. Response code: ${STATUS_CODE}"
 
           if [ "${{ inputs.continue-on-error }}" != "true" ]; then
+            echo "Error response body:"
+            echo "$RESPONSE_BODY"
             exit 1
           fi
         else
