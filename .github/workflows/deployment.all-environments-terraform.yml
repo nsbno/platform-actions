@@ -46,14 +46,6 @@ on:
 run-name: Deploy Environments
 
 jobs:
-  send-tracking-started:
-    name: Send "started" metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
-    with:
-      status: started
-      tracking-type: dora
-      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
-
   get-environments:
     name: Find Relevant GH Environments
     runs-on: ubuntu-latest
@@ -136,17 +128,3 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
-
-  send-tracking-finished:
-    name: Send finished metric to DORA service
-    uses: nsbno/platform-actions/.github/workflows/helpers.deployment-tracking.yml@v2
-    needs:
-      - service-terraform
-      - test-terraform
-      - stage-terraform
-      - production-terraform
-    if: always()
-    with:
-      status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failed' || 'succeeded' }}
-      tracking-type: dora
-      aws-role-name-to-assume: ${{ inputs.aws-role-name-to-assume }}
