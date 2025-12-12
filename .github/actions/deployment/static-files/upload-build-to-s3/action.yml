@@ -31,7 +31,7 @@ runs:
 
     - name: Find Latest S3 Artifact Version from Service Account
       id: find-latest-s3-artifact
-      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call.yml@ssr-deploy
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@ssr-deploy
       with:
         http-method: GET
         # using '/lambda' is a bit misleading, but it just means the version is set before Terraform runs
