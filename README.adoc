@@ -1,7 +1,32 @@
-= Common GitHub Action Workflows & Actions
+= Vy Platform Actions
 
 Here are shared GitHub Action actions and workflows that can be used for build and deploy!
 
+== platform-actions v2
+This is a major update to platform-actions with several breaking changes.
+
+=== How to upgrade from v1
+==== For all workflows
+- Rename workflow: `deployment.all-environments.yml` to `deployment.all-environments-ecs.yml`.
+- Remove `applications` parameter from all platform-actions workflows.
+- For `package.docker.yml`, if using parameter `repo-name`, change it to `ecr-repo-name`.
+- Use tag `@v2` for all `nsbno/platform-actions` workflows
+(Quick tip: do a global search for `.yml@v1` or `.yml@main` and replace with `.yml@v2`
+- Remove `package.s3-static-files.yml` and replace with `package.s3.yml` with `artifact-path: "build/client"`
+
+==== ECS
+If your deployment target is ECS, use the latest 3.x version of terraform-aws-ecs-service
+- Use the latest data source `vy_ecs_image`
+- How to: https://github.com/nsbno/terraform-aws-ecs-service/releases/tag/3.0.0
+
+==== Lambda
+If your deployment target is Lambda, use the latest 2.x version of terraform-aws-lambda
+- Use the latest data source `vy_lambda_artifact`
+- How to: https://github.com/nsbno/terraform-aws-lambda/releases/tag/2.0.0
+
+'''
+=== What's new:
+Please refer to the https://github.com/nsbno/platform-actions/releases[release page] for the latest release notes.
 
 == Workflows
 
