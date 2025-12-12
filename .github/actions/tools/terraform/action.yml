@@ -105,7 +105,7 @@ runs:
 
     # This will register the GitHub repository name and working directory to be used in Terraform version tracking
     - name: Register version to deployment version handler
-      uses: nsbno/platform-actions/.github/actions/helpers/register-version@ssr-deploy
+      uses: nsbno/platform-actions/.github/actions/helpers/register-version@v2
       with:
         working-directory: ${{ inputs.working-directory }}
         git-sha-to-register: ${{ inputs.git-sha }}
