@@ -37,8 +37,8 @@ runs:
     - name: Download and unzip artifact from S3
       shell: bash
       run: |
-        SERVICE_BUCKET_NAME=$(echo '${{ steps.get-version.outputs.response }}' | jq -r '.bucket_name')
-        S3_OBJECT_PATH=$(echo '${{ steps.get-version.outputs.response }}' | jq -r '.s3_object_path')
+        SERVICE_BUCKET_NAME=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.bucket_name')
+        S3_OBJECT_PATH=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.s3_object_path')
 
         aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
         unzip build.zip -d "./content-to-upload"
