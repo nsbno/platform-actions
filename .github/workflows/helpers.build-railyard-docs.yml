@@ -15,7 +15,7 @@ on:
         description: "The folder path where the OpenAPI spec is generated"
       openapi-spec-filename:
         type: string
-        default: openapi-metadata.yaml
+        default: openapi-definition.yaml
         description: "The file name for openapi-spec"
       aws-region:
         required: false
