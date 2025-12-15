@@ -101,8 +101,7 @@ jobs:
             echo "✓ Found OpenAPI spec file"
           else
             echo "file_exists=false" >> $GITHUB_OUTPUT
-            echo "ERROR: OpenAPI spec file not found: ${{ inputs.openapi-spec-filename }}"
-            exit 1
+            echo "SKIPPING: OpenAPI spec file not found: ${{ inputs.openapi-spec-filename }}"
           fi
 
       - name: Create the railyard openapi folder if it doesn't exist
