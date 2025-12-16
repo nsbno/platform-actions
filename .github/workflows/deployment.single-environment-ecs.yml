@@ -34,8 +34,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ${{ inputs.environment }}-deploy-${{ inputs.ecs-service-name }}
-  cancel-in-progress: true
+  group: ${{ inputs.environment }}-deploy-${{ inputs.working-directory }}
 
 jobs:
   ecs-service:
