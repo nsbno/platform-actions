@@ -38,7 +38,6 @@ permissions:
 
 concurrency:
   group: ${{ inputs.environment }}-deploy-${{ inputs.application-name }}
-  cancel-in-progress: true
 
 jobs:
   deploy-applications:
