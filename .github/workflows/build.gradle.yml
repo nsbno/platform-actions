@@ -30,11 +30,11 @@ on:
       artifact-path:
         required: false
         type: string
-        default: "./build"  # Default for Gradle.
+        default: "build"  # Default for Gradle.
       gradle-operations:
         required: false
         type: string
-        default: "assemble"
+        default: "assemble --build-cache"
         description: "Gradle operations to run."
       git-sha:
         required: false
@@ -60,7 +60,7 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
           ref: ${{ inputs.git-sha }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/gradle@main
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@v1
         name: Gradle Build
         with:
           java-version: ${{ inputs.java-version }}
@@ -78,5 +78,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
+          path: ${{inputs.working-directory}}/${{ inputs.artifact-path }}
           retention-days: 5

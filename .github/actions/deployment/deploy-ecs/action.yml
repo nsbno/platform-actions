@@ -19,6 +19,9 @@ inputs:
   aws-account-id:
     description: "The AWS Account ID"
     required: true
+  sha-version:
+    description: "The git sha version to add as a tag"
+    required: true
 
 runs:
   using: composite
@@ -31,11 +34,36 @@ runs:
         task-definition-family: ${{ inputs.ecs-service-name }}
         image: ${{ inputs.image-uri }}
 
+    - name: Add version tag to dd_tags
+      shell: bash
+      run: |
+        jq --arg version "${{ inputs.sha-version }}" '
+          .containerDefinitions |= map(
+            if (.logConfiguration.logDriver? // "") == "awsfirelens" then
+              # Split tags, filter out existing version: tags, add new version, rejoin
+              .logConfiguration.options.dd_tags = (
+                if (.logConfiguration.options.dd_tags // "") == "" then
+                  # No existing tags - set version directly
+                  "version:\($version)"
+                else
+                  # Has existing tags - filter and append
+                  [
+                    (.logConfiguration.options.dd_tags | split(",") | map(select(startswith("version:") | not)) | .[]),
+                    "version:\($version)"
+                  ] | join(",")
+                end
+              )
+            else
+              .
+            end
+          )
+        ' ${{ steps.render.outputs.task-definition }} > task-def-with-version.json
+
     - name: Deploy new task definition
       id: deploy
       uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
-        task-definition: ${{ steps.render.outputs.task-definition }}
+        task-definition: task-def-with-version.json
         service: ${{ inputs.ecs-service-name }}
         cluster: ${{ inputs.cluster-name }}
 

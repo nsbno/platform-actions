@@ -30,11 +30,33 @@ jobs:
       git_sha: ${{ steps.get-sha.outputs.sha }}
       issue_number: ${{ steps.ids.outputs.issue_number }}
       comment_id: ${{ steps.ids.outputs.comment_id }}
+      status_comment_id: ${{ steps.status-comment.outputs.comment-id }}
+      environment: ${{ steps.ids.outputs.environment || '' }}
     steps:
       - id: ids
         run: |
           echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           echo "comment_id=${{ github.event.comment.id }}" >> $GITHUB_OUTPUT
+
+          ENVIRONMENT=$(echo "${{ github.event.comment.body }}" | awk '{print $3}')
+          if [ -z "$ENVIRONMENT" ]; then
+            echo "No environment specified in the comment. Running plan for all environments."
+            exit 0
+          fi
+  
+          # Map environment names to match GitHub environment names if needed
+          if [ "$ENVIRONMENT" = "dev" ]; then
+              ENVIRONMENT="Development"
+          elif [ "$ENVIRONMENT" = "test" ]; then
+              ENVIRONMENT="Test"
+          elif [ "$ENVIRONMENT" = "stage" ]; then
+              ENVIRONMENT="Stage"
+          elif [ "$ENVIRONMENT" = "service" ]; then
+              ENVIRONMENT="Service"
+          elif [ "$ENVIRONMENT" = "prod" ] || [ "$ENVIRONMENT" = "production" ]; then
+              ENVIRONMENT="Production"
+          fi
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
 
       - name: Determine PR SHA
         id: get-sha
@@ -51,13 +73,12 @@ jobs:
             -f content='eyes'
 
       - name: Comment plan is running
+        id: status-comment
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
             ### Terraform plan initiated
-            
-            🔗 [Follow the plan here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             
             Commit: [${{ steps.get-sha.outputs.sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.issue.number }}/commits/${{ steps.get-sha.outputs.sha }})
             
@@ -65,15 +86,17 @@ jobs:
 
   plan:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@main
+    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@v1
     with:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       skip-service-environment: ${{ inputs.skip-service-environment }}
       git-sha: ${{ needs.trigger.outputs.git_sha }}
+      environment: ${{ needs.trigger.outputs.environment || '' }}
 
   reaction-handling:
     name: Remove eyes, React rocket
+    if: ${{ success() }}
     needs:
       - trigger
       - plan
@@ -103,3 +126,50 @@ jobs:
             --method POST \
             repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
             -f content='rocket'
+
+  reaction-on-failure:
+    name: remove eyes, react fail, comment
+    if: ${{ failure() }}
+    needs:
+      - trigger
+      - plan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove eyes reaction from triggering comment (if present)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REACTION_ID=$(gh api \
+            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
+            | jq -r '.[] | select(.content == "eyes") | .id' | head -n 1)
+
+          if [ -n "$REACTION_ID" ]; then
+            gh api \
+              --method DELETE \
+              repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions/$REACTION_ID
+          else
+            echo "No 'eyes' reaction found to remove."
+          fi
+
+      - name: Add fail reaction to triggering comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
+            -f content='-1'
+
+      - name: Comment plan failed
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        with:
+          comment-id: ${{ needs.trigger.outputs.status_comment_id }}
+          edit-mode: 'replace'
+          body: |
+            ### ❌ Terraform plan failed
+
+            🔗 [Inspect the failed run here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Commit: [${{ needs.trigger.outputs.git_sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.trigger.outputs.issue_number }}/commits/${{ needs.trigger.outputs.git_sha }})
+
+            Please open the link over for details. If this was unexpected, try re-running the workflow from the Actions tab.

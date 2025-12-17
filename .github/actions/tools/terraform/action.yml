@@ -118,7 +118,8 @@ runs:
     # Workaround for releasing lock if cancelling a Terraform job
     # https://github.com/orgs/community/discussions/26311#discussioncomment-11263095
     - name: Release lock if exists
-      if: ${{ steps.terraform.outcome == 'cancelled' && always() }}
+      if: always() && steps.terraform.outcome == 'cancelled'
+      working-directory: ${{ steps.tf-dir.outputs.dir }}
       shell: bash
       run: |
         lock_id=$(terraform plan -no-color -refresh=false 2>&1 | grep ' ID: ' | cut -d: -f2 | tr -d ' ' || true)

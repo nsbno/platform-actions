@@ -1,0 +1,6 @@
+default-cache-control: "max-age=3600"
+
+file-overrides:
+  - file: index.html
+    cache-control: "no-cache"
+

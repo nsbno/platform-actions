@@ -34,6 +34,11 @@ on:
         type: string
         description: "Environment to deploy to."
         default: 'Test'
+      s3-static-files-path:
+        required: false
+        type: string
+        description: "Path in S3 bucket to upload static files to."
+        default: "static"
 
 name: Upload Frontend Static Files to S3. For Pull Requests.
 
@@ -55,15 +60,16 @@ jobs:
       # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@main
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v1
         with:
           application-name: ${{ inputs.service-name }}
 
       - name: Upload Static Files/Web Build to S3
         if: steps.deployment-info.outputs.static-files-bucket-name != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@main
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v1
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: ${{ inputs.git-sha }}
           artifact-name: ${{ inputs.artifact-name }}
           artifact-path: ${{ inputs.artifact-path }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}

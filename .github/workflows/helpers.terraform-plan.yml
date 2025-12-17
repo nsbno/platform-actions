@@ -21,20 +21,31 @@ on:
         type: string
         required: false
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      environment:
+        description: (Optional) If provided, only plan for this environment.
+        type: string
+        required: false
+        default: ''
 
 jobs:
   get-environments:
     name: Find Relevant GH Environments
     runs-on: ubuntu-latest
     outputs:
-      environments: ${{ steps.envs.outputs.environments }}
+      environments: ${{ steps.envs.outputs.environments || steps.single-env.outputs.environments }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@main
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v1
+        if: ${{ inputs.environment == '' }}
         id: envs
         with:
           skip-service-environment: ${{ inputs.skip-service-environment }}
+      - name: Set single environment
+        if: ${{ inputs.environment != '' }}
+        id: single-env
+        run: |
+          echo "environments=[\"${{ inputs.environment }}\"]" >> $GITHUB_OUTPUT
 
   terraform-plan:
     name: Terraform Plan
@@ -59,7 +70,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@main
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v1
         id: changed-files
         with:
           environment: ${{ matrix.environment }}
