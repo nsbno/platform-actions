@@ -108,7 +108,7 @@ jobs:
 
       - name: Register ECS Version to deployment version handler
         if: steps.deployment-info.outputs.ecs-service-name != ''
-        uses: nsbno/platform-actions/.github/actions/helpers/register-version@version-handler-test
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@v2
         with:
           compute-target: "ecs"
           working-directory: ${{ inputs.working-directory }}
