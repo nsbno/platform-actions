@@ -73,7 +73,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@version-handler-test
     needs: get-environments
     if: |
       always()
@@ -93,7 +93,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@version-handler-test
     needs:
       - service-terraform
       - get-environments
@@ -115,7 +115,7 @@ jobs:
 
   test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@version-handler-test
     needs:
       - test-terraform
       - get-environments
@@ -135,7 +135,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@version-handler-test
     needs:
       - service-terraform
       - get-environments
@@ -157,7 +157,7 @@ jobs:
 
   stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@version-handler-test
     needs:
       - stage-terraform
       - get-environments
@@ -177,7 +177,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@version-handler-test
     needs:
       - stage-ecs-service
       - stage-terraform
@@ -202,7 +202,7 @@ jobs:
 
   production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@version-handler-test
     needs:
       - production-terraform
       - get-environments

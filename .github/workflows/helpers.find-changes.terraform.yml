@@ -77,7 +77,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v2
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@version-handler-test
         id: changed-files
         with:
           environment: ${{ matrix.environment }}
