@@ -26,6 +26,10 @@ on:
         type: string
         required: false
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      version-handler-api-endpoint:
+        description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
+        required: false
+        type: string
 
 run-name: Deploy Terraform to ${{ inputs.environment }}
 
@@ -70,3 +74,4 @@ jobs:
           terraform-options: '--auto-approve'
           always-run-init: 'true'
           git-sha: ${{ inputs.sha-to-deploy }}
+          version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}

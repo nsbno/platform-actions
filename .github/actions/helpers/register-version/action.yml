@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ''
   api-endpoint:
-    description: 'Version handler API endpoint'
+    description: 'Version handler API endpoint for artifact versioning'
     required: false
     default: 'https://version-handler.vydeployment.vydev.io'
   compute-target:

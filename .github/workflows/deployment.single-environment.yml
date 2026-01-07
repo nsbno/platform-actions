@@ -21,6 +21,10 @@ on:
         type: string
         required: false
         default: ""
+      version-handler-api-endpoint:
+        description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
+        required: false
+        type: string
 
 jobs:
   deploy-terraform:
@@ -35,6 +39,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   deploy-application:
     name: Deploy Application
@@ -50,3 +55,4 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       deploy-application: true
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}

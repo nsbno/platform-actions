@@ -26,6 +26,10 @@ on:
         type: boolean
         required: false
         default: false
+      version-handler-api-endpoint:
+        description: Version handler API endpoint for artifact versioning
+        type: string
+        required: false
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -109,3 +113,4 @@ jobs:
           compute-target: "ecs"
           working-directory: ${{ inputs.working-directory }}
           git-sha-to-register: ${{ inputs.sha-to-deploy }}
+          api-endpoint: ${{ inputs.version-handler-api-endpoint }}
