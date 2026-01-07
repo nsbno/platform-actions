@@ -43,6 +43,11 @@ runs:
         WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
         WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
 
+        # Needed: top level workflows make "api-endpoint" input null if version handler api endpoint is not provided 
+        if [ -z "$API_ENDPOINT" ]; then
+          API_ENDPOINT="https://version-handler.vydeployment.vydev.io"
+        fi
+
         ENDPOINT="${API_ENDPOINT}/v2/versions"
 
         if [ -n "$COMPUTE_TARGET" ]; then
