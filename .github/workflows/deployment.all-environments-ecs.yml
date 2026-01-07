@@ -47,6 +47,10 @@ on:
         required: false
         type: string
         default: ${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}
+      version-handler-api-endpoint:
+        description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
+        required: false
+        type: string
 
 run-name: Deploy Environments
 
@@ -85,6 +89,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   test-terraform:
     name: Test - Terraform
@@ -106,6 +111,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   test-ecs-service:
     name: Test - ECS Service
@@ -125,6 +131,7 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -146,6 +153,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   stage-ecs-service:
     name: Stage - ECS Service
@@ -165,6 +173,7 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   production-terraform:
     name: Prod - Terraform
@@ -189,6 +198,7 @@ jobs:
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   production-ecs-service:
     name: Prod - ECS Service
@@ -208,3 +218,4 @@ jobs:
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}

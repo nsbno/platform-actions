@@ -34,6 +34,9 @@ inputs:
   git-sha:
     required: true
     description: "Git SHA to use for versioning"
+  version-handler-api-endpoint:
+    required: false
+    description: "Version handler API endpoint for artifact versioning"
 
 outputs:
   exitcode:
@@ -109,6 +112,7 @@ runs:
       with:
         working-directory: ${{ inputs.working-directory }}
         git-sha-to-register: ${{ inputs.git-sha }}
+        api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
     - name: Terraform Init
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'
