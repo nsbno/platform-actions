@@ -47,9 +47,10 @@ runs:
       run: |
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
 
-        if [ -z "$WORKING_DIRECTORY" ] || [ "$WORKING_DIRECTORY" == "." ] || [ "$WORKING_DIRECTORY" == "./" ]; then
-          WORKING_DIRECTORY=""
-        fi
+        # Normalize working directory path
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#./}" # Remove leading ./
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
+        WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
 
         PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}" --query "Parameters")
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
