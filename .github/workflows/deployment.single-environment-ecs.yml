@@ -59,10 +59,18 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
           ref: ${{ inputs.sha-to-deploy }}
 
-      - name: Get GitHub Repository Name Without Owner
-        id: repo-name-without-owner
+      - name: Normalize deployment paths
+        id: normalize-paths
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
         run: |
-            echo "value=${GITHUB_REPOSITORY##*/}" >> $GITHUB_OUTPUT
+            # Extract repository name without owner
+            echo "git-repo-name=${GITHUB_REPOSITORY##*/}" >> $GITHUB_OUTPUT
+
+            NORMALIZED="${WORKING_DIRECTORY#./}" # Remove leading ./
+            NORMALIZED="${NORMALIZED#.}"         # Remove leading .
+            NORMALIZED="${NORMALIZED#/}"         # Remove leading /
+            echo "working-directory=${NORMALIZED}" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Authenticate with AWS
@@ -75,8 +83,8 @@ jobs:
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
-          github-repository-name: ${{ steps.repo-name-without-owner.outputs.value }}
-          working-directory: ${{ inputs.working-directory }}
+          github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
+          working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
 
       - name: Warn if no ECS service found
         if: steps.deployment-info.outputs.ecs-service-name == ''
@@ -91,8 +99,8 @@ jobs:
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
-          github-repository-name: ${{ steps.repo-name-without-owner.outputs.value }}
-          working-directory: ${{ inputs.working-directory }}
+          github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
+          working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''
@@ -111,6 +119,6 @@ jobs:
         uses: nsbno/platform-actions/.github/actions/helpers/register-version@v2
         with:
           compute-target: "ecs"
-          working-directory: ${{ inputs.working-directory }}
+          working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
           git-sha-to-register: ${{ inputs.sha-to-deploy }}
           api-endpoint: ${{ inputs.version-handler-api-endpoint }}

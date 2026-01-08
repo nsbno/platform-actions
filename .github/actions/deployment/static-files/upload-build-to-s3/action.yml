@@ -36,9 +36,19 @@ runs:
 
     - name: Download and unzip artifact from S3
       shell: bash
+      env:
+        GIT_REPO_NAME: ${{ inputs.github-repository-name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
       run: |
         SERVICE_BUCKET_NAME=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.bucket_name')
-        S3_OBJECT_PATH=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.s3_object_path')
+        GIT_SHA=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.git_sha')
+
+        # Build S3 object path
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          S3_OBJECT_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
+        else
+          S3_OBJECT_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
+        fi
 
         aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
         unzip build.zip -d "./content-to-upload"
