@@ -26,6 +26,10 @@ on:
         type: string
         required: false
         default: ""
+      version-handler-api-endpoint:
+        description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
+        required: false
+        type: string
 
 jobs:
   get-environments:
@@ -81,6 +85,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
           terraform-options: '-no-color'
+          version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Add Terraform Plan to PR
         if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'

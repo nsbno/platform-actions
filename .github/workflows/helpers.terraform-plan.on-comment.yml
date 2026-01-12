@@ -17,6 +17,10 @@ on:
         type: boolean
         default: false
         required: false
+      version-handler-api-endpoint:
+        description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
+        required: false
+        type: string
 
 jobs:
   trigger:
@@ -43,7 +47,7 @@ jobs:
             echo "No environment specified in the comment. Running plan for all environments."
             exit 0
           fi
-  
+          
           # Map environment names to match GitHub environment names if needed
           if [ "$ENVIRONMENT" = "dev" ]; then
               ENVIRONMENT="Development"
@@ -92,6 +96,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       git-sha: ${{ needs.trigger.outputs.git_sha }}
       environment: ${{ needs.trigger.outputs.environment || '' }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   reaction-handling:
     name: Remove eyes, React rocket
