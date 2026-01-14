@@ -30,6 +30,11 @@ on:
         description: Version handler API endpoint for artifact versioning
         type: string
         required: false
+      ecr-repository-names:
+        description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
+        type: string
+        required: false
+        default: ""
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -37,21 +42,26 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: ${{ inputs.environment }}-deploy-${{ inputs.working-directory }}
-
 jobs:
-  ecs-service:
-    name: ${{ inputs.environment }} - ECS
+  deploy-ecs:
+    name: Deploy ${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || 'ECS Service' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
       GITHUB_REPOSITORY: ${{ github.repository }}
+    permissions:
+      contents: read
+      id-token: write
     if: |
       inputs.deploy-application
       && always()
       && !cancelled()
       && !contains(needs.*.result, 'failure')
+    strategy:
+      matrix:
+        ecr-repo-name: ${{ fromJSON(inputs.ecr-repository-names != '' && inputs.ecr-repository-names || inputs.environment) }}
+    concurrency:
+      group: ${{ inputs.environment }}-deploy-${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || inputs.working-directory }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -81,10 +91,11 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@multiple-ecs-in-terraform
         with:
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+          ecr-repository-name: ${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || '' }}
 
       - name: Warn if no ECS service found
         if: steps.deployment-info.outputs.ecs-service-name == ''

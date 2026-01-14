@@ -51,6 +51,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      ecr-repository-names:
+        description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
+        type: string
+        required: false
+        default: ""
 
 run-name: Deploy Environments
 
@@ -115,7 +120,7 @@ jobs:
 
   test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
     needs:
       - test-terraform
       - get-environments
@@ -132,6 +137,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -157,7 +163,7 @@ jobs:
 
   stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
     needs:
       - stage-terraform
       - get-environments
@@ -174,6 +180,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
 
   production-terraform:
     name: Prod - Terraform
@@ -202,7 +209,7 @@ jobs:
 
   production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
     needs:
       - production-terraform
       - get-environments
@@ -219,3 +226,4 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}

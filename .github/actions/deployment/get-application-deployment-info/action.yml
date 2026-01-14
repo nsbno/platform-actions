@@ -8,6 +8,9 @@ inputs:
   working-directory:
     description: "The working directory within the repository"
     required: true
+  ecr-repository-name:
+    description: "The ECR repository name (optional, will try this first for SSM path if provided)"
+    required: false
 
 outputs:
   ecs-cluster-name:
@@ -44,6 +47,7 @@ runs:
       env:
         GITHUB_REPOSITORY: ${{ inputs.github-repository-name }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        ECR_REPOSITORY_NAME: ${{ inputs.ecr-repository-name }}
       run: |
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
 
@@ -52,7 +56,26 @@ runs:
         WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
         WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
 
-        PARAMS=$(aws ssm get-parameters-by-path --path "/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}" --query "Parameters")
+        # Try ECR repository name first if provided
+        if [ -n "$ECR_REPOSITORY_NAME" ]; then
+          ECR_PATH="/__deployment__/${GIT_REPO_NAME}/${ECR_REPOSITORY_NAME}"
+          echo "Trying ECR repository name path: ${ECR_PATH}"
+          PARAMS=$(aws ssm get-parameters-by-path --path "${ECR_PATH}" --query "Parameters")
+          PARAM_COUNT=$(echo "$PARAMS" | jq '. | length')
+
+          if [ "$PARAM_COUNT" -eq 0 ]; then
+            WORKING_DIR_PATH="/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}"
+            echo "No parameters found with ECR repository name, falling back to working directory: ${WORKING_DIR_PATH}"
+            PARAMS=$(aws ssm get-parameters-by-path --path "${WORKING_DIR_PATH}" --query "Parameters")
+          else
+            echo "Found $PARAM_COUNT parameter(s) using ECR repository name"
+          fi
+        else
+          WORKING_DIR_PATH="/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}"
+          echo "Using working directory path: ${WORKING_DIR_PATH}"
+          PARAMS=$(aws ssm get-parameters-by-path --path "${WORKING_DIR_PATH}" --query "Parameters")
+        fi
+
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
           NAME=$(echo "$ROW" | jq -r '.Name' | rev | cut -d"/" -f1  | rev)
           echo "NAME=$NAME"
