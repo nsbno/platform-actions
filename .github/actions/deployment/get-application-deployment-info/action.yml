@@ -56,24 +56,39 @@ runs:
         WORKING_DIRECTORY="${WORKING_DIRECTORY#.}" # Remove leading .
         WORKING_DIRECTORY="${WORKING_DIRECTORY#/}" # Remove leading /
 
-        # Try ECR repository name first if provided
+        # Build base path: repo/working-dir (or just repo if no working-dir)
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          BASE_PATH="/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}"
+        else
+          BASE_PATH="/__deployment__/${GIT_REPO_NAME}"
+        fi
+
+        # Try with ECR name first, then fall back to base path (backward compatibility)
         if [ -n "$ECR_REPOSITORY_NAME" ]; then
-          ECR_PATH="/__deployment__/${GIT_REPO_NAME}/${ECR_REPOSITORY_NAME}"
-          echo "Trying ECR repository name path: ${ECR_PATH}"
-          PARAMS=$(aws ssm get-parameters-by-path --path "${ECR_PATH}" --query "Parameters")
+          SSM_PATH="${BASE_PATH}/${ECR_REPOSITORY_NAME}"
+          echo "Trying SSM path with ECR name: ${SSM_PATH}"
+          PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters" 2>/dev/null || echo "[]")
           PARAM_COUNT=$(echo "$PARAMS" | jq '. | length')
 
           if [ "$PARAM_COUNT" -eq 0 ]; then
-            WORKING_DIR_PATH="/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}"
-            echo "No parameters found with ECR repository name, falling back to working directory: ${WORKING_DIR_PATH}"
-            PARAMS=$(aws ssm get-parameters-by-path --path "${WORKING_DIR_PATH}" --query "Parameters")
+            echo "No parameters found with ECR name, falling back to base path: ${BASE_PATH}"
+            SSM_PATH="${BASE_PATH}"
+            PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters")
           else
             echo "Found $PARAM_COUNT parameter(s) using ECR repository name"
           fi
         else
-          WORKING_DIR_PATH="/__deployment__/${GIT_REPO_NAME}/${WORKING_DIRECTORY}"
-          echo "Using working directory path: ${WORKING_DIR_PATH}"
-          PARAMS=$(aws ssm get-parameters-by-path --path "${WORKING_DIR_PATH}" --query "Parameters")
+          # No ECR name provided - use base path only (backward compatible)
+          SSM_PATH="${BASE_PATH}"
+          echo "Using base path (no ECR name): ${SSM_PATH}"
+          PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters")
+        fi
+
+        PARAM_COUNT=$(echo "$PARAMS" | jq '. | length')
+        if [ "$PARAM_COUNT" -eq 0 ]; then
+          echo "::warning::No parameters found at ${SSM_PATH}"
+        else
+          echo "Found $PARAM_COUNT parameter(s)"
         fi
 
         for ROW in $(echo "$PARAMS" | jq -c '.[]'); do
