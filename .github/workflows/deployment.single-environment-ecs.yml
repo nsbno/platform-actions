@@ -59,7 +59,7 @@ jobs:
       && !contains(needs.*.result, 'failure')
     strategy:
       matrix:
-        ecr-repo-name: ${{ fromJSON(inputs.ecr-repository-names != '' && inputs.ecr-repository-names || inputs.environment) }}
+        ecr-repo-name: ${{ fromJSON(inputs.ecr-repository-names != '' && inputs.ecr-repository-names || '[null]') }}
     concurrency:
       group: ${{ inputs.environment }}-deploy-${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || inputs.working-directory }}
     steps:
