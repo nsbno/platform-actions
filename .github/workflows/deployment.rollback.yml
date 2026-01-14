@@ -1,0 +1,124 @@
+name: Deploy Rollback
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: If monorepo. Directory where the service is located.
+        type: string
+        required: false
+        default: "."
+      environment:
+        description: Environment to rollback (Test, Stage, Production)
+        type: string
+        required: true
+
+run-name: Rollback to ${{ inputs.environment }}
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ inputs.environment }}-rollback-${{ inputs.working-directory }}
+
+jobs:
+  rollback:
+    name: ${{ inputs.environment }} - Rollback
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      GITHUB_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Normalize deployment paths
+        id: normalize-paths
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        run: |
+          # Extract repository name without owner
+          echo "git-repo-name=${GITHUB_REPOSITORY##*/}" >> $GITHUB_OUTPUT
+
+          NORMALIZED="${WORKING_DIRECTORY#./}" # Remove leading ./
+          NORMALIZED="${NORMALIZED#.}"         # Remove leading .
+          NORMALIZED="${NORMALIZED#/}"         # Remove leading /
+          echo "working-directory=${NORMALIZED}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Get Application Deployment Information
+        id: deployment-info
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
+        with:
+          github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
+          working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+
+      - name: Warn if no ECS service found
+        if: steps.deployment-info.outputs.ecs-service-name == ''
+        run: |
+          echo "::error::No ECS service found in environment ${{ inputs.environment }}. Cannot rollback." >> $GITHUB_STEP_SUMMARY
+          exit 1
+
+      - name: Get latest arn from service deployments
+        run: |
+          arn=$(aws ecs list-service-deployments \
+          --cluster ${{ steps.deployment-info.outputs.ecs-cluster-name }} \
+          --service ${{ steps.deployment-info.outputs.ecs-service-name }} \
+          | jq -r '.serviceDeployments | max_by(.createdAt) | .serviceDeploymentArn')
+          
+          if [[ -z "$arn" || "$arn" == "null" ]]; then
+            echo "::error::No active deployment found for service ${{ steps.deployment-info.outputs.ecs-service-name }}. Cannot rollback." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          
+          echo "ECS_SERVICE_DEPLOYMENT_ARN=$arn" >> $GITHUB_ENV
+
+      - name: Stop current deployment and rollback
+        run: |
+          echo "Stopping deployment for service ${{ steps.deployment-info.outputs.ecs-service-name }} in cluster ${{ steps.deployment-info.outputs.ecs-cluster-name }}" >> $GITHUB_STEP_SUMMARY
+          
+          aws ecs stop-service-deployment \
+          --service-deployment-arn ${{ env.ECS_SERVICE_DEPLOYMENT_ARN }} \
+          --stop-type ROLLBACK
+          
+          echo "Rollback initiated"
+
+      - name: Wait for deployment status
+        run: |
+          STATUS=""
+          TIMEOUT=1800  # 30 minutes timeout
+          ELAPSED=0
+          
+          while [[ "$STATUS" != "ROLLBACK_SUCCESSFUL" && "$STATUS" != "SUCCESSFUL" ]]; do
+            if [[ $ELAPSED -ge $TIMEOUT ]]; then
+              echo "::error::Deployment status check timed out after $TIMEOUT seconds." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          
+            STATUS=$(aws ecs list-service-deployments \
+            --cluster ${{ steps.deployment-info.outputs.ecs-cluster-name }} \
+            --service ${{ steps.deployment-info.outputs.ecs-service-name }} \
+            | jq -r --arg arn "${{ env.ECS_SERVICE_DEPLOYMENT_ARN }}" '.serviceDeployments[] | select(.serviceDeploymentArn == $arn) | .status')
+          
+            if [[ -z "$STATUS" ]]; then
+              echo "::error::Deployment not found" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          
+            echo "Current deployment status: $STATUS"
+            if [[ "$STATUS" == "STOPPED" || "$STATUS" == "ROLLBACK_FAILED" ]]; then
+              echo "::error::Deployment failed or stopped. Exiting." >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+          echo "Rollback successful!"
+        
