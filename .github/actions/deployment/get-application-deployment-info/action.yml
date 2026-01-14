@@ -78,10 +78,45 @@ runs:
             echo "Found $PARAM_COUNT parameter(s) using ECR repository name"
           fi
         else
-          # No ECR name provided - use base path only (backward compatible)
+          # No ECR name provided - try base path first (backward compat), then auto-discover
           SSM_PATH="${BASE_PATH}"
-          echo "Using base path (no ECR name): ${SSM_PATH}"
-          PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters")
+          echo "No ECR name provided, trying base path: ${SSM_PATH}"
+          PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters" 2>/dev/null || echo "[]")
+          PARAM_COUNT=$(echo "$PARAMS" | jq '. | length')
+
+          if [ "$PARAM_COUNT" -eq 0 ]; then
+            # No direct parameters - try to auto-discover from sub-paths
+            echo "No parameters at base path, attempting auto-discovery..."
+
+            ALL_PARAMS=$(aws ssm get-parameters-by-path \
+              --path "${SSM_PATH}/" \
+              --recursive \
+              --query "Parameters[?ends_with(Name, '/ecs_service_name')].Name" \
+              --output json 2>/dev/null || echo "[]")
+
+            # Extract service names from the path after base
+            SERVICE_NAMES=$(echo "$ALL_PARAMS" | jq -r --arg base "${SSM_PATH}/" '.[] | sub($base; "") | split("/")[0]' | sort -u)
+            SERVICE_COUNT=$(echo "$SERVICE_NAMES" | grep -c . || echo "0")
+
+            if [ "$SERVICE_COUNT" -eq 0 ]; then
+              echo "::warning::No ECS services found"
+              PARAMS="[]"
+            elif [ "$SERVICE_COUNT" -eq 1 ]; then
+              # Exactly one service found - use it
+              DISCOVERED_ECR_NAME=$(echo "$SERVICE_NAMES" | head -n1)
+              echo "Auto-discovered single service: ${DISCOVERED_ECR_NAME}"
+              SSM_PATH="${BASE_PATH}/${DISCOVERED_ECR_NAME}"
+              PARAMS=$(aws ssm get-parameters-by-path --path "${SSM_PATH}/" --query "Parameters")
+            else
+              # Multiple services - need explicit input
+              echo "::error::Multiple ECS services found:"
+              echo "$SERVICE_NAMES" | while read -r name; do
+                [ -n "$name" ] && echo "::error::  - $name"
+              done
+              echo "::error::Please provide ecr-repository-names input in the workflow"
+              exit 1
+            fi
+          fi
         fi
 
         PARAM_COUNT=$(echo "$PARAMS" | jq '. | length')
