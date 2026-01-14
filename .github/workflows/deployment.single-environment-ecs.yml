@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   deploy-ecs:
-    name: Deploy ${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || 'ECS Service' }}
+    name: ${{ inputs.environment }} - ${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || 'ECS Service' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
