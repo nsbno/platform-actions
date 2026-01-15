@@ -1,4 +1,4 @@
-name: deployment.branch-deploy-test.yml
+name: Deploy to specific environment from PR
 on:
   workflow_call:
     inputs:
@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   trigger:
-    name: Trigger - Branch Deploy Test
+    name: Trigger - Branch Deploy
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.deploy')
     runs-on: ubuntu-latest
     outputs:
@@ -44,60 +44,55 @@ jobs:
       - uses: github/branch-deploy@c9fcc362bdcea69eecac6578dde245cd5e3a55bf  # 10.4.3
         id: branch-deploy
         with:
-          trigger: '.deploy test'
-          environment: 'Test'
+          trigger: '.deploy test | .deploy stage'
+          environment: 'Test,Stage'
+          environment_targets: 'Test,Stage'
           skip_completing: 'true' # we will complete the deployment manually
           skip_reviews: 'Test' # skip reviews for test deployments
           draft_permitted_targets: Test # allow draft PRs to deploy to Test
           stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
 
-  test-terraform:
-    name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+  test-deploy:
+    name: Test - Deploy
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
     needs: trigger
     if: |
       always()
       && needs.trigger.outputs.continue == 'true'
+      && needs.trigger.outputs.environment == 'Test'
       && !cancelled()
-    strategy:
-      matrix:
-        # Matrix gives better visibility in GH UI
-        environment: [ Test ]
     with:
-      environment: ${{ matrix.environment }}
+      environment: Test
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
-      deploy-terraform: true
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
-  test-application:
-    name: Test - Application
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
-    needs:
-      - test-terraform
-      - trigger
+  stage-deploy:
+    name: Stage - Deploy
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
+    needs: trigger
     if: |
       always()
       && needs.trigger.outputs.continue == 'true'
-      && !contains(needs.test-terraform.result, 'failure')
+      && needs.trigger.outputs.environment == 'Stage'
       && !cancelled()
     with:
+      environment: Stage
       working-directory: ${{ inputs.working-directory }}
-      environment: Test
-      deploy-application: true
+      terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ needs.trigger.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   comment-handler:
-    needs: [ trigger, test-application, test-terraform ]
+    needs: [ trigger, test-deploy, stage-deploy ]
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
       - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
         with:
           is-preview: false
-          environment: Test
+          environment: ${{ needs.trigger.outputs.environment }}
           github-repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           issue-number: ${{ github.event.issue.number }}
