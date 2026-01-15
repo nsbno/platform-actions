@@ -12,6 +12,10 @@ on:
         description: Environment to rollback (Test, Stage, Production)
         type: string
         required: true
+      ecr-repository-name:
+        description: "The ECR repository name (optional, if multiple ECS services in a single Terraform config)"
+        type: string
+        required: false
 
 run-name: Rollback to ${{ inputs.environment }}
 
@@ -58,6 +62,7 @@ jobs:
         with:
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+          ecr-repository-name: ${{ inputs.ecr-repository-name }}
 
       - name: Warn if no ECS service found
         if: steps.deployment-info.outputs.ecs-service-name == ''
