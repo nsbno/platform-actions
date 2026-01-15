@@ -120,7 +120,7 @@ jobs:
 
   test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - test-terraform
       - get-environments
@@ -163,7 +163,7 @@ jobs:
 
   stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - stage-terraform
       - get-environments
@@ -209,7 +209,7 @@ jobs:
 
   production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@multiple-ecs-in-terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - production-terraform
       - get-environments

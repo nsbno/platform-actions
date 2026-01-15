@@ -91,7 +91,7 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@multiple-ecs-in-terraform
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
