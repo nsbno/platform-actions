@@ -26,9 +26,9 @@ permissions:
   id-token: write
 
 jobs:
-  trigger:
-    name: Trigger - Branch Deploy
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.deploy')
+  trigger-test:
+    name: Trigger - Branch Deploy Test
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.deploy test')
     runs-on: ubuntu-latest
     outputs:
       continue: ${{ steps.branch-deploy.outputs.continue }}
@@ -41,64 +41,88 @@ jobs:
       actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
 
     steps:
-      - uses: github/branch-deploy@c9fcc362bdcea69eecac6578dde245cd5e3a55bf  # 10.4.3
+      - uses: github/branch-deploy@fded0351b6b79f854b335c11b3d93063461dd288 # v11.1.2
         id: branch-deploy
         with:
-          trigger: '.deploy test | .deploy stage'
-          environment: 'Test,Stage'
-          environment_targets: 'Test,Stage'
+          trigger: '.deploy test'
+          environment: 'Test'
+          environment_targets: 'Test'
           skip_completing: 'true' # we will complete the deployment manually
           skip_reviews: 'Test' # skip reviews for test deployments
           draft_permitted_targets: Test # allow draft PRs to deploy to Test
           stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
 
+  trigger-stage:
+    name: Trigger - Branch Deploy Stage
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.deploy stage')
+    runs-on: ubuntu-latest
+    outputs:
+      continue: ${{ steps.branch-deploy.outputs.continue }}
+      deployment_id: ${{ steps.branch-deploy.outputs.deployment_id }}
+      environment: ${{ steps.branch-deploy.outputs.environment }}
+      ref: ${{ steps.branch-deploy.outputs.ref }}
+      sha: ${{ steps.branch-deploy.outputs.sha }}
+      comment_id: ${{ steps.branch-deploy.outputs.comment_id }}
+      initial_reaction_id: ${{ steps.branch-deploy.outputs.initial_reaction_id }}
+      actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
+
+    steps:
+      - uses: github/branch-deploy@fded0351b6b79f854b335c11b3d93063461dd288 # v11.1.2
+        id: branch-deploy
+        with:
+          trigger: '.deploy stage'
+          environment: 'Stage'
+          environment_targets: 'Stage'
+          skip_completing: 'true' # we will complete the deployment manually
+          skip_reviews: 'Stage' # skip reviews for test deployments
+          draft_permitted_targets: Stage # allow draft PRs to deploy to Test
+          stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
+
   test-deploy:
     name: Test - Deploy
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
-    needs: trigger
+    needs: trigger-test
     if: |
       always()
-      && needs.trigger.outputs.continue == 'true'
-      && needs.trigger.outputs.environment == 'Test'
+      && needs.trigger-test.outputs.continue == 'true'
       && !cancelled()
     with:
       environment: Test
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
-      sha-to-deploy: ${{ needs.trigger.outputs.sha }}
+      sha-to-deploy: ${{ needs.trigger-test.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   stage-deploy:
     name: Stage - Deploy
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
-    needs: trigger
+    needs: trigger-stage
     if: |
       always()
-      && needs.trigger.outputs.continue == 'true'
-      && needs.trigger.outputs.environment == 'Stage'
+      && needs.trigger-stage.outputs.continue == 'true'
       && !cancelled()
     with:
       environment: Stage
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
-      sha-to-deploy: ${{ needs.trigger.outputs.sha }}
+      sha-to-deploy: ${{ needs.trigger-stage.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
   comment-handler:
-    needs: [ trigger, test-deploy, stage-deploy ]
+    needs: [ trigger-test, trigger-stage, test-deploy, stage-deploy ]
     runs-on: ubuntu-latest
-    if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
+    if: ${{ always() && (needs.trigger-test.outputs.continue == 'true' || needs.trigger-stage.outputs.continue == 'true') }}
     steps:
       - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
         with:
           is-preview: false
-          environment: ${{ needs.trigger.outputs.environment }}
+          environment: ${{ needs.trigger-test.outputs.environment || needs.trigger-stage.outputs.environment }}
           github-repository: ${{ github.repository }}
           github-token: ${{ github.token }}
           issue-number: ${{ github.event.issue.number }}
-          ref: ${{ needs.trigger.outputs.ref }}
-          initial-reaction-id: ${{ needs.trigger.outputs.initial_reaction_id }}
-          deployment-id: ${{ needs.trigger.outputs.deployment_id }}
-          comment-id: ${{ needs.trigger.outputs.comment_id }}
-          actor-handle: ${{ needs.trigger.outputs.actor_handle }}
+          ref: ${{ needs.trigger-test.outputs.ref || needs.trigger-stage.outputs.ref }}
+          initial-reaction-id: ${{ needs.trigger-test.outputs.initial_reaction_id || needs.trigger-stage.outputs.initial_reaction_id }}
+          deployment-id: ${{ needs.trigger-test.outputs.deployment_id || needs.trigger-stage.outputs.deployment_id }}
+          comment-id: ${{ needs.trigger-test.outputs.comment_id || needs.trigger-stage.outputs.comment_id }}
+          actor-handle: ${{ needs.trigger-test.outputs.actor_handle || needs.trigger-stage.outputs.actor_handle }}
           job-status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
