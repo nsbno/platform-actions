@@ -65,5 +65,5 @@ runs:
         python3 ${{ github.action_path }}/upload.py \
           "./content-to-upload" \
           "${{ inputs.s3-bucket-name }}" \
-          "${{ inputs.s3-static-files-path }}/${{ inputs.git-sha }}" \
+          "${{ inputs.s3-static-files-path }}" \
           "${{ inputs.cache-control-config }}"
