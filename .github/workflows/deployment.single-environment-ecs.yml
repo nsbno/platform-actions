@@ -35,6 +35,11 @@ on:
         type: string
         required: false
         default: ""
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -106,12 +111,13 @@ jobs:
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-s3-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@static-build
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''

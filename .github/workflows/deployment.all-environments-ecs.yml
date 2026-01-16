@@ -56,6 +56,11 @@ on:
         type: string
         required: false
         default: ""
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 run-name: Deploy Environments
 
@@ -120,7 +125,7 @@ jobs:
 
   test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@static-build
     needs:
       - test-terraform
       - get-environments
@@ -138,6 +143,7 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -163,7 +169,7 @@ jobs:
 
   stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@static-build
     needs:
       - stage-terraform
       - get-environments
@@ -181,6 +187,7 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   production-terraform:
     name: Prod - Terraform
@@ -209,7 +216,7 @@ jobs:
 
   production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@static-build
     needs:
       - production-terraform
       - get-environments
@@ -227,3 +234,4 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}

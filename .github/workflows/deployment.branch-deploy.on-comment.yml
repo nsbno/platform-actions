@@ -16,6 +16,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 permissions:
   pull-requests: write
@@ -92,6 +97,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ needs.trigger-test.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   stage-deploy:
     name: Stage - Deploy
@@ -107,6 +113,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ needs.trigger-stage.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   comment-handler:
     needs: [ trigger-test, trigger-stage, test-deploy, stage-deploy ]
