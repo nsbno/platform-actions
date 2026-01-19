@@ -35,6 +35,11 @@ on:
         type: string
         required: false
         default: ""
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 run-name: Deploy to ${{ inputs.environment }}
 
@@ -112,6 +117,7 @@ jobs:
           git-sha: '${{ inputs.sha-to-deploy }}'
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+          s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''

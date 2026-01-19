@@ -61,6 +61,11 @@ on:
         type: string
         required: false
         default: ""
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 run-name: Deploy Environments
 
@@ -145,6 +150,7 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -188,6 +194,7 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   production-terraform:
     name: Prod - Terraform
@@ -234,3 +241,4 @@ jobs:
       skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
