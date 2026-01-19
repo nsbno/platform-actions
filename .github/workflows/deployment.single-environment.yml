@@ -25,6 +25,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      ecr-repository-names:
+        description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
+        type: string
+        required: false
+        default: ""
 
 jobs:
   deploy-terraform:
@@ -56,3 +61,4 @@ jobs:
       deploy-application: true
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
