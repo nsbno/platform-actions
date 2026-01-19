@@ -27,6 +27,11 @@ on:
         type: string
         required: false
         default: ${{ github.sha }} # Assume this workflow is only run in main branches
+      skip-test-environment:
+        description: Skip the test environment, if the repository does not deploy to the test environment.
+        type: boolean
+        default: false
+        required: false
       skip-service-environment:
         description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
@@ -110,6 +115,7 @@ jobs:
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-test-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Test')
     strategy:
@@ -132,6 +138,7 @@ jobs:
     if: |
       always()
       && !cancelled()
+      && !inputs.skip-test-environment
       && !contains(needs.*.result, 'failure')
       && needs.test-terraform.result != 'failure'
       && contains(needs.get-environments.outputs.environments, 'Test')

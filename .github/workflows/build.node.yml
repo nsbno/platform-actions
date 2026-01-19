@@ -21,6 +21,10 @@ on:
         type: string
         description: "Package manager to use. Default is pnpm."
         default: "pnpm"
+      node-operations:
+        required: false
+        type: string
+        default: "build"
       working-directory:
         required: false
         type: string
@@ -70,7 +74,7 @@ jobs:
         name: npm Build
         with:
           node-version: ${{ inputs.node-version }}
-          npm-operations: build
+          npm-operations: ${{ inputs.node-operations }}
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
@@ -81,7 +85,7 @@ jobs:
         name: pnpm Build
         with:
           node-version: ${{ inputs.node-version }}
-          pnpm-operations: build
+          pnpm-operations: ${{ inputs.node-operations }}
           working-directory: ${{ inputs.working-directory }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}

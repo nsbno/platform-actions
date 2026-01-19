@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: "static"
+      ecr-repository-names:
+        description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
+        type: string
+        required: false
+        default: ""
 
 permissions:
   pull-requests: write
@@ -97,6 +102,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ needs.trigger-test.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   stage-deploy:
@@ -113,6 +119,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       sha-to-deploy: ${{ needs.trigger-stage.outputs.sha }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   comment-handler:

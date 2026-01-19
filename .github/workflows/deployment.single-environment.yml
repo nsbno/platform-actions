@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: "static"
+      ecr-repository-names:
+        description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
+        type: string
+        required: false
+        default: ""
 
 jobs:
   deploy-terraform:
@@ -62,3 +67,4 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
