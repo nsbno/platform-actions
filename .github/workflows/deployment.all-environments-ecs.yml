@@ -78,7 +78,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@refactor-skip-envs
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
           working-directory: ${{ inputs.working-directory }}
