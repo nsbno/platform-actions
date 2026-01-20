@@ -7,6 +7,10 @@ on:
         type: string
         description: "Directory containing the project files."
         default: "."
+      ecr-repository-name:
+        required: false
+        type: string
+        description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
 
 permissions:
   contents: read
@@ -31,6 +35,7 @@ jobs:
         with:
           github-repository-name: ${{ github.repository }}
           working-directory: ${{ inputs.working-directory }}
+          ecr-repository-name: ${{ inputs.ecr-repository-name }}
 
       - name: Delete App Runner Service
         id: delete-service

@@ -7,6 +7,10 @@ on:
         description: The working directory for the service to deploy.
         type: string
         default: "."
+      ecr-repository-name:
+        required: false
+        type: string
+        description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
 
 jobs:
   trigger:
@@ -42,6 +46,7 @@ jobs:
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
+      ecr-repository-name: ${{ inputs.ecr-repository-name }}
 
   comment-handler:
     needs: [ trigger, preview ]

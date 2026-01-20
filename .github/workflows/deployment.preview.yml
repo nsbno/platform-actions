@@ -31,6 +31,10 @@ on:
         type: boolean
         default: true
         description: "Whether to check for a .preview comment before deploying"
+      ecr-repository-name:
+        required: false
+        type: string
+        description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
 
 permissions:
   contents: read
@@ -90,6 +94,7 @@ jobs:
         with:
           github-repository-name: ${{ inputs.git-repository }}
           working-directory: ${{ inputs.working-directory }}
+          ecr-repository-name: ${{ inputs.ecr-repository-name }}
 
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
