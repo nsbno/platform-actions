@@ -16,6 +16,16 @@ on:
         type: string
         required: false
         default: ""
+      skip-test-environment:
+        description: Skip the test environment, if the repository does not deploy to the test environment.
+        type: boolean
+        default: false
+        required: false
+      skip-production-environment:
+        description: Skip the Production environment, if the repository should not deploy to Production.
+        type: boolean
+        default: false
+        required: false
       skip-service-environment:
         description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
@@ -54,6 +64,8 @@ jobs:
         with:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
+          skip-test-environment: ${{ inputs.skip-test-environment }}
+          skip-production-environment: ${{ inputs.skip-production-environment }}
 
   has-terraform-changed:
     name: Detect Changes
