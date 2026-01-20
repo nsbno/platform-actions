@@ -114,7 +114,7 @@ runs:
             echo "  ✓ Terraform directory found for $env"
             FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq -c --arg env "$env" '. + [$env]')
           else
-            echo "::notice::Environment '$env' has no terraform directory, skipping"
+            echo "::notice::Skipping environment '$env': has no terraform directory or is skipped"
           fi
         done
 
