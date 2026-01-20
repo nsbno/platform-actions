@@ -26,6 +26,10 @@ on:
         type: string
         default: "application-build"
         description: "Name of the artifact containing the built application"
+      skip-openapi-spec:
+        type: boolean
+        default: false
+        description: "Optional. Skip updating OpenAPI spec"
 
 name: Build and Upload Railyard TechDocs to S3
 
@@ -76,6 +80,7 @@ jobs:
 
   update-openapi-spec:
     name: Update OpenAPI Spec
+    if: ${{ !inputs.skip-openapi-spec }}
     environment: Service
     runs-on: ubuntu-latest
     permissions:
