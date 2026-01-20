@@ -5,6 +5,10 @@ inputs:
     description: 'Skip production environment (manual override)'
     required: false
     default: 'false'
+  skip-test-environment:
+    description: 'Skip Test environment (manual override)'
+    required: false
+    default: 'false'
   working-directory:
     description: 'Directory containing the project files'
     required: false
@@ -47,7 +51,7 @@ runs:
 
     - name: Check Test Directory
       id: check-test
-      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Test')
+      if: ${{ contains(fromJSON(steps.get-environments.outputs.all-environments), 'Test') && inputs.skip-test-environment != 'true' }}
       uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
@@ -65,7 +69,7 @@ runs:
 
     - name: Check Production Directory
       id: check-production
-      if: contains(fromJSON(steps.get-environments.outputs.all-environments), 'Production')
+      if: ${{ contains(fromJSON(steps.get-environments.outputs.all-environments), 'Production') && inputs.skip-production-environment != 'true' }}
       uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
       with:
         working-directory: ${{ inputs.working-directory }}
@@ -110,15 +114,9 @@ runs:
             echo "  ✓ Terraform directory found for $env"
             FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq -c --arg env "$env" '. + [$env]')
           else
-            echo "::notice::Environment '$env' has no terraform directory, skipping"
+            echo "::notice::Skipping environment '$env': has no terraform directory or is skipped"
           fi
         done
-
-        # Apply skip-production-environment override
-        if [ "${{ inputs.skip-production-environment }}" = "true" ]; then
-          echo "Applying skip-production-environment override"
-          FILTERED_ENVS=$(echo "$FILTERED_ENVS" | jq -c 'map(select(. != "Production"))')
-        fi
 
         if [ "$FILTERED_ENVS" = "[]" ]; then
           echo "::error title=No valid environments::No environments with terraform directories found."

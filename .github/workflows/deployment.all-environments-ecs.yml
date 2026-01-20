@@ -84,6 +84,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
           skip-production-environment: ${{ inputs.skip-production-environment }}
+          skip-test-environment: ${{ inputs.skip-test-environment }}
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
@@ -115,7 +116,6 @@ jobs:
     if: |
       always()
       && !cancelled()
-      && !inputs.skip-test-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Test')
     strategy:
@@ -138,7 +138,6 @@ jobs:
     if: |
       always()
       && !cancelled()
-      && !inputs.skip-test-environment
       && !contains(needs.*.result, 'failure')
       && needs.test-terraform.result != 'failure'
       && contains(needs.get-environments.outputs.environments, 'Test')
@@ -207,7 +206,6 @@ jobs:
     if: |
       always()
       && !cancelled()
-      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     strategy:
@@ -230,7 +228,6 @@ jobs:
     if: |
       always()
       && !cancelled()
-      && !inputs.skip-production-environment
       && !contains(needs.*.result, 'failure')
       && contains(needs.get-environments.outputs.environments, 'Production')
     with:
