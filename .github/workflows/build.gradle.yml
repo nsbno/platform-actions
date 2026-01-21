@@ -52,7 +52,7 @@ on:
 jobs:
   build:
     name: Gradle Build
-    runs-on: ubuntu-latest-large
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
