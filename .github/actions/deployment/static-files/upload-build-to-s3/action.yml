@@ -25,15 +25,6 @@ inputs:
 runs:
   using: composite
   steps:
-    #    # We can remove this in the future as we only use this to find the bucket name of the service account
-    #    - name: Find S3 Service Account Bucket Name
-    #      id: find-latest-s3-artifact
-    #      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
-    #      with:
-    #        http-method: GET
-    #        # using '/lambda' is a bit misleading, but it just means the version is set before Terraform runs
-    #        endpoint: https://version-handler.vydeployment.vydev.io/v2/versions/${{inputs.github-repository-name}}/lambda?working_directory=${{inputs.working-directory}}
-    #        continue-on-error: false
     - name: Get AWS_ACCOUNT_ID environment variable of Service Account
       id: find-service-account-id
       uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
