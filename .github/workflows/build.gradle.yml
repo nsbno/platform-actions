@@ -34,7 +34,7 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "assemble --build-cache"
+        default: "assemble -Dorg.gradle.caching=true --no-daemon"
         description: "Gradle operations to run."
       git-sha:
         required: false

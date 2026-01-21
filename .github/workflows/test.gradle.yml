@@ -23,7 +23,7 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "test --build-cache"
+        default: "test -Dorg.gradle.caching=true --no-daemon"
         description: "Gradle operations to run."
       working-directory:
         required: false
@@ -32,8 +32,8 @@ on:
       cache-read-only:
         required: false
         type: boolean
-        default: true
-        description: "Whether to only read from cache (prevents cache pollution from test jobs)."
+        default: false
+        description: "Whether to only read from cache."
 
 jobs:
   test:
