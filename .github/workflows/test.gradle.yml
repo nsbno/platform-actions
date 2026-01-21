@@ -23,7 +23,7 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "test -Dorg.gradle.caching=true"
+        default: "test -Dorg.gradle.caching=true --no-daemon"
         description: "Gradle operations to run."
       working-directory:
         required: false
