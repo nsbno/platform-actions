@@ -25,7 +25,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Find Latest S3 Artifact Version from Service Account
+    # We can remove this in the future as we only use this to find the bucket name of the service account
+    - name: Find S3 Service Account Bucket Name
       id: find-latest-s3-artifact
       uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
       with:
@@ -39,9 +40,9 @@ runs:
       env:
         GIT_REPO_NAME: ${{ inputs.github-repository-name }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        GIT_SHA: ${{ inputs.git-sha }}
       run: |
         SERVICE_BUCKET_NAME=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.bucket_name')
-        GIT_SHA=$(echo '${{ steps.find-latest-s3-artifact.outputs.response }}' | jq -r '.git_sha')
 
         # Build S3 object path
         if [ -n "$WORKING_DIRECTORY" ]; then
