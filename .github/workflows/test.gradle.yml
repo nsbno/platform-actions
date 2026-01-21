@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: nsbno/platform-actions/.github/actions/tools/gradle@ubuntu-latest
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@ubuntu-latest-large
         name: Gradle Test
         with:
           java-version: ${{ inputs.java-version }}
