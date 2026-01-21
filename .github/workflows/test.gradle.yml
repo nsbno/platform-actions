@@ -32,8 +32,8 @@ on:
       cache-read-only:
         required: false
         type: boolean
-        default: true
-        description: "Whether to only read from cache (prevents cache pollution from test jobs)."
+        default: false
+        description: "Whether to only read from cache."
 
 jobs:
   test:
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: nsbno/platform-actions/.github/actions/tools/gradle@ubuntu-latest-large
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@ubuntu-latest
         name: Gradle Test
         with:
           java-version: ${{ inputs.java-version }}
