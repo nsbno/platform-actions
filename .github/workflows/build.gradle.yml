@@ -60,7 +60,7 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
           ref: ${{ inputs.git-sha }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@ubuntu-latest-large
         name: Gradle Build
         with:
           java-version: ${{ inputs.java-version }}

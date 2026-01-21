@@ -63,14 +63,6 @@ runs:
       with:
         cache-read-only: ${{ inputs.cache-read-only }}
         cache-encryption-key: ${{ inputs.GRADLE_CACHE_ENCRYPTION_KEY }}
-        gradle-home-cache-includes: |
-          caches
-          notifications
-        gradle-home-cache-excludes: |
-          caches/modules-2/modules-2.lock
-          caches/modules-2/gc.properties
-          caches/build-cache-*
-          caches/keyrings
 
     - name: Run Gradle Command
       working-directory: ${{ inputs.working-directory }}
