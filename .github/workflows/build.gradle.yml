@@ -13,7 +13,7 @@ on:
         required: false
         type: string
         description: "What Java version to use."
-        default: "17"
+        default: "21"
       java-distribution:
         required: false
         type: string
