@@ -11,6 +11,16 @@ on:
         required: false
         type: string
         description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
+      skip-static-files-deployment:
+        description: Skip deployment of static files to S3 (if applicable). Used if static files is built in Dockerfile.
+        type: boolean
+        default: true # TODO: change to false in v3 of platform-actions to not break backwards-compatibility
+        required: false
+      s3-static-files-path:
+        description: "Path in S3 bucket to upload static files to."
+        required: false
+        type: string
+        default: "static"
 
 jobs:
   trigger:
@@ -47,6 +57,8 @@ jobs:
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       ecr-repository-name: ${{ inputs.ecr-repository-name }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   comment-handler:
     needs: [ trigger, preview ]
