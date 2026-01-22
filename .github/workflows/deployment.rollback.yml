@@ -37,6 +37,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # TODO: Find a better way to normalize so it does not need to be used in every action
       - name: Normalize deployment paths
         id: normalize-paths
         env:
