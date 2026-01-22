@@ -43,7 +43,7 @@ on:
         default: false
         required: false
       skip-static-files-deployment:
-        description: Skip deployment of static files to S3 (if applicable). Used if application is built in Dockerfile.
+        description: Skip deployment of static files to S3 (if applicable). Used if static files is built in Dockerfile.
         type: boolean
         default: false
         required: false
@@ -146,7 +146,7 @@ jobs:
       environment: Test
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
@@ -190,7 +190,7 @@ jobs:
       environment: Stage
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
@@ -235,7 +235,7 @@ jobs:
       environment: Production
       deploy-application: ${{ inputs.has-application-changes }}
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
-      skip-s3-deployment: ${{ inputs.skip-static-files-deployment }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
