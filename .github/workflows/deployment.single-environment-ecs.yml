@@ -74,6 +74,7 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
           ref: ${{ inputs.sha-to-deploy }}
 
+      # TODO: Find a better way to normalize so it does not need to be used in every action
       - name: Normalize deployment paths
         id: normalize-paths
         env:
