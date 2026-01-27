@@ -26,6 +26,14 @@ on:
         type: string
         required: false
         default: ""
+      fail-on-outdated-branch:
+        description: >
+          Determine if the branch-deploy should fail when it's out-of-date from `main`, or not. 
+          Defaults to `true`, because of risks related deploying an outdated branch 
+          and damages it can do to an environment. We recommend keeping it as true.
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   pull-requests: write
@@ -54,6 +62,8 @@ jobs:
       - uses: github/branch-deploy@fded0351b6b79f854b335c11b3d93063461dd288 # v11.1.2
         id: branch-deploy
         with:
+          # 'warn' is what update_branch defaults to, and what we want most people to use
+          update_branch: ${{ (inputs.fail-on-outdated-branch && 'warn') || 'disabled' }}
           trigger: '.deploy test'
           environment: 'Test'
           environment_targets: 'Test'
