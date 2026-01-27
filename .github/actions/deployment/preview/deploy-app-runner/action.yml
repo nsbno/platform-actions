@@ -120,7 +120,7 @@ runs:
 
         # Merge AUTH_URL_JSON with custom environment variables
         # Custom env vars take precedence if there are conflicts
-        PLAINTEXT_ENV_VARS=$(echo "$AUTH_URL_JSON" | jq --argjson custom "$CUSTOM_ENV_VARS" '. + $custom')
+        PLAINTEXT_ENV_VARS=$(echo "$AUTH_URL_JSON" | jq -c --argjson custom "$CUSTOM_ENV_VARS" '. + $custom')
 
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
         echo "plaintext_env_vars=$PLAINTEXT_ENV_VARS" >> $GITHUB_OUTPUT
