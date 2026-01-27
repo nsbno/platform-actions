@@ -45,6 +45,11 @@ on:
         required: false
         type: string
         default: "static"
+      custom-env-variables:
+        description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
+        type: string
+        required: false
+        default: '{}'
 
 permissions:
   contents: read
@@ -144,6 +149,7 @@ jobs:
           aws-account-id: ${{ vars.AWS_ACCOUNT_ID }}
           aws-region: ${{ vars.AWS_REGION }}
           git-event-number: ${{ inputs.git-event-number }}
+          custom-env-variables: ${{ inputs.custom-env-variables }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}

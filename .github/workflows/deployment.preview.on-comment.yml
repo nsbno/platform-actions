@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: "static"
+      custom-env-variables:
+        description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
+        required: false
+        type: string
+        default: '{}'
 
 jobs:
   trigger:
@@ -60,6 +65,7 @@ jobs:
       ecr-repository-name: ${{ inputs.ecr-repository-name }}
       skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
+      custom-env-variables: ${{ inputs.custom-env-variables }}
 
   comment-handler:
     needs: [ trigger, preview ]
