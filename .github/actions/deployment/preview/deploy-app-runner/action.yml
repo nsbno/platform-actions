@@ -25,7 +25,7 @@ inputs:
     required: false
     default: 'eu-west-1'
   custom-env-variables:
-    description: "Custom environment variables as JSON object, e.g. '{"NAME":"VALUE"}'"
+    description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
     required: false
     default: '{}'
 

@@ -22,7 +22,7 @@ on:
         type: string
         default: "static"
       custom-env-variables:
-        description: "Custom environment variables as JSON object, e.g. '{"NAME":"VALUE"}'"
+        description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
         required: false
         type: string
         default: '{}'
