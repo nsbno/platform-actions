@@ -140,7 +140,7 @@ jobs:
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@custom-env-vars
         with:
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
