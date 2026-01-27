@@ -47,7 +47,7 @@ jobs:
           skip_reviews: Test # skip reviews for Preview
           draft_permitted_targets: Test # allow draft PRs to deploy to Test
           stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
-          update_branch: 'false' # do not stop preview when unsync with latest main changes
+          update_branch: 'disabled' # do not stop preview when unsync with latest main changes
 
   preview:
     needs: trigger
