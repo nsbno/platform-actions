@@ -24,6 +24,10 @@ inputs:
     description: "The AWS region to deploy the service in"
     required: false
     default: 'eu-west-1'
+  custom-env-variables:
+    description: "Custom environment variables as JSON object, e.g. '{"NAME":"VALUE"}'"
+    required: false
+    default: '{}'
 
 outputs:
   app-runner-url:
@@ -65,6 +69,8 @@ runs:
     - name: Prepare Environment Variables Configuration
       id: prepare-env-vars
       shell: bash
+      env:
+        CUSTOM_ENV_VARS: ${{ inputs.custom-env-variables }}
       run: |
         ENV_VARS_JSON="{}"
         AUTH_URL_JSON="{}"
@@ -112,8 +118,12 @@ runs:
 
         rm -f "$PARAMS_FILE"
 
+        # Merge AUTH_URL_JSON with custom environment variables
+        # Custom env vars take precedence if there are conflicts
+        PLAINTEXT_ENV_VARS=$(echo "$AUTH_URL_JSON" | jq --argjson custom "$CUSTOM_ENV_VARS" '. + $custom')
+
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
-        echo "auth_url_json=$AUTH_URL_JSON" >> $GITHUB_OUTPUT
+        echo "plaintext_env_vars=$PLAINTEXT_ENV_VARS" >> $GITHUB_OUTPUT
 
     - name: Deploy to App Runner Image
       if: steps.check-service.outputs.service_exists == 'false'
@@ -121,7 +131,7 @@ runs:
       shell: bash
       env:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
-        AUTH_URL_JSON: ${{ steps.prepare-env-vars.outputs.auth_url_json }}
+        PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
       run: |
         aws apprunner create-service \
         --service-name ${{ steps.set-service-variables.outputs.service_name }} \
@@ -132,10 +142,10 @@ runs:
           "ImageRepository": {
             "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
             "ImageRepositoryType": "ECR",
-            "ImageConfiguration": { 
+            "ImageConfiguration": {
               "Port": "${{ inputs.service-port }}",
               "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"',
-              "RuntimeEnvironmentVariables": '"$AUTH_URL_JSON"'
+              "RuntimeEnvironmentVariables": '"$PLAINTEXT_ENV_VARS"'
             }
           },
           "AuthenticationConfiguration": {
@@ -150,7 +160,7 @@ runs:
       shell: bash
       env:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
-        AUTH_URL_JSON: ${{ steps.prepare-env-vars.outputs.auth_url_json }}
+        PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
       run: |
         # Update existing service
         aws apprunner update-service \
@@ -159,10 +169,10 @@ runs:
             "ImageRepository": {
               "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
               "ImageRepositoryType": "ECR",
-              "ImageConfiguration": { 
+              "ImageConfiguration": {
                 "Port": "${{ inputs.service-port }}",
                 "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"',
-                "RuntimeEnvironmentVariables": '"$AUTH_URL_JSON"'
+                "RuntimeEnvironmentVariables": '"$PLAINTEXT_ENV_VARS"'
               }
             },
             "AuthenticationConfiguration": {
