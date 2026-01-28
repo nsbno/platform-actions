@@ -118,8 +118,11 @@ runs:
 
         rm -f "$PARAMS_FILE"
 
+        # Remove secrets that are overridden by custom env variables
+        # Custom env vars take precedence as plaintext RuntimeEnvironmentVariables
+        ENV_VARS_JSON=$(echo "$ENV_VARS_JSON" | jq -c --argjson custom "$CUSTOM_ENV_VARS" '. | to_entries | map(select(.key as $k | $custom | has($k) | not)) | from_entries')
+
         # Merge AUTH_URL_JSON with custom environment variables
-        # Custom env vars take precedence if there are conflicts
         PLAINTEXT_ENV_VARS=$(echo "$AUTH_URL_JSON" | jq -c --argjson custom "$CUSTOM_ENV_VARS" '. + $custom')
 
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
