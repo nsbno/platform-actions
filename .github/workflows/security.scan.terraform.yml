@@ -1,0 +1,46 @@
+name: Security Scan terraform
+on:
+  workflow_call:
+    inputs:
+      scanning-directory:
+        description: "Directory where the scan should run from"
+        required: false
+        type: string
+        default: "."
+      severity:
+        description: "Comma-separated list of severities to scan for possible alternatives: LOW, MEDIUM, HIGH, CRITICAL"
+        required: false
+        type: string
+        # LOW and MEDIUM severities can be quite noisy.
+        # Better to default on the higher severities
+        default: "HIGH,CRITICAL"
+      scan-command:
+        description: "The trivy scan command to run (e.g. config, filesystem, image, repository, rootfs, sbom, vm, kubernetes)"
+        required: false
+        type: string
+        default: "config"
+      ignore-unfixed:
+        required: false
+        type: boolean
+        # Unfixed vulnerabilities are of course problematic,
+        # but also not much we can do anything about. Hence, this can also be noisy in a pipeline.
+        default: true
+        description: "Ignore vulnerabilities that doesn't have a known fix. Defaults to true"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan-terraform:
+    name: Security Scan Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: nsbno/platform-actions/.github/actions/tools/trivy@trivy-github-action
+        with:
+          scanning-directory: ${{ inputs.scanning-directory }}
+          severity: ${{ inputs.severity }}
+          scan-command: ${{ inputs.scan-command }}
+          ignore-unfixed: ${{ inputs.ignore-unfixed }}
