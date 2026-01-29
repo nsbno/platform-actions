@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: "static"
+      skip-static-files-deployment:
+        description: Skip deployment of static files to S3 (if applicable). Used if static files is built in Dockerfile.
+        type: boolean
+        default: false
+        required: false
       ecr-repository-names:
         description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
         type: string
@@ -68,3 +73,4 @@ jobs:
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
