@@ -1,0 +1,48 @@
+name: Trivy Scanning Action
+description: Run Trivy security scanning
+
+inputs:
+  scanning-directory:
+    required: true
+    default: "."
+    description: The folder the scanner looks at
+  severity:
+    required: false
+    default: 'MEDIUM,HIGH,CRITICAL'
+    description: "Comma-separated list of severities to scan for possible alternatives: LOW, MEDIUM, HIGH, CRITICAL"
+  scan-command:
+    required: true
+    default: 'config'
+    description: |
+      The trivy scan command to run. Valid values:
+        - config      Scan config files for misconfigurations
+        - filesystem  Scan local filesystem
+        - image       Scan a container image
+        - kubernetes  Scan kubernetes cluster
+        - repository  Scan a repository
+        - rootfs      Scan rootfs
+        - sbom        Scan SBOM for vulnerabilities and licenses
+        - vm          Scan a virtual machine image
+  ignore-unfixed:
+    required: true
+    default: 'false'
+    description: "Ignore vulnerabilities that doesn't have a known fix"
+
+runs:
+  using: composite
+  steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # 0.28.0
+      with:
+        scan-type: ${{ inputs.scan-command }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        scan-ref: ${{ inputs.scanning-directory }}
+        severity: ${{ inputs.severity }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+      continue-on-error: true
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@fdbfb4d2750291e159f0156def62b853c2798ca2 # v4.31.5
+      with:
+        sarif_file: 'trivy-results.sarif'
