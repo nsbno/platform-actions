@@ -35,6 +35,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-ecs-deploy:
+        description: Allow you to forcefully ignore the ECS deploy step. Only use if strictly necessary
+        type: boolean
+        default: false
+        required: false
       ecr-repository-names:
         description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
         type: string
@@ -65,6 +70,7 @@ jobs:
       always()
       && !cancelled()
       && needs.deploy-terraform.result != 'failure'
+      && !inputs.skip-ecs-deploy
     with:
       environment: ${{ inputs.environment }}
       working-directory: ${{ inputs.working-directory }}
