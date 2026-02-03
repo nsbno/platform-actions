@@ -38,7 +38,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - uses: nsbno/platform-actions/.github/actions/tools/trivy@trivy-github-action
+      - uses: nsbno/platform-actions/.github/actions/tools/trivy@v2
         with:
           scanning-directory: ${{ inputs.scanning-directory }}
           severity: ${{ inputs.severity }}
