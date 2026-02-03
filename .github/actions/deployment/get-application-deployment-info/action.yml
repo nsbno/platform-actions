@@ -48,6 +48,13 @@ runs:
         GITHUB_REPOSITORY: ${{ inputs.github-repository-name }}
         WORKING_DIRECTORY: ${{ inputs.working-directory }}
         ECR_REPOSITORY_NAME: ${{ inputs.ecr-repository-name }}
+      # There is a bug here related to auto discovery.
+      # When you have 1) a service that doesn't have an ECS service, i.e.
+      # you're missing the expected SSM parameters.
+      # 2) There are other ECS services in the account, we get the problem when there were >1,
+      # but it's applicable for just 1 service too.
+      # Then it will incorrectly identify those ECS services as matches in the auto-discovery
+      # when they are not part of the correct Github repository or service.
       run: |
         GIT_REPO_NAME="${GITHUB_REPOSITORY##*/}"
 

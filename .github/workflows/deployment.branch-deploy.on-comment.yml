@@ -26,6 +26,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-ecs-deploy:
+        description: Allow you to forcefully ignore the ECS deploy step. Only use if strictly necessary
+        type: boolean
+        default: false
+        required: false
       ecr-repository-names:
         description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
         type: string
@@ -105,7 +110,7 @@ jobs:
 
   test-deploy:
     name: Test - Deploy
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@allow-skip-ecs-deploy
     needs: trigger-test
     if: |
       always()
@@ -120,10 +125,11 @@ jobs:
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
       skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
+      skip-ecs-deploy: ${{ inputs.skip-ecs-deploy }}
 
   stage-deploy:
     name: Stage - Deploy
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@allow-skip-ecs-deploy
     needs: trigger-stage
     if: |
       always()
@@ -138,6 +144,8 @@ jobs:
       ecr-repository-names: ${{ inputs.ecr-repository-names }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
       skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
+      skip-ecs-deploy: ${{ inputs.skip-ecs-deploy }}
+
 
   comment-handler:
     needs: [ trigger-test, trigger-stage, test-deploy, stage-deploy ]
