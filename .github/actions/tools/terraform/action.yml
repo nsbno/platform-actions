@@ -33,7 +33,7 @@ inputs:
     required: true
   git-sha:
     required: true
-    description: "Git SHA to use for versioning"
+    description: "Git SHA to use for versioning. Is passed to terraform as environment variable TF_VAR_git_sha"
   version-handler-api-endpoint:
     required: false
     description: "Version handler API endpoint for artifact versioning"
@@ -118,6 +118,11 @@ runs:
       if: steps.restore-terraform.outputs.cache-hit == 'false' || inputs.always-run-init == 'true'
       shell: bash
       working-directory: ${{ steps.tf-dir.outputs.dir }}
+      env:
+        # Give terraform access to the Git Commit Sha that the pipeline uses
+        # through a variable. Typically not needed by them, but useful when they need
+        # to break the abstraction
+        TF_VAR_git_sha: ${{ inputs.git-sha }}
       run: |
         set -e
         terraform init --backend=${{ inputs.terraform-use-backend }}
@@ -126,6 +131,11 @@ runs:
       working-directory: ${{ steps.tf-dir.outputs.dir }}
       id: terraform
       shell: bash
+      env:
+        # Give terraform access to the Git Commit Sha that the pipeline uses
+        # through a variable. Typically not needed by them, but useful when they need
+        # to break the abstraction
+        TF_VAR_git_sha: ${{ inputs.git-sha }}
       run: terraform ${{ inputs.terraform-command }} ${{ inputs.terraform-options }}
 
     # Workaround for releasing lock if cancelling a Terraform job

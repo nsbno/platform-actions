@@ -49,7 +49,7 @@ on:
 jobs:
   deploy-terraform:
     name: Terraform Apply
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@forward-git-sha-as-variable-to-terraform
     if: |
       always()
       && !cancelled()
