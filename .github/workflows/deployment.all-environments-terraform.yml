@@ -74,7 +74,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@forward-git-sha-as-variable-to-terraform
     needs: get-environments
     if: |
       always()
@@ -83,6 +83,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Service')
     with:
       environment: Service
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -90,7 +91,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@forward-git-sha-as-variable-to-terraform
     needs:
       - service-terraform
       - get-environments
@@ -101,6 +102,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Test')
     with:
       environment: Test
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -108,7 +110,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@forward-git-sha-as-variable-to-terraform
     needs:
       - service-terraform
       - get-environments
@@ -119,6 +121,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Stage')
     with:
       environment: Stage
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -126,7 +129,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@forward-git-sha-as-variable-to-terraform
     needs:
       - stage-terraform
       - test-terraform
@@ -138,6 +141,7 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Production')
     with:
       environment: Production
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
