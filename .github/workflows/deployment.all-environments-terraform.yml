@@ -83,7 +83,6 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Service')
     with:
       environment: Service
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -102,7 +101,6 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Test')
     with:
       environment: Test
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Test') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -121,7 +119,6 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Stage')
     with:
       environment: Stage
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Stage') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
@@ -141,7 +138,6 @@ jobs:
       && contains(needs.get-environments.outputs.environments, 'Production')
     with:
       environment: Production
-      sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
