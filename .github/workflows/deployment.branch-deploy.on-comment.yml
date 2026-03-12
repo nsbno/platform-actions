@@ -41,7 +41,7 @@ jobs:
       actor_handle: ${{ steps.branch-deploy.outputs.actor_handle }}
 
     steps:
-      - uses: github/branch-deploy@c9fcc362bdcea69eecac6578dde245cd5e3a55bf  # 10.4.3
+      - uses: github/branch-deploy@48285b12b35e47e2dde0c27d2abb33daa846d98b # v11.0.0
         id: branch-deploy
         with:
           trigger: '.deploy test'
