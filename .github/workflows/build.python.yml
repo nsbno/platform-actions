@@ -43,7 +43,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "${{ inputs.working-directory }}/uv.lock"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python_version }}
 
