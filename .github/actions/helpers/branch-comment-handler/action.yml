@@ -95,7 +95,7 @@ runs:
     # if the deployment was successful, add a 'rocket' reaction to the comment that triggered the deployment
     - name: rocket reaction
       if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' }}
-      uses: GrantBirki/comment@1e9986de26cf23e6c4350276234c91705c540fef # pin@v2.0.3
+      uses: GrantBirki/comment@608e41b19bc973020ec0e189ebfdae935d7fe0cc # v2.1.1
       with:
         comment-id: ${{ inputs.comment-id }}
         reactions: rocket
@@ -103,7 +103,7 @@ runs:
     # if the deployment failed, add a '-1' (thumbs down) reaction to the comment that triggered the deployment
     - name: failure reaction
       if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS == 'failure' }}
-      uses: GrantBirki/comment@1e9986de26cf23e6c4350276234c91705c540fef # pin@v2.0.3
+      uses: GrantBirki/comment@608e41b19bc973020ec0e189ebfdae935d7fe0cc # v2.1.1
       with:
         comment-id: ${{ inputs.comment-id }}
         reactions: '-1'
@@ -111,7 +111,7 @@ runs:
     # if the deployment was successful, add a 'success' comment
     - name: success comment
       if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS != 'failure' && inputs.is-preview != 'true' }}
-      uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # pin@v2.1.1
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
       with:
         issue-number: ${{ inputs.issue-number }}
         body: |
@@ -122,7 +122,7 @@ runs:
     # if the deployment was not successful, add a 'failure' comment
     - name: failure comment
       if: ${{ steps.deploy-status.outputs.DEPLOY_STATUS == 'failure' }}
-      uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # pin@v2.1.1
+      uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
       with:
         issue-number: ${{ inputs.issue-number }}
         body: |
