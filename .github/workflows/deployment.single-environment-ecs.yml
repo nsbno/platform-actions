@@ -69,7 +69,7 @@ jobs:
       group: ${{ inputs.environment }}-deploy-${{ matrix.ecr-repo-name != 'null' && matrix.ecr-repo-name || inputs.working-directory }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
           ref: ${{ inputs.sha-to-deploy }}
@@ -90,7 +90,7 @@ jobs:
         shell: bash
 
       - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"

@@ -23,7 +23,7 @@ jobs:
       any-changed: ${{ steps.changed-files.outputs.any-changed }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: nsbno/platform-actions/.github/actions/helpers/has-application-changed@v2
         id: changed-files
       - name: Add notice

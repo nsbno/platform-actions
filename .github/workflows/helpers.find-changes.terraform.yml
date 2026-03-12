@@ -58,7 +58,7 @@ jobs:
       environments: ${{ steps.envs.outputs.environments }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
@@ -83,7 +83,7 @@ jobs:
       group: ${{ inputs.working-directory }}-${{ matrix.environment }}-terraform
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branch deploys)
           ref: ${{ inputs.git-sha }}
@@ -124,7 +124,7 @@ jobs:
           echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
   
       - name: Upload matrix outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-${{ matrix.environment }}
           path: ./matrix-outputs
@@ -148,7 +148,7 @@ jobs:
           echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
 
       - name: Download matrix outputs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-*
           merge-multiple: true
