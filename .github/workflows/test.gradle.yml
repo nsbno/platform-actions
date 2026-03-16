@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@upgrade-node-24
         name: Gradle Test
         with:
           java-version: ${{ inputs.java-version }}

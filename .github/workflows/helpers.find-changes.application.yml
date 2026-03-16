@@ -24,7 +24,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - uses: nsbno/platform-actions/.github/actions/helpers/has-application-changed@v2
+      - uses: nsbno/platform-actions/.github/actions/helpers/has-application-changed@upgrade-node-24
         id: changed-files
       - name: Add notice
         shell: bash

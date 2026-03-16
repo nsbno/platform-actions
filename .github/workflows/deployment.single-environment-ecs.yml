@@ -97,7 +97,7 @@ jobs:
 
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@upgrade-node-24
         with:
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
@@ -112,7 +112,7 @@ jobs:
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-static-files-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@upgrade-node-24
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
@@ -122,7 +122,7 @@ jobs:
 
       - name: Deploy ECS
         if: steps.deployment-info.outputs.ecs-service-name != ''
-        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/deploy-ecs@upgrade-node-24
         with:
           cluster-name: ${{ steps.deployment-info.outputs.ecs-cluster-name }}
           image-uri: "${{ steps.deployment-info.outputs.ecr-image-base }}:${{ inputs.sha-to-deploy }}"
@@ -134,7 +134,7 @@ jobs:
 
       - name: Register ECS Version to deployment version handler
         if: steps.deployment-info.outputs.ecs-service-name != ''
-        uses: nsbno/platform-actions/.github/actions/helpers/register-version@v2
+        uses: nsbno/platform-actions/.github/actions/helpers/register-version@upgrade-node-24
         with:
           compute-target: "ecs"
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}

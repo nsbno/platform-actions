@@ -90,7 +90,7 @@ jobs:
 
   plan:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/helpers.terraform-plan.yml@upgrade-node-24
     with:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}

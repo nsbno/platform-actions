@@ -69,7 +69,7 @@ jobs:
             exit 1
           fi
 
-      - uses: nsbno/platform-actions/.github/actions/tools/npm@v2
+      - uses: nsbno/platform-actions/.github/actions/tools/npm@upgrade-node-24
         if: ${{ inputs.package-manager == 'npm' }}
         name: npm Build
         with:
@@ -80,7 +80,7 @@ jobs:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           git-sha: ${{ inputs.git-sha }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@v2
+      - uses: nsbno/platform-actions/.github/actions/tools/pnpm@upgrade-node-24
         if: ${{ inputs.package-manager == 'pnpm' }}
         name: pnpm Build
         with:

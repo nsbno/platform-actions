@@ -31,7 +31,7 @@ jobs:
       # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
       - name: Get Application Deployment Information
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@upgrade-node-24
         with:
           github-repository-name: ${{ github.repository }}
           working-directory: ${{ inputs.working-directory }}

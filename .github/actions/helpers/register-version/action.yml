@@ -82,7 +82,7 @@ runs:
         echo "json-payload=$JSON_PAYLOAD" >> $GITHUB_OUTPUT
 
     - name: Call version handler API
-      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@upgrade-node-24
       with:
         endpoint: ${{ steps.prepare.outputs.endpoint }}
         json-body: ${{ steps.prepare.outputs.json-payload }}

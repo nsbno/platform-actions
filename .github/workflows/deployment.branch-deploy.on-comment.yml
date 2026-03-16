@@ -110,7 +110,7 @@ jobs:
 
   test-deploy:
     name: Test - Deploy
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@upgrade-node-24
     needs: trigger-test
     if: |
       always()
@@ -129,7 +129,7 @@ jobs:
 
   stage-deploy:
     name: Stage - Deploy
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment.yml@upgrade-node-24
     needs: trigger-stage
     if: |
       always()
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && (needs.trigger-test.outputs.continue == 'true' || needs.trigger-stage.outputs.continue == 'true') }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@upgrade-node-24
         with:
           is-preview: false
           environment: ${{ needs.trigger-test.outputs.environment || needs.trigger-stage.outputs.environment }}
