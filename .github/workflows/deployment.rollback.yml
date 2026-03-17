@@ -35,7 +35,7 @@ jobs:
       GITHUB_REPOSITORY: ${{ github.repository }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # TODO: Find a better way to normalize so it does not need to be used in every action
       - name: Normalize deployment paths
@@ -52,7 +52,7 @@ jobs:
           echo "working-directory=${NORMALIZED}" >> $GITHUB_OUTPUT
 
       - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
