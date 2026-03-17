@@ -213,7 +213,7 @@ jobs:
         # Matrix gives better visibility in GH UI
         environment: [ Production ]
     with:
-      environment: ${{ matrix.parameter }}
+      environment: ${{ matrix.environment }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Production') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
