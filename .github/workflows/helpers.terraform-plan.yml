@@ -40,7 +40,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@upgrade-node-24
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         if: ${{ inputs.environment == '' }}
         id: envs
         with:
@@ -75,7 +75,7 @@ jobs:
           ref: ${{ inputs.git-sha }}
 
       - name: Run Terraform Plan
-        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@upgrade-node-24
+        uses: nsbno/platform-actions/.github/actions/helpers/has-terraform-changed@v2
         id: changed-files
         with:
           environment: ${{ matrix.environment }}

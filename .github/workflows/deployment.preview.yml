@@ -120,7 +120,7 @@ jobs:
       - name: Get Application Deployment Information
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@upgrade-node-24
+        uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
           github-repository-name: ${{ inputs.git-repository }}
           working-directory: ${{ inputs.working-directory }}
@@ -129,7 +129,7 @@ jobs:
       # Needs to be available before the frontend server deploys
       - name: Deploy Static S3/Website
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-static-files-deployment
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@upgrade-node-24
+        uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
         with:
           s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.git-sha }}'
@@ -140,7 +140,7 @@ jobs:
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@upgrade-node-24
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@v2
         with:
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
@@ -153,7 +153,7 @@ jobs:
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@upgrade-node-24
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@v2
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
           domain-name: "pr-${{ inputs.git-event-number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"

@@ -27,7 +27,7 @@ runs:
   steps:
     - name: Get AWS_ACCOUNT_ID environment variable of Service Account
       id: find-service-account-id
-      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@upgrade-node-24
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
       with:
         http-method: GET
         endpoint: https://enroll.vydeployment.vydev.io/environment_accounts

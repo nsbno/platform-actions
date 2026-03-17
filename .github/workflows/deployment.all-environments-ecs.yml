@@ -78,7 +78,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@upgrade-node-24
+      - uses: nsbno/platform-actions/.github/actions/helpers/get-environments@v2
         id: envs
         with:
           working-directory: ${{ inputs.working-directory }}
@@ -89,7 +89,7 @@ jobs:
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
     name: Service - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs: get-environments
     if: |
       always()
@@ -109,7 +109,7 @@ jobs:
 
   test-terraform:
     name: Test - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -131,7 +131,7 @@ jobs:
 
   test-ecs-service:
     name: Test - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - test-terraform
       - get-environments
@@ -153,7 +153,7 @@ jobs:
 
   stage-terraform:
     name: Stage - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - service-terraform
       - get-environments
@@ -175,7 +175,7 @@ jobs:
 
   stage-ecs-service:
     name: Stage - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - stage-terraform
       - get-environments
@@ -197,7 +197,7 @@ jobs:
 
   production-terraform:
     name: Prod - Terraform
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
       - stage-ecs-service
       - stage-terraform
@@ -221,7 +221,7 @@ jobs:
 
   production-ecs-service:
     name: Prod - ECS Service
-    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@upgrade-node-24
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
     needs:
       - production-terraform
       - get-environments
