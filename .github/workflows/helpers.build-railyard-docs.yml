@@ -34,6 +34,11 @@ on:
         type: boolean
         default: false
         description: "Install PlantUML for diagram rendering"
+      plantuml-version:
+        type: string
+        default: "1.2025.2"
+        description: "PlantUML version to install (only used when use-plantuml is true)"
+
 
 name: Build and Upload Railyard TechDocs to S3
 
@@ -61,10 +66,11 @@ jobs:
         if: ${{ inputs.use-plantuml }}
         run: |
           mkdir -p $HOME/bin
-          curl -sSL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -o $HOME/plantuml.jar
+          curl -sSL "https://github.com/plantuml/plantuml/releases/download/v${{ inputs.plantuml-version }}/plantuml-${{ inputs.plantuml-version }}.jar" -o $HOME/plantuml.jar
           printf '#!/bin/sh\njava -jar %s/plantuml.jar "$@"\n' "$HOME" > $HOME/bin/plantuml
           chmod +x $HOME/bin/plantuml
           echo "$HOME/bin" >> $GITHUB_PATH
+
       - name: Checkout
         uses: actions/checkout@v6
 
