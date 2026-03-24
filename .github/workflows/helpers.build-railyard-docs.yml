@@ -30,6 +30,10 @@ on:
         type: boolean
         default: false
         description: "Optional. Skip updating OpenAPI spec"
+      use-plantuml:
+        type: boolean
+        default: false
+        description: "Install PlantUML for diagram rendering"
 
 name: Build and Upload Railyard TechDocs to S3
 
@@ -53,6 +57,14 @@ jobs:
       - name: Install mkdocs and plugins
         run: |
           python -m pip install --upgrade pip && pip install mkdocs mkdocs-techdocs-core
+      - name: Install PlantUML
+        if: ${{ inputs.use-plantuml }}
+        run: |
+          mkdir -p $HOME/bin
+          curl -sSL https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar -o $HOME/plantuml.jar
+          printf '#!/bin/sh\njava -jar %s/plantuml.jar "$@"\n' "$HOME" > $HOME/bin/plantuml
+          chmod +x $HOME/bin/plantuml
+          echo "$HOME/bin" >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v6
 
