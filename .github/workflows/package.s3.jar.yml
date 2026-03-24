@@ -1,25 +1,29 @@
+###
+# Package S3 JAR
+#
+# This workflow simply takes a JAR file and uploads it to the correct
+# location in S3. It is similar to package.s3.yml, but this one is simpler
+#
+# In the future we may merge those workflows two together,
+# or find a way to reuse the internal parts. But for now we didn't want to
+# introduce too much complexity into package.s3.yml, as it is used several places
+###
 on:
   workflow_call:
     inputs:
+      file-path:
+        required: true
+        type: string
+        description: "Path to the jar file to upload. Typically something similar to: `libs/<project-name>.jar`"
       working-directory:
         required: false
         type: string
         description: "Directory containing the project files."
         default: ""
       artifact-name:
-        required: false
+        required: true
         type: string
-        description: "Name of the artifact storing the build files."
-      artifact-path:
-        required: false
-        type: string
-        description: "Path where files should be zipped from"
-        default: ""
-      zip-file-name:
-        required: false
-        type: string
-        description: "Name of the zip file to upload."
-        default: ""
+        description: "Name of the GitHub artifact where the build files are stored."
       s3-bucket-name:
         required: false
         type: string
@@ -31,15 +35,15 @@ on:
         description: "AWS region to use."
         default: 'eu-west-1'
 
-name: Upload Deployable to S3
+name: Upload a Deployable JAR to S3
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  upload-zip-to-s3:
-    name: Upload zip to S3
+  upload-artifact-to-s3:
+    name: Upload artifact to S3
     environment: Service
     runs-on: ubuntu-latest
     permissions:
@@ -49,31 +53,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download artifacts if specified
-        if: inputs.artifact-name != ''
+      - name: Download artifacts
+        id: download-artifacts
         uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: "./temp-artifact"
 
-      - name: Create zip file if not specified
-        if: inputs.zip-file-name == ''
-        run: |
-          ZIP_FILE="$(pwd)/artifact.zip"
-
-          if [ -d "./temp-artifact" ]; then
-            # Navigate to artifact directory (with optional subdirectory)
-            if [ -n "${{ inputs.artifact-path }}" ]; then
-              cd "./temp-artifact/${{ inputs.artifact-path }}"
-            else
-              cd "./temp-artifact"
-            fi
-          fi
-
-          zip -r "$ZIP_FILE" ./*
-
       - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
@@ -84,14 +72,19 @@ jobs:
           GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           SERVICE_DIR: ${{ inputs.working-directory }}
           REPO_NAME: ${{ github.repository }}
-          ZIP_FILE_NAME: ${{ inputs.zip-file-name != '' && inputs.zip-file-name || format('{0}.zip', 'artifact') }}
+          SOURCE_FILE_NAME: ${{ inputs.file-path }}
+          TEMP_DOWNLOAD_PATH: ${{ steps.download-artifacts.outputs.download-path }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
+          SOURCE_PATH="$TEMP_DOWNLOAD_PATH/$SOURCE_FILE_NAME"
+          DEST_FILE_NAME="$GIT_SHA.jar"
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
+          
           if [ "$SERVICE_DIR" == "" ]; then
-            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$GIT_SHA.zip"
+            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$DEST_FILE_NAME"
           else 
-            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$GIT_SHA.zip"
+            S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER/$SERVICE_DIR/$DEST_FILE_NAME"
           fi
 
-          aws s3 cp "./$ZIP_FILE_NAME" "${S3_URI}" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
+          echo "Uploading $SOURCE_PATH -> $S3_URI ..."
+          aws s3 cp "$TEMP_DOWNLOAD_PATH/$SOURCE_FILE_NAME" "${S3_URI}" --metadata "tags"="'[\"${GIT_SHA}-SHA\",\"${BRANCH}-branch\"]'"
