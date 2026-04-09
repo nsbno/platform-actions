@@ -17,6 +17,10 @@ on:
         description: "The S3 Bucket of the API Reference Service"
         type: string
         default: "727646359971-api-portal-artifacts"
+      access-level:
+        description: "Access level for the API reference (internal, external, or private)"
+        type: string
+        default: "internal"
 
 permissions:
   contents: read
@@ -78,6 +82,7 @@ jobs:
           PERSIST_URL: ${{ inputs.api-reference-persist-url }}
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: "openapi"
+          ACCESS_LEVEL: ${{ inputs.access-level }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
           STATUS_CODE=$(\
@@ -86,7 +91,7 @@ jobs:
               --write-out "%{http_code}" \
               --output /dev/null \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
-              --data "{\"repository\": \"${REPO}\"}" \
+              --data "{\"repository\": \"${REPO}\", \"accessLevel\": \"${ACCESS_LEVEL}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
