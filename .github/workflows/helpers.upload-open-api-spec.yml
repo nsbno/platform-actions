@@ -85,6 +85,8 @@ jobs:
           ACCESS_LEVEL: ${{ inputs.access-level }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
+          echo "Access level: ${ACCESS_LEVEL}"
+          echo "Request body: {\"repository\": \"${REPO}\", \"accessLevel\": \"${ACCESS_LEVEL}\"}"
           STATUS_CODE=$(\
             curl \
               --silent \
