@@ -30,7 +30,7 @@ on:
 jobs:
   fmt:
     if: ${{ inputs.run-fmt }}
-    name: fmt (${{ inputs.working-directory }})
+    name: 'fmt (${{ inputs.working-directory }})'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,7 +48,7 @@ jobs:
 
   validate:
     if: ${{ inputs.run-validate }}
-    name: Validate (${{ inputs.working-directory }})
+    name: 'Validate (${{ inputs.working-directory }})'
     runs-on: ubuntu-latest
     defaults:
       run:

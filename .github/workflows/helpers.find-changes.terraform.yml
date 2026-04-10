@@ -2,7 +2,7 @@ on:
   workflow_call:
     inputs:
       force-deploy:
-        description:  Makes sure that terraform deploy always happens
+        description: Makes sure that terraform deploy always happens
         type: boolean
         default: false
         required: false
