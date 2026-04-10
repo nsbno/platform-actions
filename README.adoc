@@ -36,8 +36,8 @@ Workflows are defined in `.github/workflows/` and can be used to automate tasks 
 These are helper workflows that can be used to simplify other workflows.
 Examples include workflows for finding changes in Terraform or running Terraform plan.
 
-=== Build and Test
-Workflows prefixed with build and test are meant to simplify the process of building and testing code.
+=== Build, Test and Lint
+Workflows prefixed with build, test and lint are meant to simplify the process of building and testing code.
 
 
 === Package

@@ -30,11 +30,11 @@ on:
 jobs:
   fmt:
     if: ${{ inputs.run-fmt }}
-    name: Terraform Format
+    name: fmt (${{ inputs.working-directory }})
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - uses: actions/checkout@v6
@@ -44,15 +44,15 @@ jobs:
           terraform_version: ${{ inputs.terraform-version }}
 
       - name: Check formatting
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check -diff -recursive
 
   validate:
     if: ${{ inputs.run-validate }}
-    name: Validate ${{ inputs.working-directory }}
+    name: Validate (${{ inputs.working-directory }})
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ inputs.working_directory }}
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
       - uses: actions/checkout@v6
