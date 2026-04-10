@@ -1,0 +1,44 @@
+##
+# Run pytest in a working directory.
+# Currently, only `uv` is supported
+##
+name: "Test Python 🧪"
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: false
+        type: string
+        description: "What Python version to use."
+        default: "3.13"
+      working-directory:
+        required: false
+        type: string
+        default: "."
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+
+jobs:
+  test:
+    name: Test Python
+    runs-on: ${{ inputs.runs-on }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "${{ inputs.working-directory }}/uv.lock"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Run tests
+        working-directory: ${{ inputs.working-directory }}
+        run: uv run pytest
