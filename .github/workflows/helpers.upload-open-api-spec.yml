@@ -17,6 +17,10 @@ on:
         description: "The S3 Bucket of the API Reference Service"
         type: string
         default: "727646359971-api-portal-artifacts"
+      audience:
+        description: "Audience for the API reference (internal, external, or private)"
+        type: string
+        default: "internal"
 
 permissions:
   contents: read
@@ -78,15 +82,17 @@ jobs:
           PERSIST_URL: ${{ inputs.api-reference-persist-url }}
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: "openapi"
+          AUDIENCE: ${{ inputs.audience }}
         run: |
-          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
+          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
           STATUS_CODE=$(\
             curl \
               --silent \
               --write-out "%{http_code}" \
               --output /dev/null \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
-              --data "{\"repository\": \"${REPO}\"}" \
+              --header "Content-Type: application/json" \
+              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
