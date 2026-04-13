@@ -84,14 +84,17 @@ jobs:
           SPEC_TYPE: "openapi"
           ACCESS_LEVEL: ${{ inputs.access-level }}
         run: |
-          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with access level ${ACCESS_LEVEL}"
+          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL}"
+          echo "Access level: ${ACCESS_LEVEL}"
+          echo "Request body: {\"repository\": \"${REPO}\", \"accessLevel\": \"${ACCESS_LEVEL}\"}"
           STATUS_CODE=$(\
             curl \
               --silent \
               --write-out "%{http_code}" \
               --output /dev/null \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
-              --data "{\"repository\": \"${REPO}\"}" \
+              --header "Content-Type: application/json" \
+              --data "{\"repository\": \"${REPO}\", \"accessLevel\": \"${ACCESS_LEVEL}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
