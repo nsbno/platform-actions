@@ -18,7 +18,7 @@ on:
         type: string
         default: "727646359971-api-portal-artifacts"
       audience:
-        description: "Access level for the API reference (internal, external, or private)"
+        description: "Audience for the API reference (internal, external, or private)"
         type: string
         default: "internal"
 
