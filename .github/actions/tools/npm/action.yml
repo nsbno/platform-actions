@@ -21,6 +21,10 @@ inputs:
   git-sha:
     required: true
     description: "Git SHA to use for versioning"
+  cache-dependency-path:
+    required: false
+    description: "Path to package-lock.json for caching"
+    default: ""
 
 runs:
   using: composite
@@ -28,7 +32,8 @@ runs:
     - uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'npm'
+        cache: ${{ inputs.cache-dependency-path != '' && 'npm' || '' }}
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     - name: Run NPM Install
       working-directory: ${{ inputs.working-directory }}

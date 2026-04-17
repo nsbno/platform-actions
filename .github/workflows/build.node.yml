@@ -42,6 +42,11 @@ on:
         type: string
         description: "Git SHA to use for versioning"
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      cache-dependency-path:
+        required: false
+        type: string
+        description: "Path to package-lock.json for caching"
+        default: ""
 
     outputs:
       artifact-name:
@@ -79,6 +84,7 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           git-sha: ${{ inputs.git-sha }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
       - uses: nsbno/platform-actions/.github/actions/tools/pnpm@v2
         if: ${{ inputs.package-manager == 'pnpm' }}
