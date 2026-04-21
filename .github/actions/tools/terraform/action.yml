@@ -1,5 +1,5 @@
 name: Terraform
-description: Set up and run Terraform commands
+description: Run any `terraform` commands. This is will register the current Git SHA to version-handler-v2, which is used during deployments.
 
 inputs:
   terraform-command:
