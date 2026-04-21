@@ -1,5 +1,5 @@
 name: Find Terraform directory
-description: Auto-discover Terraform directory for environment
+description: Automatically figures out where the Terraform environment directories are located, relative to `working-directory` and `terraform-directory`. Popular structures are: `./environments/<env>/` or `./terraform/<env>/`
 
 inputs:
   working-directory:
