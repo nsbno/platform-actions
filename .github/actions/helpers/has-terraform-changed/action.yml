@@ -1,5 +1,5 @@
 name: Detect Terraform changes
-description: Detect changes in Terraform files
+description: Runs `terraform plan` to identify if there are any changes to the Terraform environment. Useful when you want to conditionally trigger `terraform apply`
 
 inputs:
   environment:
