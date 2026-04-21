@@ -1,5 +1,5 @@
 name: NPM
-description: Set up and run NPM commands
+description: Run any `npm` commands from `working-directory`. Will make sure any dependencies are installed first.
 
 inputs:
   NEXUS_USERNAME:
