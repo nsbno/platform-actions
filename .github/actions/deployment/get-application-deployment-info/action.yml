@@ -1,5 +1,5 @@
-name: Get Application Deployment Info
-description: Gets information about the deployable
+name: Get deployment info
+description: Retrieve application deployment information
 
 inputs:
   github-repository-name:

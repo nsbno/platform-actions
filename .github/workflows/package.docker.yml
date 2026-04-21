@@ -44,7 +44,7 @@ on:
         type: string
         description: "Git SHA to checkout at, and to use as image tag. Falls back to SHA of the workflow context if not provided."
 
-name: Upload Deployable to ECR
+name: Package Docker image to ECR
 
 permissions:
   id-token: write

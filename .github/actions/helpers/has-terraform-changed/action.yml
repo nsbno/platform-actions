@@ -1,4 +1,5 @@
-name: Any Terraform Changes?
+name: Detect Terraform changes
+description: Run `terraform plan` to identify if there are any changes to the Terraform environment. Useful when you want to conditionally trigger `terraform apply`.
 
 inputs:
   environment:

@@ -1,4 +1,4 @@
-name: Deploy Rollback
+name: Rollback deployment
 
 on:
   workflow_call:

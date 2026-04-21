@@ -2,7 +2,7 @@
 # Use this tool to run "lint operations"
 # on your terraform code, such as `terraform fmt` and `terraform validate`
 ##
-name: "Terraform Linter 📐"
+name: Lint Terraform
 
 on:
   workflow_call:

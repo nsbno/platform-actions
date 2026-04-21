@@ -1,4 +1,5 @@
-name: Get All Environments in this repository
+name: Get environments
+description: Discover and list all environments in the repository
 
 inputs:
   skip-production-environment:

@@ -1,4 +1,5 @@
-name: Deploy Container via ECS
+name: Deploy to ECS
+description: Deploy a container to ECS
 
 inputs:
   cluster-name:

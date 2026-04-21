@@ -1,4 +1,5 @@
-name: NPM Action
+name: NPM
+description: Run any npm commands from working-directory. Will make sure any dependencies are installed first.
 
 inputs:
   NEXUS_USERNAME:

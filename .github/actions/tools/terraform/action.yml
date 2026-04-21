@@ -1,5 +1,5 @@
-name: Terraform Action
-description: Run terraform
+name: Terraform
+description: "Run any terraform commands. This will register the current Git SHA to `version-handler-v2`, which is used during deployments."
 
 inputs:
   terraform-command:

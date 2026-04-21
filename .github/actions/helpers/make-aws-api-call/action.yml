@@ -1,5 +1,5 @@
-name: Make AWS API Call
-description: Makes an AWS IAM-authenticated HTTP request to an API endpoint using curl
+name: Make AWS API call
+description: Authenticated HTTP request to AWS API
 
 inputs:
   endpoint:

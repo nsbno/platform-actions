@@ -1,4 +1,4 @@
-name: Preview Cleanup for a given App Runner Service
+name: Preview cleanup
 on:
   workflow_call:
     inputs:

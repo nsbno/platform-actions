@@ -1,4 +1,4 @@
-name: Preview Deployment Cleanup All Services
+name: Preview cleanup (scheduled)
 on:
   workflow_call:
     inputs:

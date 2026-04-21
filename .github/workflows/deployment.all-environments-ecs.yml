@@ -1,4 +1,4 @@
-name: Deploy All Environments (used for ECS Services)
+name: Deploy all environments (ECS)
 
 on:
   workflow_call:

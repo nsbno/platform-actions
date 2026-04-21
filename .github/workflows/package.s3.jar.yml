@@ -35,7 +35,7 @@ on:
         description: "AWS region to use."
         default: 'eu-west-1'
 
-name: Upload a Deployable JAR to S3
+name: Package JAR to S3
 
 permissions:
   id-token: write

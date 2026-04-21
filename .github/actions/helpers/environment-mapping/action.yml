@@ -1,5 +1,5 @@
-name: Get Environment Mapping
-description: Provides standardized environment mapping
+name: Map environment names
+description: Standardize environment naming across AWS/GitHub
 
 outputs:
   directory:

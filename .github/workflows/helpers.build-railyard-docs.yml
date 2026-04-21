@@ -40,7 +40,7 @@ on:
         description: "PlantUML version to install (only used when use-plantuml is true)"
 
 
-name: Build and Upload Railyard TechDocs to S3
+name: Build Railyard TechDocs
 
 permissions:
   id-token: write

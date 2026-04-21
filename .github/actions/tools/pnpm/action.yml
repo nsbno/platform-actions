@@ -1,4 +1,5 @@
-name: PNPM Action
+name: PNPM
+description: Run any pnpm commands from working-directory. Will make sure any dependencies are installed first.
 
 inputs:
   NEXUS_USERNAME:

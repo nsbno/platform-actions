@@ -31,7 +31,7 @@ on:
         description: "AWS region to use."
         default: 'eu-west-1'
 
-name: Upload Deployable to S3
+name: Package artifact to S3
 
 permissions:
   id-token: write

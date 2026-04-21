@@ -1,4 +1,4 @@
-name: node test
+name: Test Node.js project
 
 on:
   workflow_call:
@@ -36,7 +36,7 @@ on:
 
 jobs:
   test:
-    name: node test
+    name: Test Node.js project
     runs-on: ubuntu-latest
 
     steps:

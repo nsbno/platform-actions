@@ -1,4 +1,4 @@
-name: Deploy only Terraform to single environment
+name: Deploy single environment (Terraform only)
 
 on:
   workflow_call:
