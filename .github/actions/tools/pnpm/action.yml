@@ -1,5 +1,5 @@
 name: PNPM
-description: Set up and run PNPM commands
+description: Run any `pnpm` commands from `working-directory`. Will make sure any dependencies are installed first.
 
 inputs:
   NEXUS_USERNAME:
