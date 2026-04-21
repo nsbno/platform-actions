@@ -47,7 +47,7 @@ on:
         description: 'List of environments with changes'
         value: ${{ jobs.create-terraform-changes-list.outputs.changes }}
 
-name: Find Terraform Changes
+name: Find Terraform changes
 
 jobs:
   get-environments:

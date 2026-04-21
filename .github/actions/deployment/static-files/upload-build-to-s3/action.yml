@@ -1,4 +1,5 @@
-name: Upload Build to S3 with SHA
+name: Upload build to S3
+description: Upload static build files to S3 with versioning
 
 inputs:
   github-repository-name:

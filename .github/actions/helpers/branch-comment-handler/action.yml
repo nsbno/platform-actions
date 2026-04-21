@@ -1,4 +1,5 @@
-name: Branch Preview Deployment Comment Handler
+name: Handle preview deployment comments
+description: Handle PR comments for preview deployments
 
 inputs:
   github-repository:

@@ -1,5 +1,5 @@
-name: Terraform Directory Autodiscovery
-description: Finds the terraform directory for a given environment using standardized autodiscovery logic
+name: Find Terraform directory
+description: Auto-discover Terraform directory for environment
 
 inputs:
   working-directory:

@@ -1,4 +1,5 @@
-name: Check if application has changed
+name: Detect application changes
+description: Detect changes in application files
 
 outputs:
   any-changed:

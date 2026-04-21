@@ -1,5 +1,5 @@
-name: Push Mapping to DynamoDB
-description: Push mapping of preview URL to App Runner URL to DynamoDB
+name: Push preview mapping to DynamoDB
+description: Store preview URL mapping in DynamoDB
 
 inputs:
   domain-name:

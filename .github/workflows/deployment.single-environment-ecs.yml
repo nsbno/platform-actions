@@ -1,4 +1,4 @@
-name: Deploy ECS Service/SSR Service
+name: Deploy single environment (ECS)
 
 on:
   workflow_call:

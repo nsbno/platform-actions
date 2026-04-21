@@ -1,4 +1,4 @@
-name: Deploy All Environments (only Terraform, e.g. Lambda deploys or -aws repos)
+name: Deploy all environments (Terraform)
 
 on:
   workflow_call:

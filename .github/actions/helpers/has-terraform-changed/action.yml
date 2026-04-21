@@ -1,4 +1,5 @@
-name: Any Terraform Changes?
+name: Detect Terraform changes
+description: Detect changes in Terraform files
 
 inputs:
   environment:

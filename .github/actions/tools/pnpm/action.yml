@@ -1,4 +1,5 @@
-name: PNPM Action
+name: PNPM
+description: Set up and run PNPM commands
 
 inputs:
   NEXUS_USERNAME:

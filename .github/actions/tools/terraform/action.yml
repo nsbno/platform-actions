@@ -1,5 +1,5 @@
-name: Terraform Action
-description: Run terraform
+name: Terraform
+description: Set up and run Terraform commands
 
 inputs:
   terraform-command:

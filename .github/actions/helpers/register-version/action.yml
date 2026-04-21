@@ -1,5 +1,5 @@
-name: Register Version with Handler API
-description: Registers version deployments with the version handler API
+name: Register version
+description: Register deployment version with API
 
 inputs:
   working-directory:

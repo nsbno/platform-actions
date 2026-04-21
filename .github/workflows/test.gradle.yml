@@ -1,4 +1,4 @@
-name: test.gradle.yml
+name: Test Gradle project
 on:
   workflow_call:
     secrets:

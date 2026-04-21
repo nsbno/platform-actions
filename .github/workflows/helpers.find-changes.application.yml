@@ -13,7 +13,7 @@ on:
         description: 'If there are any changes in the application'
         value: ${{ jobs.has-application-changed.outputs.any-changed }}
 
-name: Find Application Changes
+name: Find application changes
 
 jobs:
   has-application-changed:

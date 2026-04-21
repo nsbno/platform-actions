@@ -1,3 +1,4 @@
+name: Build Gradle project
 on:
   workflow_call:
     secrets:

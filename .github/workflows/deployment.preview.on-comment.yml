@@ -1,4 +1,4 @@
-name: Branch Preview Deployment
+name: Deploy preview on PR comment
 on:
   workflow_call:
     inputs:

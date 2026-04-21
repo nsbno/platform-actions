@@ -1,5 +1,5 @@
-name: Deploy App Runner Preview Service
-description: Deploy an App Runner service for preview environments
+name: Deploy App Runner preview
+description: Deploy preview environment to App Runner
 
 inputs:
   service-name:

@@ -1,4 +1,4 @@
-name: Deploy to specific environment from PR
+name: Deploy branch on PR comment
 on:
   workflow_call:
     inputs:

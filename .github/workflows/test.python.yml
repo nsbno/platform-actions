@@ -2,7 +2,7 @@
 # Run pytest in a working directory.
 # Currently, only `uv` is supported
 ##
-name: "Test Python 🧪"
+name: Test Python project
 
 on:
   workflow_call:
