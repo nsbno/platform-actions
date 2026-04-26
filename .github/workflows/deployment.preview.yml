@@ -140,8 +140,9 @@ jobs:
       - name: Deploy App Runner Preview Service
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@preview-using-ecs-express-mode
         with:
+          health-endpoint: "/health"
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
           git-sha: ${{ inputs.git-sha }}
@@ -153,7 +154,7 @@ jobs:
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@preview-using-ecs-express-mode
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
           domain-name: "pr-${{ inputs.git-event-number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"

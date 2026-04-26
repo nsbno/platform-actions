@@ -14,6 +14,10 @@ inputs:
   service-port:
     description: "The port the service is running on, default is 3000"
     required: true
+  health-endpoint:
+    description: "Endpoint where to run health checks against"
+    required: false
+    default: '/'
   aws-account-id:
     description: "The AWS account ID the preview environment will use"
     required: true
@@ -44,26 +48,34 @@ runs:
         echo "service_name=pr-${{ inputs.git-event-number }}-${{ inputs.service-name }}" >> $GITHUB_OUTPUT
         echo "image_uri=${{ inputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
         echo "access_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-service-role'" >> $GITHUB_OUTPUT
+        echo "execution_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-execution" >> $GITHUB_OUTPUT
+        echo "infrastructure_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-infrastructure" >> $GITHUB_OUTPUT
         echo "instance_role_arn='arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-app-runner-instance-role'">> $GITHUB_OUTPUT
 
-    - name: Check if App Runner service exists
+    - name: Check if ECS Express service exists
       id: check-service
       shell: bash
       run: |
-        # Define the service name
         SERVICE_NAME="${{ steps.set-service-variables.outputs.service_name }}"
+        SERVICE_ARN="arn:aws:ecs:${{ inputs.aws-region }}:${{ inputs.aws-account-id }}:service/default/${SERVICE_NAME}"
 
-        # Check if service already exists
-        SERVICE_ARN=$(aws apprunner list-services --region ${{ inputs.aws-region }} \
-          --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
+        set +e
+        DESCRIBE_OUTPUT=$(aws ecs describe-express-gateway-service \
+          --service-arn "$SERVICE_ARN" \
+          --region "${{ inputs.aws-region }}" 2>&1)
+        DESCRIBE_EXIT=$?
+        set -e
 
-        if [ -n "$SERVICE_ARN" ]; then
+        if [ $DESCRIBE_EXIT -eq 0 ]; then
           echo "Service $SERVICE_NAME already exists with ARN: $SERVICE_ARN"
           echo "service_exists=true" >> $GITHUB_OUTPUT
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
-        else
+        elif echo "$DESCRIBE_OUTPUT" | grep -q -i "ServiceNotFoundException\|not found"; then
           echo "Service $SERVICE_NAME does not exist. Will create a new one."
           echo "service_exists=false" >> $GITHUB_OUTPUT
+        else
+          echo "Failed to describe service: $DESCRIBE_OUTPUT"
+          exit 1
         fi
 
     - name: Prepare Environment Variables Configuration
@@ -125,90 +137,170 @@ runs:
         echo "env_vars_config=$ENV_VARS_JSON" >> $GITHUB_OUTPUT
         echo "plaintext_env_vars=$PLAINTEXT_ENV_VARS" >> $GITHUB_OUTPUT
 
-    - name: Deploy to App Runner Image
+    - name: Deploy to Service
       if: steps.check-service.outputs.service_exists == 'false'
       id: deploy-apprunner
       shell: bash
       env:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
+        HEALTH_CHECK_ENDPOINT: ${{ inputs.health-endpoint }}
       run: |
-        aws apprunner create-service \
-        --service-name ${{ steps.set-service-variables.outputs.service_name }} \
-        --instance-configuration '{
-          "InstanceRoleArn": "${{ steps.set-service-variables.outputs.instance_role_arn }}"
-        }' \
-        --source-configuration '{
-          "ImageRepository": {
-            "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
-            "ImageRepositoryType": "ECR",
-            "ImageConfiguration": {
-              "Port": "${{ inputs.service-port }}",
-              "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"',
-              "RuntimeEnvironmentVariables": '"$PLAINTEXT_ENV_VARS"'
-            }
-          },
-          "AuthenticationConfiguration": {
-            "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
-          }
-        }' \
-        --region ${{ inputs.aws-region }}
+        secrets="$(jq -c '[to_entries[] | {name: .key, valueFrom: .value}]' <<< "$ENV_VARS_CONFIG")"
+        plaintext="$(jq -c '[to_entries[] | {name: .key, value: .value}]' <<< "$PLAINTEXT_ENV_VARS")"
+        
+        echo "Secrets: $secrets"
+        echo "Plaintext: $plaintext"
+        
+        primary_container="$(jq -n \
+          --arg image "${{ steps.set-service-variables.outputs.image_uri }}" \
+          --argjson port "${{ inputs.service-port }}" \
+          --argjson secrets "$secrets" \
+          --argjson plaintext "$plaintext" \
+          '{
+            image: $image,
+            containerPort: $port,
+            environment: $plaintext,
+            secrets: $secrets
+          }')"
+          
+        echo "$primary_container"
+  
+        executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
+        infrastructureRoleArn="${{ steps.set-service-variables.outputs.infrastructure_role_arn }}"
+        echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn)..."
+        
+        aws ecs create-express-gateway-service \
+          --service-name "${{ steps.set-service-variables.outputs.service_name }}" \
+          --execution-role-arn "$executionRoleArn" \
+          --infrastructure-role-arn "$infrastructureRoleArn" \
+          --primary-container "$primary_container" \
+          --health-check-path "$HEALTH_CHECK_ENDPOINT" \
+          --region "${{ inputs.aws-region }}"
+        
+        serviceArn="arn:aws:ecs:${{ inputs.aws-region }}:${{ inputs.aws-account-id }}:service/default/${{ steps.set-service-variables.outputs.service_name }}"
+        echo "Deployment started! $serviceArn"
+        echo "service_arn=$serviceArn" >> $GITHUB_OUTPUT
 
-    - name: Update Existing App Runner Service
+    - name: Update Existing ECS Express Service
       if: steps.check-service.outputs.service_exists == 'true'
       id: update-service
       shell: bash
       env:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
+        HEALTH_CHECK_ENDPOINT: ${{ inputs.health-endpoint }}
       run: |
-        # Update existing service
-        aws apprunner update-service \
-          --service-arn "${{ steps.check-service.outputs.service_arn }}" \
-          --source-configuration '{
-            "ImageRepository": {
-              "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
-              "ImageRepositoryType": "ECR",
-              "ImageConfiguration": {
-                "Port": "${{ inputs.service-port }}",
-                "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"',
-                "RuntimeEnvironmentVariables": '"$PLAINTEXT_ENV_VARS"'
-              }
-            },
-            "AuthenticationConfiguration": {
-              "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
-            }
-          }' \
-          --region ${{ inputs.aws-region }}
+        secrets="$(jq -c '[to_entries[] | {name: .key, valueFrom: .value}]' <<< "$ENV_VARS_CONFIG")"
+        plaintext="$(jq -c '[to_entries[] | {name: .key, value: .value}]' <<< "$PLAINTEXT_ENV_VARS")"
 
-    - name: Wait for App Runner Service to be Active
+        primary_container="$(jq -n \
+          --arg image "${{ steps.set-service-variables.outputs.image_uri }}" \
+          --argjson port "${{ inputs.service-port }}" \
+          --argjson secrets "$secrets" \
+          --argjson plaintext "$plaintext" \
+          '{
+            image: $image,
+            containerPort: $port,
+            environment: $plaintext,
+            secrets: $secrets
+          }')"
+
+        executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
+        SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
+        echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
+
+        aws ecs update-express-gateway-service \
+          --service-arn "$SERVICE_ARN" \
+          --execution-role-arn "$executionRoleArn" \
+          --primary-container "$primary_container" \
+          --health-check-path "$HEALTH_CHECK_ENDPOINT" \
+          --region "${{ inputs.aws-region }}"
+
+        echo "Update started! $SERVICE_ARN"
+        echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+
+    - name: Wait for Service to be available
       id: wait-for-service
       shell: bash
       run: |
-        SERVICE_ARN=$(aws apprunner list-services --region ${{ inputs.aws-region }} \
-          --query "ServiceSummaryList[?ServiceName=='${{ steps.set-service-variables.outputs.service_name }}'].ServiceArn" --output text)
+        SERVICE_ARN="${{ steps.deploy-apprunner.outputs.service_arn || steps.update-service.outputs.service_arn }}"
 
-        for i in {1..30}; do
-          STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
-            --query "Service.Status" --output text)
-          echo "Current status: $STATUS"
-          if [[ "$STATUS" == "RUNNING" ]]; then
-            echo "Service is running."
+        for i in {1..60}; do
+          SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
+          STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
+          STATUS_REASON=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusReason // ""')
+          echo "Current status: $STATUS ($STATUS_REASON)"
+          if [[ "$STATUS" == "ACTIVE" ]]; then
+            echo "Service is active."
             break
           fi
-          if [[ "$STATUS" == "CREATE_FAILED" ]]; then
-            echo "Service deployment failed."
-            break
-          fi
-          sleep 20
+          sleep 10
         done
 
-        if [[ "$STATUS" != "RUNNING" ]]; then
-          echo "Service did not reach RUNNING status."
+        if [[ "$STATUS" != "ACTIVE" ]]; then
+          echo "Service did not reach ACTIVE status."
           exit 1
         fi
 
-        # Get the service URL and set it as an output
-        SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
-          --query "Service.ServiceUrl" --output text)
+        SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r '[.service.activeConfigurations[0].ingressPaths[] | select(.accessType=="PUBLIC") | .endpoint][0] | sub("^https?://"; "") | sub("/$"; "")')
         echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+
+#    - name: Update Existing App Runner Service
+#      if: steps.check-service.outputs.service_exists == 'true'
+#      id: update-service
+#      shell: bash
+#      env:
+#        ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
+#        PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
+#      run: |
+#        # Update existing service
+#        aws apprunner update-service \
+#          --service-arn "${{ steps.check-service.outputs.service_arn }}" \
+#          --source-configuration '{
+#            "ImageRepository": {
+#              "ImageIdentifier": "${{ steps.set-service-variables.outputs.image_uri }}",
+#              "ImageRepositoryType": "ECR",
+#              "ImageConfiguration": {
+#                "Port": "${{ inputs.service-port }}",
+#                "RuntimeEnvironmentSecrets": '"$ENV_VARS_CONFIG"',
+#                "RuntimeEnvironmentVariables": '"$PLAINTEXT_ENV_VARS"'
+#              }
+#            },
+#            "AuthenticationConfiguration": {
+#              "AccessRoleArn": "${{ steps.set-service-variables.outputs.access_role_arn }}"
+#            }
+#          }' \
+#          --region ${{ inputs.aws-region }}
+#
+#    - name: Wait for App Runner Service to be Active
+#      id: wait-for-service
+#      shell: bash
+#      run: |
+#        SERVICE_ARN=$(aws apprunner list-services --region ${{ inputs.aws-region }} \
+#          --query "ServiceSummaryList[?ServiceName=='${{ steps.set-service-variables.outputs.service_name }}'].ServiceArn" --output text)
+#
+#        for i in {1..30}; do
+#          STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
+#            --query "Service.Status" --output text)
+#          echo "Current status: $STATUS"
+#          if [[ "$STATUS" == "RUNNING" ]]; then
+#            echo "Service is running."
+#            break
+#          fi
+#          if [[ "$STATUS" == "CREATE_FAILED" ]]; then
+#            echo "Service deployment failed."
+#            break
+#          fi
+#          sleep 20
+#        done
+#
+#        if [[ "$STATUS" != "RUNNING" ]]; then
+#          echo "Service did not reach RUNNING status."
+#          exit 1
+#        fi
+#
+#        # Get the service URL and set it as an output
+#        SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }} \
+#          --query "Service.ServiceUrl" --output text)
+#        echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
