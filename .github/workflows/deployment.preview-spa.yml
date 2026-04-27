@@ -73,6 +73,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.git-sha }}
 
+      - name: Download build artifact
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ./dist
+
       - name: Authenticate with AWS
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         uses: aws-actions/configure-aws-credentials@v6
