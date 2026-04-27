@@ -1,4 +1,5 @@
 name: Build Python project
+
 on:
   workflow_call:
     inputs:
@@ -34,7 +35,7 @@ jobs:
     name: Build Python
     runs-on: ${{ inputs.runs-on }}
     outputs:
-      artifact-name: ${{ inputs.artifact-name || steps.artifact-name.outputs.artifact-name }}
+      artifact-name: ${{ steps.artifact-name.outputs.artifact-name }}
 
     steps:
       - uses: actions/checkout@v6
@@ -59,17 +60,27 @@ jobs:
           uv pip install dist/*.whl --target ./out
           find ./out/ -name "__pycache__" -type d -exec rm -rf {} \;
 
-      - name: Determine artifact name
+      - name: Validate and build artifact name
         id: artifact-name
         run: |
-          ARTIFACT_NAME="${{ inputs.working-directory }}-${{ inputs.artifact-name }}"
+          NAME="$INPUT_NAME"
+          NAME="$(echo "$NAME" | xargs)"
+
+          if [ -z "$NAME" ]; then
+            echo "Error: artifact-name cannot be empty or whitespace"
+            exit 1
+          fi
+
+          ARTIFACT_NAME="${{ inputs.working-directory }}-$NAME"
           ARTIFACT_NAME="${ARTIFACT_NAME//\//-}"
+
           echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+        env:
+          INPUT_NAME: ${{ inputs.artifact-name }}
 
       - name: Store build as Artifact
         uses: actions/upload-artifact@v6
-        id: upload-artifact
         with:
-          name: ${{ inputs.artifact-name || steps.artifact-name.outputs.artifact-name }}
+          name: ${{ steps.artifact-name.outputs.artifact-name }}
           path: ${{ inputs.working-directory }}/out
           retention-days: 5
