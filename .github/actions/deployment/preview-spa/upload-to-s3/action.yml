@@ -53,10 +53,14 @@ runs:
 
         SERVICE_BUCKET="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
         
+        # TODO: change this path? 
+        # Remove owner from repo name (e.g., nsbno/infrademo-spa -> infrademo-spa)
+        REPO_NAME_WITHOUT_OWNER="${GIT_REPO_NAME##*/}"
+        
         if [ -n "$WORKING_DIRECTORY" ]; then
-          S3_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
+          S3_PATH="${REPO_NAME_WITHOUT_OWNER}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
         else
-          S3_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
+          S3_PATH="${REPO_NAME_WITHOUT_OWNER}/${GIT_SHA}.zip"
         fi
         
         echo "Downloading from s3://${SERVICE_BUCKET}/${S3_PATH}"
