@@ -1,0 +1,43 @@
+name: Delete CloudWatch log groups
+description: Delete all CloudWatch log groups matching a given name prefix
+
+inputs:
+  log-group-prefix:
+    description: 'Prefix used to match CloudWatch log groups for deletion'
+    required: true
+  aws-region:
+    description: 'The AWS region the log groups are in'
+    required: false
+    default: 'eu-west-1'
+
+runs:
+  using: composite
+  steps:
+    - name: Delete CloudWatch log groups
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.log-group-prefix }}
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        LOG_GROUPS=$(aws logs describe-log-groups \
+          --log-group-name-prefix "$PREFIX" \
+          --region "$AWS_REGION" \
+          --query "logGroups[*].logGroupName" \
+          --output text)
+
+        if [ -z "$LOG_GROUPS" ]; then
+          echo "No log groups found with prefix: $PREFIX"
+          exit 0
+        fi
+
+        echo "The following log groups will be deleted:"
+        echo "$LOG_GROUPS" | tr '\t' '\n'
+
+        for LOG_GROUP in $LOG_GROUPS; do
+          echo "Deleting log group: $LOG_GROUP"
+          if aws logs delete-log-group --log-group-name "$LOG_GROUP" --region "$AWS_REGION"; then
+            echo "Successfully deleted: $LOG_GROUP"
+          else
+            echo "Failed to delete: $LOG_GROUP"
+          fi
+        done
