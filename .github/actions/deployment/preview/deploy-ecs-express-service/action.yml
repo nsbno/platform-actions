@@ -35,7 +35,7 @@ inputs:
     default: '{}'
 
 outputs:
-  service-ingress-url:
+  service-url:
     description: "The direct URL to the service"
     value: ${{ steps.wait-for-service.outputs.service_url }}
 
