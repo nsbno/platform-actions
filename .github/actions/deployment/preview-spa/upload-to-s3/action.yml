@@ -1,0 +1,121 @@
+name: Upload SPA Preview to S3
+description: Upload static build files to preview bucket with PR prefix
+
+inputs:
+  service-name:
+    description: "Service name (e.g., infrademo-spa)"
+    required: true
+  pr-number:
+    description: "Pull request number"
+    required: true
+  git-sha:
+    description: "Git SHA to deploy"
+    required: true
+  github-repository-name:
+    description: "GitHub repository name"
+    required: true
+  working-directory:
+    description: "Working directory within the repository"
+    required: false
+    default: ""
+
+outputs:
+  preview-url:
+    description: "Preview URL for the deployment"
+    value: ${{ steps.construct-url.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    # Reuse existing service account lookup
+    - name: Get Service Account ID
+      id: find-service-account-id
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
+      with:
+        http-method: GET
+        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        continue-on-error: true
+
+    # Download artifact from service account (same as existing action)
+    - name: Download artifact
+      shell: bash
+      env:
+        GIT_REPO_NAME: ${{ inputs.github-repository-name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        GIT_SHA: ${{ inputs.git-sha }}
+      run: |
+        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
+
+        if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
+          echo "::error::Failed to find project AWS Service Account ID. This should not happen, contact Team Utviklerplattform. Response: ${{ steps.find-service-account-id.outputs.response }}"
+          exit 1
+        fi
+
+        SERVICE_BUCKET="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
+        
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          S3_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
+        else
+          S3_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
+        fi
+        
+        echo "Downloading from s3://${SERVICE_BUCKET}/${S3_PATH}"
+        aws s3 cp "s3://${SERVICE_BUCKET}/${S3_PATH}" ./build.zip
+        unzip -q build.zip -d ./dist
+
+    # Get preview bucket name from SSM (created by terraform-aws-preview-url-spa)
+    - name: Get preview bucket configuration
+      id: get-config
+      shell: bash
+      run: |
+        PREVIEW_BUCKET=$(aws ssm get-parameter \
+          --name "/__deployment__/applications/${{ inputs.service-name }}/preview-bucket-name" \
+          --query 'Parameter.Value' \
+          --output text)
+        
+        if [ -z "$PREVIEW_BUCKET" ] || [ "$PREVIEW_BUCKET" = "None" ]; then
+          echo "::error::Failed to find preview bucket name in SSM. Make sure terraform-aws-preview-url-spa module is deployed."
+          exit 1
+        fi
+        
+        echo "preview-bucket=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
+        echo "Using preview bucket: ${PREVIEW_BUCKET}"
+
+    # Upload to S3 with PR prefix
+    - name: Upload to preview bucket
+      shell: bash
+      run: |
+        echo "Uploading to s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ inputs.pr-number }}/"
+        
+        # Upload assets with long cache (JS, CSS, images)
+        aws s3 sync ./dist \
+          "s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ inputs.pr-number }}/" \
+          --delete \
+          --cache-control "public, max-age=31536000, immutable" \
+          --exclude "*.html" \
+          --exclude "*.json"
+        
+        # HTML/JSON files should not be cached aggressively
+        aws s3 sync ./dist \
+          "s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ inputs.pr-number }}/" \
+          --cache-control "public, max-age=0, must-revalidate" \
+          --exclude "*" \
+          --include "*.html" \
+          --include "*.json"
+        
+        echo "Upload completed successfully"
+
+    # Construct preview URL
+    - name: Construct preview URL
+      id: construct-url
+      shell: bash
+      run: |
+        # Extract just the repository name without owner
+        REPO_NAME=$(echo "${{ inputs.github-repository-name }}" | cut -d'/' -f2)
+        
+        # Construct domain based on service name
+        # Pattern: pr-{number}.{service-name}.test.{zone}.vydev.io
+        DOMAIN="pr-${{ inputs.pr-number }}.${{ inputs.service-name }}.test.infrademo.vydev.io"
+        
+        echo "url=https://${DOMAIN}" >> $GITHUB_OUTPUT
+        echo "Preview URL: https://${DOMAIN}"

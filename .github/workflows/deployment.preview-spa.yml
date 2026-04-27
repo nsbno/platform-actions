@@ -1,0 +1,115 @@
+name: Deploy SPA Preview
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        required: true
+        type: string
+        description: "Artifact name from build job"
+      service-name:
+        required: true
+        type: string
+        description: "Service name (must match Terraform module)"
+      git-sha:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+      git-event-number:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.number }}
+      github-repository-name:
+        required: false
+        type: string
+        default: ${{ github.repository }}
+      working-directory:
+        required: false
+        type: string
+        default: ""
+      only-on-preview-comment:
+        required: false
+        type: boolean
+        default: true
+        description: "Require .preview comment to deploy"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    environment: Test
+    steps:
+      - name: Check for .preview comment
+        if: ${{ inputs.only-on-preview-comment }}
+        id: check-comments
+        run: |
+          PR_NUMBER=${{ inputs.git-event-number }}
+          
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "0" ]; then
+            echo "PR number is not available in this context. Skipping deployment."
+            echo "continue=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          COMMENTS=$(gh api repos/${{ github.repository }}/issues/$PR_NUMBER/comments --paginate)
+          
+          if echo "$COMMENTS" | jq -e '.[] | select(.body | startswith(".preview"))' > /dev/null; then
+            echo "Found a .preview comment in PR #$PR_NUMBER, continuing..."
+            echo "continue=true" >> $GITHUB_OUTPUT
+          else
+            echo "No .preview comment found in PR #$PR_NUMBER, skipping deployment."
+            echo "continue=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v6
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.git-sha }}
+
+      - name: Authenticate with AWS
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Deploy to Preview Bucket
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
+        id: deploy
+        uses: ./.github/actions/deployment/preview-spa/upload-to-s3
+        with:
+          service-name: ${{ inputs.service-name }}
+          pr-number: ${{ inputs.git-event-number }}
+          git-sha: ${{ inputs.git-sha }}
+          github-repository-name: ${{ inputs.github-repository-name }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Comment Preview URL
+        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.deploy.outputs.preview-url }}';
+            const sha = '${{ inputs.git-sha }}'.substring(0, 7);
+            
+            const body = `## 🚀 Preview Deployment
+            
+            **URL:** ${previewUrl}
+            **Commit:** \`${sha}\`
+            **Deployed:** ${new Date().toISOString()}
+            
+            _This preview will be automatically cleaned up when the PR is closed._`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
