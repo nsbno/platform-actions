@@ -31,10 +31,10 @@ jobs:
           PREVIEW_BUCKET=$(aws ssm get-parameter \
             --name "/__deployment__/applications/${{ inputs.service-name }}/preview-bucket-name" \
             --query 'Parameter.Value' \
-            --output text)
+            --output text 2>/dev/null || echo "")
           
           if [ -z "$PREVIEW_BUCKET" ] || [ "$PREVIEW_BUCKET" = "None" ]; then
-            echo "::warning::Could not find preview bucket name in SSM. Preview may already be cleaned up."
+            echo "::warning::Could not find preview bucket name in SSM. Preview infrastructure may not be deployed yet."
             echo "preview-bucket=" >> $GITHUB_OUTPUT
           else
             echo "preview-bucket=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
