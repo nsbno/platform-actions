@@ -149,7 +149,7 @@ jobs:
 
 
       - name: Deploy Preview (App Runner)
-        if: ${{ !inputs.use-ecs-express-mode && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
+        if: ${{ inputs.use-ecs-express-mode == false && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: app-runner-deploy
         uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@preview-using-ecs-express-mode
         with:
@@ -163,7 +163,7 @@ jobs:
           custom-env-variables: ${{ inputs.custom-env-variables }}
 
       - name: Deploy Preview (ECS)
-        if: ${{ inputs.use-ecs-express-mode && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
+        if: ${{ inputs.use-ecs-express-mode == true && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: deploy-ecs
         uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@preview-using-ecs-express-mode
         with:

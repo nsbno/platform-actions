@@ -50,6 +50,7 @@ runs:
         echo "image_uri=${{ inputs.ecr-image-base }}:${{ inputs.git-sha }}" >> $GITHUB_OUTPUT
         echo "execution_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-execution" >> $GITHUB_OUTPUT
         echo "infrastructure_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-infrastructure" >> $GITHUB_OUTPUT
+        echo "task_tole_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-task" >> $GITHUB_OUTPUT
 
     - name: Check if Service exists
       id: check-service
@@ -167,14 +168,17 @@ runs:
   
         executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
         infrastructureRoleArn="${{ steps.set-service-variables.outputs.infrastructure_role_arn }}"
-        echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn)..."
+        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}
+        echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
         
         aws ecs create-express-gateway-service \
           --service-name "${{ steps.set-service-variables.outputs.service_name }}" \
           --execution-role-arn "$executionRoleArn" \
+          --task-role-arn "$taskRoleArn" \
           --infrastructure-role-arn "$infrastructureRoleArn" \
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
+          --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
           --region "${{ inputs.aws-region }}"
         
         serviceArn="arn:aws:ecs:${{ inputs.aws-region }}:${{ inputs.aws-account-id }}:service/default/${{ steps.set-service-variables.outputs.service_name }}"
@@ -206,14 +210,17 @@ runs:
           }')"
 
         executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
+        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
         aws ecs update-express-gateway-service \
           --service-arn "$SERVICE_ARN" \
           --execution-role-arn "$executionRoleArn" \
+          --task-role-arn "$taskRoleArn" \
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
+          --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
           --region "${{ inputs.aws-region }}"
 
         echo "Update started! $SERVICE_ARN"
