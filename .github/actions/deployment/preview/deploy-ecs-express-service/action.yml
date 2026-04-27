@@ -168,7 +168,7 @@ runs:
   
         executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
         infrastructureRoleArn="${{ steps.set-service-variables.outputs.infrastructure_role_arn }}"
-        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}
+        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}"
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
         
         aws ecs create-express-gateway-service \
@@ -210,7 +210,7 @@ runs:
           }')"
 
         executionRoleArn="${{ steps.set-service-variables.outputs.execution_role_arn }}"
-        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}
+        taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}"
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 

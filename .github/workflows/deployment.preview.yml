@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Test
     outputs:
-      deployment-successful: ${{ steps.app-runner-deploy.conclusion == 'success' }}
+      deployment-successful: ${{ steps.app-runner-deploy.conclusion == 'success' || steps.deploy-ecs.conclusion == 'success' }}
     steps:
       - name: Check for .preview comments
         if: ${{ inputs.only-on-preview-comment }}
@@ -151,7 +151,7 @@ jobs:
       - name: Deploy Preview (App Runner)
         if: ${{ inputs.use-ecs-express-mode == false && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: app-runner-deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@preview-using-ecs-express-mode
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@v2
         with:
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
           ecr-image-base: ${{ steps.deployment-info.outputs.ecr-image-base }}
@@ -165,7 +165,7 @@ jobs:
       - name: Deploy Preview (ECS)
         if: ${{ inputs.use-ecs-express-mode == true && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: deploy-ecs
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-app-runner@preview-using-ecs-express-mode
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@v2
         with:
           health-endpoint: ${{ inputs.health-endpoint }}
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
@@ -179,7 +179,7 @@ jobs:
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@preview-using-ecs-express-mode
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/push-mapping-dynamodb@v2
         with:
           # The domain name is an assumption based on the PR number and service name, may need to be adjusted
           domain-name: "pr-${{ inputs.git-event-number }}.${{ inputs.domain-name != '' && inputs.domain-name || steps.deployment-info.outputs.cloudfront-domain-name }}"
