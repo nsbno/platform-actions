@@ -33,7 +33,7 @@ runs:
       uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
       with:
         http-method: GET
-        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        endpoint: https://enroll.test.vydeployment.vydev.io/environment_accounts
         continue-on-error: true
 
     # Download artifact from service account (same as existing action)
