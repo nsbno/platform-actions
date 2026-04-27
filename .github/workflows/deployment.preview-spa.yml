@@ -83,7 +83,7 @@ jobs:
       - name: Deploy to Preview Bucket
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: deploy
-        uses: ./.github/actions/deployment/preview-spa/upload-to-s3
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
         with:
           service-name: ${{ inputs.service-name }}
           pr-number: ${{ inputs.git-event-number }}
