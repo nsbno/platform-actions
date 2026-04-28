@@ -78,13 +78,21 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.trigger-preview.outputs.sha }}
 
-      - name: Setup package manager
-        uses: nsbno/platform-actions/.github/actions/tools/${{ inputs.package-manager }}@feat/preview-urls-spa
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          working-directory: ${{ inputs.working-directory }}
+          node-version: '20'
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.working-directory != '' && format('{0}/package-lock.json', inputs.working-directory) || 'package-lock.json' }}
+
+      - name: Setup pnpm
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
 
       - name: Install dependencies
-        run: ${{ inputs.package-manager }} install
+        run: ${{ inputs.package-manager }} ${{ inputs.package-manager == 'npm' && 'ci' || 'install' }}
         working-directory: ${{ inputs.working-directory }}
 
       - name: Build
