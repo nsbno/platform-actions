@@ -1,0 +1,141 @@
+name: Build and Deploy SPA Preview
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "Service name (must match Terraform module)"
+      working-directory:
+        required: false
+        type: string
+        default: ""
+        description: "Working directory for the service"
+      artifact-path:
+        required: false
+        type: string
+        default: "dist"
+        description: "Path to build output directory"
+      package-manager:
+        required: false
+        type: string
+        default: "npm"
+        description: "Package manager to use (npm or pnpm)"
+      node-version:
+        required: false
+        type: string
+        default: "20"
+        description: "Node.js version to use"
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  check-for-preview-comment:
+    name: Check for .preview comment
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    steps:
+      - name: Check for .preview comment
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Not a pull request event"
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          COMMENTS=$(gh api repos/${{ github.repository }}/issues/$PR_NUMBER/comments --paginate)
+          
+          if echo "$COMMENTS" | jq -e '.[] | select(.body | startswith(".preview"))' > /dev/null; then
+            echo "Found .preview comment - will deploy"
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "No .preview comment found - skipping deployment"
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-deploy:
+    name: Build and Deploy Preview
+    needs: check-for-preview-comment
+    if: needs.check-for-preview-comment.outputs.should-deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: Test
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.working-directory != '' && format('{0}/package-lock.json', inputs.working-directory) || 'package-lock.json' }}
+
+      - name: Setup pnpm
+        if: ${{ inputs.package-manager == 'pnpm' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: ${{ inputs.package-manager }} ${{ inputs.package-manager == 'npm' && 'ci' || 'install' }}
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Build
+        run: ${{ inputs.package-manager }} run build
+        working-directory: ${{ inputs.working-directory }}
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Deploy to preview S3 bucket
+        id: deploy
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
+        with:
+          service-name: ${{ inputs.service-name }}
+          pr-number: ${{ github.event.pull_request.number }}
+          git-sha: ${{ github.event.pull_request.head.sha }}
+          github-repository-name: ${{ github.repository }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.deploy.outputs.preview-url }}';
+            const prNumber = ${{ github.event.pull_request.number }};
+            
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('Preview Deployment') &&
+              comment.body.includes(previewUrl)
+            );
+            
+            if (!botComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `### Preview Deployment ✅\n\n🚀 Preview URL: ${previewUrl}\n\n_This preview will auto-update on every push to this PR._`
+              });
+            }
