@@ -16,6 +16,11 @@ on:
         type: string
         default: "dist"
         description: "Path to build output directory"
+      package-manager:
+        required: false
+        type: string
+        default: "npm"
+        description: "Package manager to use (npm or pnpm)"
 
 permissions:
   contents: read
@@ -67,6 +72,7 @@ jobs:
       artifact-path: ${{ inputs.artifact-path }}
       working-directory: ${{ inputs.working-directory }}
       git-sha: ${{ needs.trigger-preview.outputs.sha }}
+      package-manager: ${{ inputs.package-manager }}
 
   deploy-preview:
     needs:
