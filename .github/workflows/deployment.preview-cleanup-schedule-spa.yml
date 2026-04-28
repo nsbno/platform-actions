@@ -1,0 +1,70 @@
+name: Cleanup Stale SPA Previews
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup-stale-previews:
+    runs-on: ubuntu-latest
+    environment: Test
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Find and cleanup stale previews
+        run: |
+          echo "Searching for preview buckets with stale PR deployments..."
+          
+          BUCKETS=$(aws s3api list-buckets \
+            --query 'Buckets[?contains(Name, `-preview`)].Name' \
+            --output text)
+          
+          if [ -z "$BUCKETS" ]; then
+            echo "No preview buckets found"
+            exit 0
+          fi
+          
+          CUTOFF_DATE=$(date -u -d '7 days ago' +%Y-%m-%d)
+          echo "Will delete previews older than ${CUTOFF_DATE}"
+          
+          for BUCKET in $BUCKETS; do
+            echo "Checking bucket: ${BUCKET}"
+            
+            PR_PREFIXES=$(aws s3 ls "s3://${BUCKET}/" | grep 'PRE pr-' | awk '{print $2}' | sed 's/\///')
+            
+            if [ -z "$PR_PREFIXES" ]; then
+              echo "  No PR prefixes found in ${BUCKET}"
+              continue
+            fi
+            
+            for PREFIX in $PR_PREFIXES; do
+              LAST_MODIFIED=$(aws s3api list-objects-v2 \
+                --bucket "${BUCKET}" \
+                --prefix "${PREFIX}/" \
+                --query 'reverse(sort_by(Contents, &LastModified))[0].LastModified' \
+                --output text 2>/dev/null)
+              
+              if [ -z "$LAST_MODIFIED" ] || [ "$LAST_MODIFIED" = "None" ]; then
+                continue
+              fi
+              
+              LAST_MODIFIED_DATE=$(echo "$LAST_MODIFIED" | cut -d'T' -f1)
+              
+              if [[ "$LAST_MODIFIED_DATE" < "$CUTOFF_DATE" ]]; then
+                echo "  Deleting stale preview: ${PREFIX} (last modified: ${LAST_MODIFIED_DATE})"
+                aws s3 rm "s3://${BUCKET}/${PREFIX}/" --recursive
+              else
+                echo "  Keeping recent preview: ${PREFIX} (last modified: ${LAST_MODIFIED_DATE})"
+              fi
+            done
+          done
+          
+          echo "Cleanup completed"
