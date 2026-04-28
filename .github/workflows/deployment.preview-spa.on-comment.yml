@@ -37,17 +37,21 @@ jobs:
       ref: ${{ steps.pr.outputs.ref }}
       sha: ${{ steps.pr.outputs.sha }}
       pr_number: ${{ steps.pr.outputs.number }}
+      comment_id: ${{ github.event.comment.id }}
+      initial_reaction_id: ${{ steps.react.outputs.reaction_id }}
     steps:
-      - name: React to comment
+      - name: React to comment with eyes
+        id: react
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.reactions.createForIssueComment({
+            const reaction = await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: context.payload.comment.id,
-              content: 'rocket'
+              content: 'eyes'
             });
+            core.setOutput('reaction_id', reaction.data.id);
 
       - name: Get PR details
         id: pr
@@ -87,3 +91,43 @@ jobs:
       git-sha: ${{ needs.trigger-preview.outputs.sha }}
       git-event-number: ${{ needs.trigger-preview.outputs.pr_number }}
       only-on-preview-comment: false
+
+  update-comment-status:
+    needs: [trigger-preview, build, deploy-preview]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Remove eyes reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.deleteForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
+              reaction_id: ${{ needs.trigger-preview.outputs.initial_reaction_id }}
+            });
+
+      - name: Add success reaction
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
+              content: 'rocket'
+            });
+
+      - name: Add failure reaction
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
+              content: '-1'
+            });
