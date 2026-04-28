@@ -9,7 +9,7 @@ on:
       working-directory:
         required: false
         type: string
-        default: ""
+        default: "."
         description: "Working directory for the service"
       artifact-path:
         required: false
