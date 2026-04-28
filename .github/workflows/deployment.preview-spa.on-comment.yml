@@ -66,7 +66,7 @@ jobs:
 
   build:
     needs: trigger-preview
-    uses: nsbno/platform-actions/.github/workflows/build.node.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/build.node.yml@feat/preview-urls-spa
     secrets: inherit
     with:
       artifact-path: ${{ inputs.artifact-path }}
