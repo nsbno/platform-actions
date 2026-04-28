@@ -27,7 +27,6 @@ outputs:
 runs:
   using: composite
   steps:
-    # Get preview bucket name from SSM (created by terraform-aws-preview-url-spa)
     - name: Get preview bucket configuration
       id: get-config
       shell: bash
