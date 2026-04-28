@@ -106,26 +106,25 @@ jobs:
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
       - name: Deploy to preview S3 bucket
-        uses: nsbno/platform-actions/.github/actions/deployment/static-files/spa-preview-to-s3@feat/preview-urls-spa
+        id: deploy
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
         with:
-          s3-bucket-name: "${{ vars.AWS_ACCOUNT_ID }}-${{ inputs.service-name }}-preview-v2"
+          service-name: ${{ inputs.service-name }}
+          pr-number: ${{ needs.trigger-preview.outputs.pr_number }}
           git-sha: ${{ needs.trigger-preview.outputs.sha }}
-          git-event-number: ${{ needs.trigger-preview.outputs.pr_number }}
-          artifact-path: ${{ inputs.artifact-path }}
+          github-repository-name: ${{ github.repository }}
           working-directory: ${{ inputs.working-directory }}
 
       - name: Comment preview URL
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = ${{ needs.trigger-preview.outputs.pr_number }};
-            const serviceName = '${{ inputs.service-name }}';
-            const previewUrl = `https://pr-${prNumber}.${serviceName}.test.infrademo.vydev.io`;
+            const previewUrl = '${{ steps.deploy.outputs.preview-url }}';
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: prNumber,
+              issue_number: ${{ needs.trigger-preview.outputs.pr_number }},
               body: `### Preview Deployment ✅\n\n🚀 Preview URL: ${previewUrl}`
             });
 
