@@ -2,6 +2,10 @@ name: Deploy SPA preview on PR comment
 on:
   workflow_call:
     inputs:
+      artifact-name:
+        required: true
+        type: string
+        description: "Artifact name from build job (will build from scratch if not found)"
       service-name:
         required: true
         type: string
@@ -15,155 +19,148 @@ on:
         required: false
         type: string
         default: "dist"
-        description: "Path to build output directory"
+        description: "Path to build output directory (used for fallback build)"
       package-manager:
         required: false
         type: string
         default: "npm"
-        description: "Package manager to use (npm or pnpm)"
-
-permissions:
-  contents: read
-  pull-requests: write
-  actions: write
-  id-token: write
+        description: "Package manager to use (npm or pnpm) for fallback build"
 
 jobs:
-  trigger-preview:
-    name: Trigger Preview on .preview comment
+  trigger:
+    name: Trigger - Branch Preview
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '.preview')
     runs-on: ubuntu-latest
     outputs:
-      ref: ${{ steps.pr.outputs.ref }}
-      sha: ${{ steps.pr.outputs.sha }}
-      pr_number: ${{ steps.pr.outputs.number }}
-      comment_id: ${{ github.event.comment.id }}
-      initial_reaction_id: ${{ steps.react.outputs.reaction_id }}
+      continue: ${{ steps.branch-comment-handler.outputs.continue }}
+      deployment_id: ${{ steps.branch-comment-handler.outputs.deployment_id }}
+      environment: ${{ steps.branch-comment-handler.outputs.environment }}
+      ref: ${{ steps.branch-comment-handler.outputs.ref }}
+      sha: ${{ steps.branch-comment-handler.outputs.sha }}
+      comment_id: ${{ steps.branch-comment-handler.outputs.comment_id }}
+      initial_reaction_id: ${{ steps.branch-comment-handler.outputs.initial_reaction_id }}
+      actor_handle: ${{ steps.branch-comment-handler.outputs.actor_handle }}
+
     steps:
-      - name: React to comment with eyes
-        id: react
-        uses: actions/github-script@v7
+      - uses: github/branch-deploy@48285b12b35e47e2dde0c27d2abb33daa846d98b # v11.0.0
+        id: branch-comment-handler
         with:
-          script: |
-            const reaction = await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'eyes'
-            });
-            core.setOutput('reaction_id', reaction.data.id);
+          trigger: '.preview'
+          environment: Test
+          skip_completing: 'true' # we will complete the deployment manually
+          skip_reviews: Test # skip reviews for Preview
+          draft_permitted_targets: Test # allow draft PRs to deploy to Test
+          stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
+          update_branch: 'disabled' # do not stop preview when unsync with latest main changes
 
-      - name: Get PR details
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            });
-            
-            core.setOutput('ref', pr.data.head.ref);
-            core.setOutput('sha', pr.data.head.sha);
-            core.setOutput('number', context.issue.number);
-
-  build-and-deploy:
-    needs: trigger-preview
+  build-or-use-artifact:
+    needs: trigger
     runs-on: ubuntu-latest
     environment: Test
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: write
+      id-token: write
+    outputs:
+      artifact-exists: ${{ steps.check-artifact.outputs.exists }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Try to download existing artifact
+        id: download-artifact
+        continue-on-error: true
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v8.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ./dist
+
+      - name: Check if artifact was downloaded
+        id: check-artifact
+        shell: bash
+        run: |
+          if [ "${{ steps.download-artifact.outcome }}" == "success" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Using existing artifact: ${{ inputs.artifact-name }}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Artifact not found, will build from scratch"
+          fi
+
+      - name: Checkout code (if no artifact)
+        if: steps.check-artifact.outputs.exists == 'false'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          ref: ${{ needs.trigger-preview.outputs.sha }}
+          ref: ${{ needs.trigger.outputs.sha }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node.js (if no artifact)
+        if: steps.check-artifact.outputs.exists == 'false'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: '20'
           cache: ${{ inputs.package-manager }}
           cache-dependency-path: ${{ inputs.working-directory != '' && format('{0}/package-lock.json', inputs.working-directory) || 'package-lock.json' }}
 
-      - name: Setup pnpm
-        if: ${{ inputs.package-manager == 'pnpm' }}
-        uses: pnpm/action-setup@v4
+      - name: Setup pnpm (if no artifact)
+        if: steps.check-artifact.outputs.exists == 'false' && inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@f6ef1f056a14e7afa74ea626e135c38f88ce5c35 # v5.0.0
         with:
           version: 8
 
-      - name: Install dependencies
+      - name: Install dependencies (if no artifact)
+        if: steps.check-artifact.outputs.exists == 'false'
+        shell: bash
         run: ${{ inputs.package-manager }} ${{ inputs.package-manager == 'npm' && 'ci' || 'install' }}
         working-directory: ${{ inputs.working-directory }}
 
-      - name: Build
+      - name: Build (if no artifact)
+        if: steps.check-artifact.outputs.exists == 'false'
+        shell: bash
         run: ${{ inputs.package-manager }} run build
         working-directory: ${{ inputs.working-directory }}
+        
+      - name: Prepare dist directory for upload (if built)
+        if: steps.check-artifact.outputs.exists == 'false'
+        shell: bash
+        run: |
+          if [ "${{ inputs.working-directory }}" != "." ] && [ -n "${{ inputs.working-directory }}" ]; then
+            mkdir -p ./dist
+            cp -r ${{ inputs.working-directory }}/${{ inputs.artifact-path }}/* ./dist/ 2>/dev/null || cp -r ${{ inputs.working-directory }}/${{ inputs.artifact-path }} ./dist/
+          fi
 
-      - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v6
+      - name: Upload build artifact for deployment
+        uses: actions/upload-artifact@1fdb1016c7c989fb8e47f21e05f5bc6234e566d8 # v7.0.1
         with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+          name: ${{ inputs.artifact-name }}-deployed
+          path: ./dist
+          retention-days: 1
 
-      - name: Deploy to preview S3 bucket
-        id: deploy
-        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
-        with:
-          service-name: ${{ inputs.service-name }}
-          pr-number: ${{ needs.trigger-preview.outputs.pr_number }}
-          git-sha: ${{ needs.trigger-preview.outputs.sha }}
-          github-repository-name: ${{ github.repository }}
-          working-directory: ${{ inputs.working-directory }}
+  preview:
+    needs: [trigger, build-or-use-artifact]
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@feat/preview-urls-spa
+    with:
+      artifact-name: ${{ inputs.artifact-name }}-deployed
+      service-name: ${{ inputs.service-name }}
+      git-event-number: ${{ github.event.issue.number }}
+      git-repository: ${{ github.repository }}
+      git-sha: ${{ needs.trigger.outputs.sha }}
+      working-directory: ${{ inputs.working-directory }}
+      only-on-preview-comment: false
 
-      - name: Comment preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const previewUrl = '${{ steps.deploy.outputs.preview-url }}';
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ needs.trigger-preview.outputs.pr_number }},
-              body: `### Preview Deployment ✅\n\n🚀 Preview URL: ${previewUrl}`
-            });
-
-  update-comment-status:
-    needs: [trigger-preview, build-and-deploy]
+  comment-handler:
+    needs: [ trigger, preview ]
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - name: Remove eyes reaction
-        uses: actions/github-script@v7
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@feat/preview-urls-spa
         with:
-          script: |
-            await github.rest.reactions.deleteForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
-              reaction_id: ${{ needs.trigger-preview.outputs.initial_reaction_id }}
-            });
-
-      - name: Add success reaction
-        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
-              content: 'rocket'
-            });
-
-      - name: Add failure reaction
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: ${{ needs.trigger-preview.outputs.comment_id }},
-              content: '-1'
-            });
+          is-preview: true
+          environment: Test
+          github-repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+          issue-number: ${{ github.event.issue.number }}
+          ref: ${{ needs.trigger.outputs.ref }}
+          initial-reaction-id: ${{ needs.trigger.outputs.initial_reaction_id }}
+          deployment-id: ${{ needs.trigger.outputs.deployment_id }}
+          comment-id: ${{ needs.trigger.outputs.comment_id }}
+          actor-handle: ${{ needs.trigger.outputs.actor_handle }}
+          job-status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
