@@ -144,7 +144,6 @@ jobs:
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
-      working-directory: ${{ inputs.working-directory }}
       only-on-preview-comment: false
 
   comment-handler:
