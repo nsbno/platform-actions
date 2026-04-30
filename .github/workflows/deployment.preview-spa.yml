@@ -91,10 +91,9 @@ jobs:
         id: upload-spa
         uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
         with:
+          preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
-          service-name: ${{ inputs.service-name }}
-          github-repository-name: ${{ inputs.git-repository }}
 
       - name: Comment Preview URL on PR
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
