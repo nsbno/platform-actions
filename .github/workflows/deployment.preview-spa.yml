@@ -38,8 +38,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
-    name: Deploy Preview if checks pass
+  deploy:
+    name: Deploy SPA Preview
     runs-on: ubuntu-latest
     environment: Test
     outputs:
@@ -50,15 +50,15 @@ jobs:
         id: check-comments
         run: |
           PR_NUMBER=${{ inputs.git-event-number }}
-          
+
           if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "0" ]; then
             echo "PR number is not available in this context. Skipping deployment."
             echo "continue=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           COMMENTS=$(gh api repos/${{ github.repository }}/issues/$PR_NUMBER/comments --paginate)
-          
+
           if echo "$COMMENTS" | jq -e '.[] | select(.body | startswith(".preview"))' > /dev/null; then
             echo "Found a .preview comment in PR #$PR_NUMBER, continuing..."
             echo "continue=true" >> $GITHUB_OUTPUT
@@ -69,12 +69,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
-        with:
-          fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
-          ref: ${{ inputs.git-sha }}
-
       - name: Authenticate with AWS
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         uses: aws-actions/configure-aws-credentials@e5a46856c337d0634c74cd84bb78ed1986395a23 # v6.1.0
@@ -82,7 +76,6 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      # Get the deployment information for the SPA service
       - name: Get SPA Deployment Information
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
         id: deployment-info
@@ -105,8 +98,6 @@ jobs:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
-          service-name: ${{ inputs.service-name }}
-          github-repository-name: ${{ inputs.git-repository }}
 
       - name: Comment Preview URL on PR
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
@@ -114,6 +105,5 @@ jobs:
         with:
           preview-domain-name: ${{ steps.deployment-info.outputs.preview-domain-name }}
           pr-number: ${{ inputs.git-event-number }}
-          git-sha: ${{ inputs.git-sha }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           github-repository: ${{ inputs.git-repository }}
