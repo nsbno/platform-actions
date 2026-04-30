@@ -105,6 +105,8 @@ jobs:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
+          service-name: ${{ inputs.service-name }}
+          github-repository-name: ${{ inputs.git-repository }}
 
       - name: Comment Preview URL on PR
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}

@@ -55,6 +55,7 @@ jobs:
 
   build-or-use-artifact:
     needs: trigger
+    if: needs.trigger.outputs.continue == 'true'
     runs-on: ubuntu-latest
     environment: Test
     permissions:

@@ -11,6 +11,12 @@ inputs:
   git-sha:
     description: "Git SHA to deploy"
     required: true
+  service-name:
+    description: "The service name (must match Terraform module service_name)"
+    required: true
+  github-repository-name:
+    description: "GitHub repository name (owner/repo)"
+    required: true
 
 runs:
   using: composite
