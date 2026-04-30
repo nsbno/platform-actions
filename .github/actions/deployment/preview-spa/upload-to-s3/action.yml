@@ -11,12 +11,6 @@ inputs:
   git-sha:
     description: "Git SHA to deploy"
     required: true
-  service-name:
-    description: "The service name (must match Terraform module service_name)"
-    required: true
-  github-repository-name:
-    description: "GitHub repository name (owner/repo)"
-    required: true
 
 runs:
   using: composite
@@ -25,7 +19,7 @@ runs:
       shell: bash
       run: |
         echo "Uploading to s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/"
-        
+
         # Upload assets with long cache (JS, CSS, images)
         aws s3 sync ./dist \
           "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
@@ -33,7 +27,7 @@ runs:
           --cache-control "public, max-age=31536000, immutable" \
           --exclude "*.html" \
           --exclude "*.json"
-        
+
         # HTML/JSON files should not be cached aggressively
         aws s3 sync ./dist \
           "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
@@ -41,5 +35,5 @@ runs:
           --exclude "*" \
           --include "*.html" \
           --include "*.json"
-        
+
         echo "Upload completed successfully"
