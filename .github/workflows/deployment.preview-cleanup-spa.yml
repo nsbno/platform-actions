@@ -20,7 +20,7 @@ jobs:
     environment: Test
     steps:
       - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@e5a46856c337d0634c74cd84bb78ed1986395a23 # v6.1.0
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
