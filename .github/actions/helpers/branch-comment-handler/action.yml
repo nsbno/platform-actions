@@ -42,10 +42,13 @@ runs:
     # if a previous step failed, set a variable to use as the deployment status
     - name: set deployment status
       id: deploy-status
-      if: ${{ inputs.job-status == 'failure' }}
       shell: bash
       run: |
-        echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT
+        if [ "${{ inputs.job-status }}" == "failure" ]; then
+          echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT
+        else
+          echo "DEPLOY_STATUS=success" >> $GITHUB_OUTPUT
+        fi
 
     # use the GitHub CLI to update the deployment status that was initiated by the branch-comment-handler action
     - name: Create a deployment status

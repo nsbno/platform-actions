@@ -103,7 +103,7 @@ jobs:
 
       - name: Setup pnpm (if no artifact)
         if: steps.check-artifact.outputs.exists == 'false' && inputs.package-manager == 'pnpm'
-        uses: pnpm/action-setup@f6ef1f056a14e7afa74ea626e135c38f88ce5c35 # v5.0.0
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 
@@ -129,7 +129,7 @@ jobs:
           fi
 
       - name: Upload build artifact for deployment
-        uses: actions/upload-artifact@1fdb1016c7c989fb8e47f21e05f5bc6234e566d8 # v7.0.1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}-deployed
           path: ./dist
