@@ -99,7 +99,7 @@ jobs:
         with:
           node-version: '20'
           cache: ${{ inputs.package-manager }}
-          cache-dependency-path: ${{ inputs.working-directory != '' && format('{0}/package-lock.json', inputs.working-directory) || 'package-lock.json' }}
+          cache-dependency-path: ${{ inputs.package-manager == 'pnpm' && format('{0}/pnpm-lock.yaml', inputs.working-directory) || format('{0}/package-lock.json', inputs.working-directory) }}
 
       - name: Setup pnpm (if no artifact)
         if: steps.check-artifact.outputs.exists == 'false' && inputs.package-manager == 'pnpm'
