@@ -95,6 +95,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           ENVIRONMENT: ${{ matrix.environment }}
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
         run: |
           PLAN_OUTPUT=$(cat << 'EOF'
           ${{ steps.changed-files.outputs.stdout }}
@@ -107,9 +108,15 @@ jobs:
           fi
       
           COMMENT_FILE=$(mktemp)
+          
+          if [ -n "$WORKING_DIRECTORY" ] && [ "$WORKING_DIRECTORY" != "." ]; then
+            WORKING_DIRECTORY_SUFFIX=" in ${WORKING_DIRECTORY}"
+          else
+            WORKING_DIRECTORY_SUFFIX=""
+          fi
       
           cat << EOF > "$COMMENT_FILE"
-          ### Terraform Plan for ${ENVIRONMENT} 🔍
+          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
       
           <details>
           <summary>Show Plan</summary>
