@@ -81,7 +81,7 @@ jobs:
 
       - name: Download build artifact
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: ./dist

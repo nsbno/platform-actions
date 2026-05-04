@@ -42,7 +42,7 @@ jobs:
       actor_handle: ${{ steps.branch-comment-handler.outputs.actor_handle }}
 
     steps:
-      - uses: github/branch-deploy@48285b12b35e47e2dde0c27d2abb33daa846d98b # v11.0.0
+      - uses: github/branch-deploy@fded0351b6b79f854b335c11b3d93063461dd288 # v11.0.0
         id: branch-comment-handler
         with:
           trigger: '.preview'
@@ -69,7 +69,7 @@ jobs:
       - name: Try to download existing artifact
         id: download-artifact
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: ./dist
@@ -129,7 +129,7 @@ jobs:
           fi
 
       - name: Upload build artifact for deployment
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact-name }}-deployed
           path: ./dist
