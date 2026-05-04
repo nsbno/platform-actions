@@ -108,9 +108,15 @@ jobs:
           fi
       
           COMMENT_FILE=$(mktemp)
+          
+          if [ -n "$WORKING_DIRECTORY" ] && [ "$WORKING_DIRECTORY" != "." ]; then
+            WORKING_DIRECTORY_SUFFIX=" in ${WORKING_DIRECTORY}"
+          else
+            WORKING_DIRECTORY_SUFFIX=""
+          fi
       
           cat << EOF > "$COMMENT_FILE"
-          ### Terraform Plan for ${ENVIRONMENT} in ${WORKING_DIRECTORY} 🔍
+          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
       
           <details>
           <summary>Show Plan</summary>
