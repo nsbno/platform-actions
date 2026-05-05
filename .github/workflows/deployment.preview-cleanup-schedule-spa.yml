@@ -35,9 +35,6 @@ jobs:
             --name "/__deployment__/applications/${{ inputs.service-name }}/preview-bucket-name" \
             --query 'Parameter.Value' \
             --output text 2>/dev/null || echo "")
-
-          if [ -z "$PREVIEW_BUCKET" ] || [ "$PREVIEW_BUCKET" = "None" ]; then
-            echo "::warning::Could not find preview bucket for service ${{ inputs.service-name }}. Preview infrastructure may not be deployed yet."
             echo "preview-bucket=" >> $GITHUB_OUTPUT
           else
             echo "preview-bucket=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
