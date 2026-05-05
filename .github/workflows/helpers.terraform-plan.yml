@@ -86,6 +86,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
           terraform-options: '-no-color'
+          git-sha: ${{ inputs.git-sha }}
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Add Terraform Plan to PR
