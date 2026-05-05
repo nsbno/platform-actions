@@ -80,7 +80,7 @@ jobs:
 
       - name: Download build artifact
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
-        uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@feat/preview-urls-spa
+        uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@v2
         with:
           github-repository-name: ${{ github.event.repository.name }}
           working-directory: ${{ inputs.working-directory }}
@@ -91,14 +91,14 @@ jobs:
       - name: Get SPA Deployment Information
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
         id: deployment-info
-        uses: nsbno/platform-actions/.github/actions/deployment/get-spa-deployment-info@feat/preview-urls-spa
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/get-spa-deployment-info@v2
         with:
           service-name: ${{ inputs.service-name }}
 
       - name: Deploy SPA to Preview Bucket
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
         id: upload-spa
-        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@feat/preview-urls-spa
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@v2
         with:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
@@ -107,7 +107,7 @@ jobs:
 
       - name: Comment Preview URL on PR
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
-        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/comment-preview-url@feat/preview-urls-spa
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/comment-preview-url@v2
         with:
           preview-domain-name: ${{ steps.deployment-info.outputs.preview-domain-name }}
           pr-number: ${{ inputs.git-event-number }}

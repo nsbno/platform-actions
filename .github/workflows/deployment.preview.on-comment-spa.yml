@@ -48,7 +48,7 @@ jobs:
   preview:
     needs: trigger
     if: needs.trigger.outputs.continue == 'true'
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@feat/preview-urls-spa
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@v2
     with:
       service-name: ${{ inputs.service-name }}
       working-directory: ${{ inputs.working-directory }}
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && needs.trigger.outputs.continue == 'true' }}
     steps:
-      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@feat/preview-urls-spa
+      - uses: nsbno/platform-actions/.github/actions/helpers/branch-comment-handler@v2
         with:
           is-preview: true
           environment: Test
