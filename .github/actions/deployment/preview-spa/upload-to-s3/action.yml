@@ -11,6 +11,10 @@ inputs:
   git-sha:
     description: "Git SHA to deploy"
     required: true
+  build-directory:
+    description: "Directory containing the build artifacts to upload"
+    required: false
+    default: "./dist"
 
 runs:
   using: composite
@@ -21,7 +25,7 @@ runs:
         echo "Uploading to s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/"
 
         # Upload assets with long cache (JS, CSS, images)
-        aws s3 sync ./dist \
+        aws s3 sync ${{ inputs.build-directory }} \
           "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
           --delete \
           --cache-control "public, max-age=31536000, immutable" \
@@ -29,7 +33,7 @@ runs:
           --exclude "*.json"
 
         # HTML/JSON files should not be cached aggressively
-        aws s3 sync ./dist \
+        aws s3 sync ${{ inputs.build-directory }} \
           "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
           --cache-control "public, max-age=0, must-revalidate" \
           --exclude "*" \

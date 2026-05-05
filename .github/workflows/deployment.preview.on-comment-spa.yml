@@ -184,6 +184,7 @@ jobs:
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       only-on-preview-comment: false
+      artifact-path: "./dist"
 
   comment-handler:
     needs: [ trigger, preview ]

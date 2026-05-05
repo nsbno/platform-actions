@@ -27,6 +27,11 @@ on:
         type: boolean
         default: true
         description: "Whether to check for a .preview comment before deploying"
+      artifact-path:
+        required: false
+        type: string
+        default: "./dist"
+        description: "Path where the build artifact should be downloaded"
 
 permissions:
   contents: read
@@ -84,7 +89,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
-          path: ./dist
+          path: ${{ inputs.artifact-path }}
 
       - name: Deploy SPA to Preview Bucket
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
@@ -94,6 +99,7 @@ jobs:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
+          build-directory: ${{ inputs.artifact-path }}
 
       - name: Comment Preview URL on PR
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
