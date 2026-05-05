@@ -5,6 +5,7 @@ on:
       service-name:
         required: true
         type: string
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
       pr-number:
         required: true
         type: string

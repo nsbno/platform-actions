@@ -3,7 +3,7 @@ description: Retrieve SPA preview deployment information from SSM
 
 inputs:
   service-name:
-    description: "The service name (must match Terraform module service_name)"
+    description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
     required: true
 
 outputs:
