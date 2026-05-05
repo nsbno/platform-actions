@@ -2,29 +2,20 @@ name: Deploy SPA preview on PR comment
 on:
   workflow_call:
     inputs:
-      artifact-name:
-        required: true
-        type: string
-        description: "Artifact name from build job (will build from scratch if not found)"
       service-name:
         required: true
         type: string
-        description: "Service name (must match Terraform module)"
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
       working-directory:
         required: false
         type: string
-        default: "."
+        default: ""
         description: "Working directory for the service"
       artifact-path:
         required: false
         type: string
         default: "dist"
-        description: "Path to build output directory (used for fallback build)"
-      package-manager:
-        required: false
-        type: string
-        default: "npm"
-        description: "Package manager to use (npm or pnpm) for fallback build"
+        description: "Path within the zip file where the build artifacts are located"
 
 jobs:
   trigger:
@@ -54,137 +45,18 @@ jobs:
           update_branch: 'disabled' # do not stop preview when unsync with latest main changes
           use_security_warnings: false # Suppress branch ruleset warnings for preview deployments
 
-  build-or-use-artifact:
+  preview:
     needs: trigger
     if: needs.trigger.outputs.continue == 'true'
-    runs-on: ubuntu-latest
-    environment: Test
-    permissions:
-      contents: read
-      pull-requests: write
-      actions: write
-      id-token: write
-    outputs:
-      artifact-exists: ${{ steps.check-artifact.outputs.exists }}
-    steps:
-      - name: Find latest successful build run for this commit
-        id: find-build-run
-        continue-on-error: true
-        shell: bash
-        run: |
-          echo "Looking for build artifacts from commit: ${{ needs.trigger.outputs.sha }}"
-          
-          # Search for successful Build & Deploy workflow runs for this commit
-          BUILD_RUN=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${{ github.repository }}/actions/runs?event=push&status=success&head_sha=${{ needs.trigger.outputs.sha }}" \
-            --jq '.workflow_runs | map(select(.name == "Build & Deploy")) | .[0] | .id')
-          
-          if [ -n "$BUILD_RUN" ] && [ "$BUILD_RUN" != "null" ]; then
-            echo "Found build run: $BUILD_RUN"
-            echo "run-id=$BUILD_RUN" >> $GITHUB_OUTPUT
-            echo "found=true" >> $GITHUB_OUTPUT
-          else
-            echo "No build run found for this commit"
-            echo "found=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Try to download existing artifact
-        id: download-artifact
-        if: steps.find-build-run.outputs.found == 'true'
-        continue-on-error: true
-        uses: actions/download-artifact@v7
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: ./dist
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.find-build-run.outputs.run-id }}
-
-      - name: Check if artifact was downloaded
-        id: check-artifact
-        shell: bash
-        run: |
-          if [ "${{ steps.download-artifact.outcome }}" == "success" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Using existing artifact: ${{ inputs.artifact-name }}"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Artifact not found, will build from scratch"
-          fi
-
-      - name: Checkout code (if no artifact)
-        if: steps.check-artifact.outputs.exists == 'false'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.trigger.outputs.sha }}
-
-      - name: Setup Node.js (if no artifact)
-        if: steps.check-artifact.outputs.exists == 'false'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: '20'
-          cache: ${{ inputs.package-manager }}
-          cache-dependency-path: ${{ inputs.package-manager == 'pnpm' && format('{0}/pnpm-lock.yaml', inputs.working-directory) || format('{0}/package-lock.json', inputs.working-directory) }}
-
-      - name: Setup pnpm (if no artifact)
-        if: steps.check-artifact.outputs.exists == 'false' && inputs.package-manager == 'pnpm'
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-
-      - name: Install dependencies (if no artifact)
-        if: steps.check-artifact.outputs.exists == 'false'
-        shell: bash
-        run: ${{ inputs.package-manager }} ${{ inputs.package-manager == 'npm' && 'ci' || 'install' }}
-        working-directory: ${{ inputs.working-directory }}
-
-      - name: Build (if no artifact)
-        if: steps.check-artifact.outputs.exists == 'false'
-        shell: bash
-        run: ${{ inputs.package-manager }} run build
-        working-directory: ${{ inputs.working-directory }}
-        
-      - name: Prepare dist directory for upload (if built)
-        if: steps.check-artifact.outputs.exists == 'false'
-        shell: bash
-        run: |
-          if [ "${{ inputs.working-directory }}" != "." ] && [ -n "${{ inputs.working-directory }}" ]; then
-            mkdir -p ./dist
-            cp -r ${{ inputs.working-directory }}/${{ inputs.artifact-path }}/* ./dist/ 2>/dev/null || cp -r ${{ inputs.working-directory }}/${{ inputs.artifact-path }} ./dist/
-          fi
-
-      - name: Upload build artifact for deployment (from existing artifact)
-        if: steps.check-artifact.outputs.exists == 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ inputs.artifact-name }}-deployed
-          path: ./dist
-          retention-days: 1
-
-      - name: Upload build artifact for deployment (from fresh build)
-        if: steps.check-artifact.outputs.exists == 'false'
-        uses: actions/upload-artifact@v6
-        with:
-          name: ${{ inputs.artifact-name }}-deployed
-          path: ./dist
-          retention-days: 1
-
-  preview:
-    needs: [trigger, build-or-use-artifact]
     uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@feat/preview-urls-spa
     with:
-      artifact-name: ${{ inputs.artifact-name }}-deployed
       service-name: ${{ inputs.service-name }}
+      working-directory: ${{ inputs.working-directory }}
+      artifact-path: ${{ inputs.artifact-path }}
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       only-on-preview-comment: false
-      artifact-path: "./dist"
 
   comment-handler:
     needs: [ trigger, preview ]

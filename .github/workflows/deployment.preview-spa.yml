@@ -2,14 +2,15 @@ name: Deploy SPA Preview
 on:
   workflow_call:
     inputs:
-      artifact-name:
-        required: true
-        type: string
-        description: "Artifact name from build job"
       service-name:
         required: true
         type: string
-        description: "Service name (must match Terraform module)"
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
+      working-directory:
+        required: false
+        type: string
+        default: ""
+        description: "Working directory within the repository"
       git-sha:
         required: false
         type: string
@@ -30,8 +31,8 @@ on:
       artifact-path:
         required: false
         type: string
-        default: "./dist"
-        description: "Path where the build artifact should be downloaded"
+        default: "dist"
+        description: "Path within the zip file where the build artifacts are located"
 
 permissions:
   contents: read
@@ -77,19 +78,22 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
+      - name: Download build artifact
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@feat/preview-urls-spa
+        with:
+          github-repository-name: ${{ github.event.repository.name }}
+          working-directory: ${{ inputs.working-directory }}
+          git-sha: ${{ inputs.git-sha }}
+          artifact-path: ${{ inputs.artifact-path }}
+          output-directory: "./dist"
+
       - name: Get SPA Deployment Information
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
         id: deployment-info
         uses: nsbno/platform-actions/.github/actions/deployment/get-spa-deployment-info@feat/preview-urls-spa
         with:
           service-name: ${{ inputs.service-name }}
-
-      - name: Download build artifact
-        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
-        uses: actions/download-artifact@v7
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
 
       - name: Deploy SPA to Preview Bucket
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
@@ -99,7 +103,7 @@ jobs:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
-          build-directory: ${{ inputs.artifact-path }}
+          build-directory: "./dist"
 
       - name: Comment Preview URL on PR
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
