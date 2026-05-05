@@ -17,11 +17,6 @@ on:
         type: string
         description: "Service name for SPA preview (from terraform-aws-preview-url-spa). If provided, performs SPA cleanup instead of SSR cleanup."
         default: ""
-      pr-number:
-        required: false
-        type: string
-        description: "Pull request number (auto-detected if not provided)"
-        default: "${{ github.event.number }}"
 
 permissions:
   contents: read
@@ -54,7 +49,7 @@ jobs:
         id: delete-service
         shell: bash
         run: |
-          SERVICE_NAME="pr-${{ inputs.pr-number }}-${{ steps.deployment-info.outputs.ecs-service-name }}"
+          SERVICE_NAME="pr-${{ github.event.pull_request.number }}-${{ steps.deployment-info.outputs.ecs-service-name }}"
           echo "service-name=$SERVICE_NAME" >> $GITHUB_OUTPUT
 
           SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
@@ -119,8 +114,8 @@ jobs:
       - name: Delete preview files
         if: steps.get-config.outputs.preview-bucket != ''
         run: |
-          echo "Deleting s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ inputs.pr-number }}/"
-          aws s3 rm "s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ inputs.pr-number }}/" --recursive
+          echo "Deleting s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ github.event.pull_request.number }}/"
+          aws s3 rm "s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ github.event.pull_request.number }}/" --recursive
           echo "Preview files deleted successfully"
 
       - name: Comment on PR
@@ -128,7 +123,7 @@ jobs:
         run: |
           gh api \
             --method POST \
-            "repos/${{ github.repository }}/issues/${{ inputs.pr-number }}/comments" \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
             -f body="✅ Preview deployment cleaned up."
         env:
           GH_TOKEN: ${{ github.token }}
