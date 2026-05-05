@@ -5,7 +5,7 @@ on:
       service-name:
         required: true
         type: string
-        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)."
       working-directory:
         required: false
         type: string
@@ -38,12 +38,12 @@ jobs:
         with:
           trigger: '.preview'
           environment: Test
-          skip_completing: 'true' # we will complete the deployment manually
-          skip_reviews: Test # skip reviews for Preview
-          draft_permitted_targets: Test # allow draft PRs to deploy to Test
-          stable_branch: ${{ github.event.repository.default_branch || 'main' }} # branch-deploy uses 'main' as default
-          update_branch: 'disabled' # do not stop preview when unsync with latest main changes
-          use_security_warnings: false # Suppress branch ruleset warnings for preview deployments
+          skip_completing: 'true'
+          skip_reviews: Test
+          draft_permitted_targets: Test
+          stable_branch: ${{ github.event.repository.default_branch || 'main' }}
+          update_branch: 'disabled'
+          use_security_warnings: false
 
   preview:
     needs: trigger
@@ -54,7 +54,6 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       artifact-path: ${{ inputs.artifact-path }}
       git-event-number: ${{ github.event.issue.number }}
-      git-repository: ${{ github.repository }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       only-on-preview-comment: false
 
