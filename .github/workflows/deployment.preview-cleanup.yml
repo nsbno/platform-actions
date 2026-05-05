@@ -12,10 +12,15 @@ on:
         type: string
         description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
       # SPA inputs
+      is-spa:
+        required: false
+        type: boolean
+        default: false
+        description: "Set to true to run SPA cleanup (S3 prefix deletion) instead of SSR cleanup (App Runner deletion)."
       service-name:
         required: false
         type: string
-        description: "Service name for SPA preview (from terraform-aws-preview-url-spa). If provided, performs SPA cleanup instead of SSR cleanup."
+        description: "Service name for SPA preview (from terraform-aws-preview-url-spa). Defaults to the repository name."
         default: ""
 
 permissions:
@@ -26,7 +31,7 @@ permissions:
 jobs:
   cleanup-ssr:
     name: Delete App Runner Service and Logs (SSR)
-    if: inputs.service-name == ''
+    if: "!inputs.is-spa"
     runs-on: ubuntu-latest
     environment: Test
     steps:
@@ -85,7 +90,7 @@ jobs:
 
   cleanup-spa:
     name: Delete S3 Preview Files (SPA)
-    if: inputs.service-name != ''
+    if: inputs.is-spa
     runs-on: ubuntu-latest
     environment: Test
     steps:
@@ -94,12 +99,18 @@ jobs:
         with:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
-
+ye
       - name: Get preview bucket name
         id: get-config
         run: |
+          REPO_NAME="${{ github.repository }}"
+          SERVICE_NAME="${{ inputs.service-name }}"
+          if [ -z "$SERVICE_NAME" ]; then
+            SERVICE_NAME="${REPO_NAME##*/}"
+          fi
+
           PREVIEW_BUCKET=$(aws ssm get-parameter \
-            --name "/__deployment__/applications/${{ inputs.service-name }}/preview-bucket-name" \
+            --name "/__deployment__/applications/${SERVICE_NAME}/preview-bucket-name" \
             --query 'Parameter.Value' \
             --output text 2>/dev/null || echo "")
 
