@@ -24,11 +24,6 @@ on:
         type: boolean
         default: true
         description: "Whether to check for a .preview comment before deploying"
-      artifact-path:
-        required: false
-        type: string
-        default: "dist"
-        description: "Path within the zip file where the build artifacts are located"
       version-handler-api-endpoint:
         required: false
         type: string
@@ -86,7 +81,6 @@ jobs:
           github-repository-name: ${{ github.event.repository.name }}
           working-directory: ${{ inputs.working-directory }}
           git-sha: ${{ inputs.git-sha }}
-          artifact-path: ${{ inputs.artifact-path }}
           output-directory: "./dist"
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 

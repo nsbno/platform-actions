@@ -11,11 +11,6 @@ on:
         type: string
         default: ""
         description: "Working directory for the service"
-      artifact-path:
-        required: false
-        type: string
-        default: "dist"
-        description: "Path within the zip file where the build artifacts are located"
 
 jobs:
   trigger:
@@ -52,7 +47,6 @@ jobs:
     with:
       service-name: ${{ inputs.service-name }}
       working-directory: ${{ inputs.working-directory }}
-      artifact-path: ${{ inputs.artifact-path }}
       git-event-number: ${{ github.event.issue.number }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       only-on-preview-comment: false
