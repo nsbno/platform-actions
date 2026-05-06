@@ -24,6 +24,10 @@ inputs:
     description: 'The options to use in the Terraform configuration.'
     required: false
     default: ''
+  git-sha:
+    description: "Git SHA to use for versioning. Defaults to PR head SHA or the triggering commit SHA."
+    required: false
+    default: '${{ github.event.pull_request.head.sha || github.sha }}'
   version-handler-api-endpoint:
     description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
     required: false
@@ -60,5 +64,5 @@ runs:
         fail-on-exit-code: 'true'
         always-run-init: 'true'
         terraform-options: ${{ inputs.terraform-options }}
-        git-sha: '${{ github.event.pull_request.head.sha || github.sha }}'
+        git-sha: '${{ inputs.git-sha }}'
         version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}

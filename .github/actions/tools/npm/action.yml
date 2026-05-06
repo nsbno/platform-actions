@@ -32,6 +32,15 @@ runs:
         cache: 'npm'
         cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
 
+    - name: Authenticate with Nexus repository
+      shell: bash
+      env:
+        NEXUS_USERNAME: ${{ inputs.NEXUS_USERNAME }}
+        NEXUS_PASSWORD: ${{ inputs.NEXUS_PASSWORD }}
+      run: |
+        TOKEN=$(echo -n $NEXUS_USERNAME:$NEXUS_PASSWORD | base64)
+        npm config set "//nexus.common-services.vydev.io/repository/npm-group/:_auth=$TOKEN"
+
     - name: Run NPM Install
       working-directory: ${{ inputs.working-directory }}
       shell: bash

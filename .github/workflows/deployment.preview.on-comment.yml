@@ -26,6 +26,16 @@ on:
         required: false
         type: string
         default: '{}'
+      use-ecs-express-mode:
+        description: 'Deploys the preview environment to ECS instead of App runner. Defaults to false'
+        type: boolean
+        default: false
+        required: false
+      health-endpoint:
+        description: 'Path to where the health-checks exist. Defaults to "/"'
+        type: string
+        default: '/'
+        required: false
 
 jobs:
   trigger:
@@ -58,6 +68,8 @@ jobs:
     needs: trigger
     uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
     with:
+      health-endpoint: ${{ inputs.health-endpoint }}
+      use-ecs-express-mode: ${{ inputs.use-ecs-express-mode }}
       working-directory: ${{ inputs.working-directory }}
       git-event-number: ${{ github.event.issue.number }}
       git-repository: ${{ github.repository }}
