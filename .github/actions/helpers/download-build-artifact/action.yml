@@ -29,6 +29,14 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Get AWS Service Account ID
+      id: find-service-account-id
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
+      with:
+        http-method: GET
+        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        continue-on-error: false
+
     - name: Download and unzip artifact from S3
       shell: bash
       env:
@@ -38,19 +46,16 @@ runs:
         ARTIFACT_PATH: ${{ inputs.artifact-path }}
         OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
       run: |
-        # Get current AWS account ID
-        OWNER_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
 
         if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
-          echo "::error::Failed to get AWS account ID from STS."
+          echo "::error::Failed to find project AWS Service Account ID."
           exit 1
         fi
-        
-        echo "Using AWS account: $OWNER_ACCOUNT_ID"
 
         # Service artifact bucket format
         SERVICE_BUCKET_NAME="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
-  
+
         # Build S3 object path
         if [ -n "$WORKING_DIRECTORY" ]; then
           S3_OBJECT_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
@@ -60,13 +65,13 @@ runs:
 
         echo "Downloading from s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}"
         aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
-        
+
         # Handle artifact-path extraction
         if [ -n "$ARTIFACT_PATH" ]; then
           # Extract specific subdirectory from zip
           mkdir -p ./temp-unzipped
           unzip -q build.zip -d ./temp-unzipped
-          
+
           if [ -d "./temp-unzipped/${ARTIFACT_PATH}" ]; then
             echo "Extracting artifact path: ${ARTIFACT_PATH}"
             mkdir -p "${OUTPUT_DIRECTORY}"
@@ -83,5 +88,5 @@ runs:
           mkdir -p "${OUTPUT_DIRECTORY}"
           unzip -q build.zip -d "${OUTPUT_DIRECTORY}"
         fi
-        
+
         echo "Build artifact ready in ${OUTPUT_DIRECTORY}"
