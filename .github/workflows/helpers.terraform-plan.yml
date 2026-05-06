@@ -89,7 +89,7 @@ jobs:
           git-sha: ${{ inputs.git-sha }}
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
-      - name: Add Terraform Plan to PR
+      - name: Save plan output
         if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'
         shell: bash
         env:
@@ -107,31 +107,74 @@ jobs:
           if [ -z "$PLAN_CONTENT" ]; then
             PLAN_CONTENT="$PLAN_OUTPUT"
           fi
-      
-          COMMENT_FILE=$(mktemp)
-          
+
           if [ -n "$WORKING_DIRECTORY" ] && [ "$WORKING_DIRECTORY" != "." ]; then
             WORKING_DIRECTORY_SUFFIX=" in ${WORKING_DIRECTORY}"
           else
             WORKING_DIRECTORY_SUFFIX=""
           fi
-      
-          cat << EOF > "$COMMENT_FILE"
+
+          mkdir -p plans
+          cat << EOF > "plans/${ENVIRONMENT}.md"
           ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
-      
+
           <details>
           <summary>Show Plan</summary>
-      
+
           \`\`\`terraform
           $PLAN_CONTENT
           \`\`\`
-      
+
           </details>
-      
+          EOF
+
+      - name: Upload plan artifact
+        if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: terraform-plan-${{ matrix.environment }}
+          path: plans/${{ matrix.environment }}.md
+
+  publish-plan:
+    name: Publish Terraform Plan
+    needs: terraform-plan
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && needs.terraform-plan.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download all plan artifacts
+        uses: actions/download-artifact@v6
+        with:
+          pattern: terraform-plan-*
+          path: plans
+          merge-multiple: true
+
+      - name: Post combined PR comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          COMMENT_FILE=$(mktemp)
+
+          for plan_file in plans/*.md; do
+            [ -f "$plan_file" ] || continue
+            cat "$plan_file" >> "$COMMENT_FILE"
+            echo "" >> "$COMMENT_FILE"
+          done
+
+          if [ ! -s "$COMMENT_FILE" ]; then
+            echo "No plan changes to post."
+            exit 0
+          fi
+
+          cat << EOF >> "$COMMENT_FILE"
           *For commit ${{ inputs.git-sha }}*
           *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
           EOF
-      
+
           gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
-      
+
           rm "$COMMENT_FILE"
+
