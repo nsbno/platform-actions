@@ -90,24 +90,13 @@ jobs:
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Save plan output
-        if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           ENVIRONMENT: ${{ matrix.environment }}
           WORKING_DIRECTORY: ${{ inputs.working-directory }}
+          ANY_CHANGED: ${{ steps.changed-files.outputs.any-changed }}
         run: |
-          PLAN_OUTPUT=$(cat << 'EOF'
-          ${{ steps.changed-files.outputs.stdout }}
-          EOF
-          )
-          
-          PLAN_CONTENT=$(echo "$PLAN_OUTPUT" | sed -n '/Terraform used the selected providers/,$p')
-          if [ -z "$PLAN_CONTENT" ]; then
-            PLAN_CONTENT="$PLAN_OUTPUT"
-          fi
-
           if [ -n "$WORKING_DIRECTORY" ] && [ "$WORKING_DIRECTORY" != "." ]; then
             WORKING_DIRECTORY_SUFFIX=" in ${WORKING_DIRECTORY}"
           else
@@ -115,7 +104,19 @@ jobs:
           fi
 
           mkdir -p plans
-          cat << EOF > "plans/${ENVIRONMENT}.md"
+
+          if [ "$ANY_CHANGED" == "true" ]; then
+            PLAN_OUTPUT=$(cat << 'PLANEOF'
+          ${{ steps.changed-files.outputs.stdout }}
+          PLANEOF
+            )
+
+            PLAN_CONTENT=$(echo "$PLAN_OUTPUT" | sed -n '/Terraform used the selected providers/,$p')
+            if [ -z "$PLAN_CONTENT" ]; then
+              PLAN_CONTENT="$PLAN_OUTPUT"
+            fi
+
+            cat << EOF > "plans/${ENVIRONMENT}.md"
           ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
 
           <details>
@@ -127,9 +128,16 @@ jobs:
 
           </details>
           EOF
+          else
+            cat << EOF > "plans/${ENVIRONMENT}.md"
+          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
+
+          _No changes detected._
+          EOF
+          fi
 
       - name: Upload plan artifact
-        if: (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && steps.changed-files.outputs.any-changed == 'true'
+        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v6
         with:
           name: terraform-plan-${{ matrix.environment }}
