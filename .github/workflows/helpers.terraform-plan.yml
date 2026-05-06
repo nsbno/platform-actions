@@ -117,7 +117,7 @@ jobs:
             fi
 
             cat << EOF > "plans/${ENVIRONMENT}.md"
-          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
+          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}
 
           <details>
           <summary>Show Plan</summary>
@@ -130,7 +130,7 @@ jobs:
           EOF
           else
             cat << EOF > "plans/${ENVIRONMENT}.md"
-          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX} 🔍
+          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}
 
           _No changes detected._
           EOF
@@ -170,6 +170,13 @@ jobs:
         run: |
           COMMENT_FILE=$(mktemp)
 
+          cat << EOF > "$COMMENT_FILE"
+          ## Terraform Plan 🔍
+          *For commit ${{ inputs.git-sha }}*
+          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
+
+          EOF
+
           for plan_file in plans/*.md; do
             [ -f "$plan_file" ] || continue
             cat "$plan_file" >> "$COMMENT_FILE"
@@ -181,11 +188,5 @@ jobs:
             exit 0
           fi
 
-          cat << EOF >> "$COMMENT_FILE"
-          *For commit ${{ inputs.git-sha }}*
-          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
-          EOF
-
           gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
-
           rm "$COMMENT_FILE"
