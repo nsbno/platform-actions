@@ -29,6 +29,11 @@ on:
         type: string
         default: "https://version-handler.test.vydeployment.vydev.io"
         description: "Version handler API endpoint. Defaults to test environment for preview deployments."
+      build-output-directory:
+        required: false
+        type: string
+        default: "dist"
+        description: "Build output directory name (e.g., 'dist', 'build', 'out'). Must match your framework's build.outDir configuration."
 
 permissions:
   contents: read
@@ -81,7 +86,7 @@ jobs:
           github-repository-name: ${{ github.event.repository.name }}
           working-directory: ${{ inputs.working-directory }}
           git-sha: ${{ inputs.git-sha }}
-          output-directory: "./dist"
+          output-directory: "./${{ inputs.build-output-directory }}"
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Get SPA Deployment Information
@@ -99,7 +104,7 @@ jobs:
           preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
           pr-number: ${{ inputs.git-event-number }}
           git-sha: ${{ inputs.git-sha }}
-          build-directory: "./dist"
+          build-directory: "./${{ inputs.build-output-directory }}"
 
       - name: Comment Preview URL on PR
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
