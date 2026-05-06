@@ -143,6 +143,9 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Download all plan artifacts
         uses: actions/download-artifact@v6
         with:
@@ -177,4 +180,3 @@ jobs:
           gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
 
           rm "$COMMENT_FILE"
-
