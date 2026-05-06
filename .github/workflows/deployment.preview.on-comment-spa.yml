@@ -48,7 +48,7 @@ jobs:
   preview:
     needs: trigger
     if: needs.trigger.outputs.continue == 'true'
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview-spa.yml@feat/preview-urls-spa
     with:
       service-name: ${{ inputs.service-name }}
       working-directory: ${{ inputs.working-directory }}

@@ -31,7 +31,7 @@ runs:
   using: composite
   steps:
     - name: Download build artifact
-      uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@v2
+      uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@feat/preview-urls-spa
       with:
         github-repository-name: ${{ inputs.github-repository-name }}
         working-directory: ${{ inputs.working-directory }}
