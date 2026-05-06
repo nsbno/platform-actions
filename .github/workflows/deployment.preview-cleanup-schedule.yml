@@ -7,6 +7,11 @@ on:
         type: number
         description: "Number of days to keep preview deployments. Default is 5 days."
         default: 5
+      service-name:
+        required: false
+        type: string
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa). If not provided, defaults to repository name."
+        default: ""
 
 permissions:
   contents: read
@@ -14,8 +19,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  cleanup:
-    name: Delete App Runner Service and Logs
+  cleanup-ssr:
+    name: Delete Stale App Runner Services (SSR)
     runs-on: ubuntu-latest
     environment: Test
     steps:
@@ -161,27 +166,97 @@ jobs:
           INACTIVE_PREVIEWS: ${{ steps.identify-inactive.outputs.inactive_previews }}
         run: |
           echo "$INACTIVE_PREVIEWS" | jq -c '.[] | select(.pr != null)' | while read -r SERVICE; do
-           PR_NUMBER=$(echo "$SERVICE" | jq -r '.pr')
-           SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
+            PR_NUMBER=$(echo "$SERVICE" | jq -r '.pr')
+            SERVICE_NAME=$(echo "$SERVICE" | jq -r '.name')
 
-           if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
-             COMMENT="🧹 **Preview Environment Cleanup**
+            if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+              COMMENT="🧹 **Preview Environment Cleanup**
 
-             The preview environment for \`$SERVICE_NAME\` has been automatically deleted due to inactivity (no updates for ${{ inputs.days-to-keep }} days).
+              The preview environment for \`$SERVICE_NAME\` has been automatically deleted due to inactivity.
 
-             If you need to restore the preview environment, please push a new commit to this PR."
+              If you need to restore the preview environment, please push a new commit to this PR."
 
-             gh api \
-               --method POST \
-               repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments \
-               -f body="${COMMENT}"
+              gh api \
+                --method POST \
+                repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments \
+                -f body="${COMMENT}"
 
-             if [ $? -eq 0 ]; then
-               echo "Successfully commented on PR #$PR_NUMBER"
-             else
-               echo "Failed to comment on PR #$PR_NUMBER"
-             fi
-           else
-             echo "Skipping PR comment for service without valid PR number"
-           fi
+              if [ $? -eq 0 ]; then
+                echo "Successfully commented on PR #$PR_NUMBER"
+              else
+                echo "Failed to comment on PR #$PR_NUMBER"
+              fi
+            else
+              echo "Skipping PR comment for service without valid PR number"
+            fi
+           done
+
+  cleanup-spa:
+    name: Delete Stale S3 Preview Files (SPA)
+    runs-on: ubuntu-latest
+    environment: Test
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Get preview bucket name
+        id: get-config
+        run: |
+          REPO_NAME="${{ github.repository }}"
+          SERVICE_NAME="${{ inputs.service-name }}"
+          if [ -z "$SERVICE_NAME" ]; then
+            SERVICE_NAME="${REPO_NAME##*/}"
+          fi
+
+          PREVIEW_BUCKET=$(aws ssm get-parameter \
+            --name "/__deployment__/applications/${SERVICE_NAME}/preview-bucket-name" \
+            --query 'Parameter.Value' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$PREVIEW_BUCKET" ] || [ "$PREVIEW_BUCKET" = "None" ]; then
+            echo "::warning::Could not find preview bucket name in SSM. Preview infrastructure may not be deployed yet."
+            echo "preview-bucket=" >> $GITHUB_OUTPUT
+          else
+            echo "preview-bucket=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Delete stale preview deployments
+        if: steps.get-config.outputs.preview-bucket != ''
+        run: |
+          BUCKET="${{ steps.get-config.outputs.preview-bucket }}"
+          CUTOFF_SECONDS=$(( ${{ inputs.days-to-keep }} * 24 * 60 * 60 ))
+          CURRENT_TIME=$(date +%s)
+
+          PR_PREFIXES=$(aws s3 ls "s3://${BUCKET}/" | grep 'PRE pr-' | awk '{print $2}' | sed 's/\///')
+
+          if [ -z "$PR_PREFIXES" ]; then
+            echo "No PR prefixes found in ${BUCKET}"
+            exit 0
+          fi
+
+          for PREFIX in $PR_PREFIXES; do
+            LAST_MODIFIED=$(aws s3api list-objects-v2 \
+              --bucket "${BUCKET}" \
+              --prefix "${PREFIX}/" \
+              --query 'reverse(sort_by(Contents, &LastModified))[0].LastModified' \
+              --output text 2>/dev/null)
+
+            if [ -z "$LAST_MODIFIED" ] || [ "$LAST_MODIFIED" = "None" ]; then
+              continue
+            fi
+
+            LAST_MODIFIED_SECS=$(date -d "$LAST_MODIFIED" +%s)
+            AGE_SECS=$(( CURRENT_TIME - LAST_MODIFIED_SECS ))
+
+            if [ $AGE_SECS -gt $CUTOFF_SECONDS ]; then
+              echo "Deleting stale preview: ${PREFIX} (age: $((AGE_SECS / 86400)) days)"
+              aws s3 rm "s3://${BUCKET}/${PREFIX}/" --recursive
+            else
+              echo "Keeping recent preview: ${PREFIX} (age: $((AGE_SECS / 86400)) days)"
+            fi
           done
+
+          echo "Cleanup completed"

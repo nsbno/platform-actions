@@ -14,6 +14,10 @@ inputs:
   git-sha:
     required: true
     description: "Git SHA to use for versioning"
+  artifact-path:
+    description: "Path within the zip file where the build artifacts are located (optional). If not specified, uses entire zip content."
+    required: false
+    default: ""
   s3-static-files-path:
     description: "Path in S3 bucket to upload static files to."
     required: false
@@ -26,40 +30,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Get AWS_ACCOUNT_ID environment variable of Service Account
-      id: find-service-account-id
-      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
+    - name: Download build artifact
+      uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@feat/preview-urls-spa
       with:
-        http-method: GET
-        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
-        continue-on-error: true
-
-    - name: Download and unzip artifact from S3
-      shell: bash
-      env:
-        GIT_REPO_NAME: ${{ inputs.github-repository-name }}
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        GIT_SHA: ${{ inputs.git-sha }}
-      run: |
-        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
-
-        if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
-          echo "::error::Failed to find project AWS Service Account ID. This should not happen, contact Team Utviklerplattform. Response: ${{ steps.find-service-account-id.outputs.response }}"
-          exit 1
-        fi
-
-        # The service artifact bucket is in the same format for every account.
-        SERVICE_BUCKET_NAME="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
-  
-        # Build S3 object path
-        if [ -n "$WORKING_DIRECTORY" ]; then
-          S3_OBJECT_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
-        else
-          S3_OBJECT_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
-        fi
-
-        aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
-        unzip build.zip -d "./content-to-upload"
+        github-repository-name: ${{ inputs.github-repository-name }}
+        working-directory: ${{ inputs.working-directory }}
+        git-sha: ${{ inputs.git-sha }}
+        artifact-path: ${{ inputs.artifact-path }}
+        output-directory: "./content-to-upload"
 
     - name: Install Python dependencies
       shell: bash
