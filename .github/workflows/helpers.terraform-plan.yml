@@ -173,7 +173,7 @@ jobs:
           cat << EOF > "$COMMENT_FILE"
           ## Terraform Plan 🔍
           *For commit ${{ inputs.git-sha }}*
-          *Plan generated at: $(date -u "+%Y-%m-%d %H:%M:%S UTC")*
+          *Plan generated at: $(TZ="Europe/Oslo" date "+%Y-%m-%d %H:%M:%S %Z")*
 
           EOF
 
