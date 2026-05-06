@@ -29,14 +29,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Get AWS Service Account ID
-      id: find-service-account-id
-      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
-      with:
-        http-method: GET
-        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
-        continue-on-error: false
-
     - name: Download and unzip artifact from S3
       shell: bash
       env:
@@ -46,12 +38,15 @@ runs:
         ARTIFACT_PATH: ${{ inputs.artifact-path }}
         OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
       run: |
-        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
+        # Get current AWS account ID
+        OWNER_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
         if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
-          echo "::error::Failed to find project AWS Service Account ID."
+          echo "::error::Failed to get AWS account ID from STS."
           exit 1
         fi
+        
+        echo "Using AWS account: $OWNER_ACCOUNT_ID"
 
         # Service artifact bucket format
         SERVICE_BUCKET_NAME="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
