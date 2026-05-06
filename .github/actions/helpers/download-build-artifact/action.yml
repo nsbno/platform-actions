@@ -20,6 +20,10 @@ inputs:
     description: "Directory where the extracted artifacts will be placed"
     required: false
     default: "./dist"
+  version-handler-api-endpoint:
+    description: "Version handler API endpoint. Defaults to production endpoint."
+    required: false
+    default: "https://version-handler.vydeployment.vydev.io"
 
 outputs:
   artifact-directory:
@@ -29,41 +33,38 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Get AWS Service Account ID
-      id: find-service-account-id
+    - name: Get artifact location from version handler
+      id: find-artifact-location
       uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
       with:
         http-method: GET
-        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        endpoint: ${{ inputs.version-handler-api-endpoint }}/v2/versions/${{ inputs.github-repository-name }}/lambda?working_directory=${{ inputs.working-directory }}
         continue-on-error: false
 
     - name: Download and unzip artifact from S3
       shell: bash
       env:
-        GIT_REPO_NAME: ${{ inputs.github-repository-name }}
-        WORKING_DIRECTORY: ${{ inputs.working-directory }}
-        GIT_SHA: ${{ inputs.git-sha }}
         ARTIFACT_PATH: ${{ inputs.artifact-path }}
         OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+        VERSION_RESPONSE: ${{ steps.find-artifact-location.outputs.response }}
       run: |
-        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
+        # Extract bucket name and S3 path from version-handler response
+        SERVICE_BUCKET_NAME=$(echo "$VERSION_RESPONSE" | jq -r '.bucket_name')
+        GIT_SHA=$(echo "$VERSION_RESPONSE" | jq -r '.git_sha')
+        S3_OBJECT_PATH=$(echo "$VERSION_RESPONSE" | jq -r '.s3_object_path')
 
-        if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
-          echo "::error::Failed to find project AWS Service Account ID."
+        if [ -z "$SERVICE_BUCKET_NAME" ] || [ "$SERVICE_BUCKET_NAME" = "null" ]; then
+          echo "::error::Failed to get bucket_name from version-handler API."
           exit 1
         fi
 
-        # Service artifact bucket format
-        SERVICE_BUCKET_NAME="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
-
-        # Build S3 object path
-        if [ -n "$WORKING_DIRECTORY" ]; then
-          S3_OBJECT_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
-        else
-          S3_OBJECT_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
+        if [ -z "$S3_OBJECT_PATH" ] || [ "$S3_OBJECT_PATH" = "null" ]; then
+          echo "::error::Failed to get s3_object_path from version-handler API."
+          exit 1
         fi
 
-        echo "Downloading from s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}"
+        echo "Downloading artifact: git_sha=$GIT_SHA"
+        echo "From: s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}"
         aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
 
         # Handle artifact-path extraction
