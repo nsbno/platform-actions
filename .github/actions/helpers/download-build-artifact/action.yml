@@ -1,0 +1,92 @@
+name: Download build artifact from S3
+description: Download and extract build artifacts from deployment delivery pipeline S3 bucket
+
+inputs:
+  github-repository-name:
+    description: "GitHub repository name"
+    required: true
+  working-directory:
+    description: "Working directory within the repository (if applicable)"
+    required: false
+    default: ""
+  git-sha:
+    required: true
+    description: "Git SHA to download"
+  artifact-path:
+    description: "Path within the zip file where the build artifacts are located (optional). If not specified, extracts entire zip."
+    required: false
+    default: ""
+  output-directory:
+    description: "Directory where the extracted artifacts will be placed"
+    required: false
+    default: "./dist"
+
+outputs:
+  artifact-directory:
+    description: "Directory containing the extracted build artifacts"
+    value: ${{ inputs.output-directory }}
+
+runs:
+  using: composite
+  steps:
+    - name: Get AWS Service Account ID
+      id: find-service-account-id
+      uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
+      with:
+        http-method: GET
+        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        continue-on-error: false
+
+    - name: Download and unzip artifact from S3
+      shell: bash
+      env:
+        GIT_REPO_NAME: ${{ inputs.github-repository-name }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        GIT_SHA: ${{ inputs.git-sha }}
+        ARTIFACT_PATH: ${{ inputs.artifact-path }}
+        OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
+      run: |
+        OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
+
+        if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
+          echo "::error::Failed to find project AWS Service Account ID. Contact Team Utviklerplattform."
+          exit 1
+        fi
+
+        # Service artifact bucket format
+        SERVICE_BUCKET_NAME="${OWNER_ACCOUNT_ID}-deployment-delivery-pipeline-artifacts"
+  
+        # Build S3 object path
+        if [ -n "$WORKING_DIRECTORY" ]; then
+          S3_OBJECT_PATH="${GIT_REPO_NAME}/${WORKING_DIRECTORY}/${GIT_SHA}.zip"
+        else
+          S3_OBJECT_PATH="${GIT_REPO_NAME}/${GIT_SHA}.zip"
+        fi
+
+        echo "Downloading from s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}"
+        aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
+        
+        # Handle artifact-path extraction
+        if [ -n "$ARTIFACT_PATH" ]; then
+          # Extract specific subdirectory from zip
+          mkdir -p ./temp-unzipped
+          unzip -q build.zip -d ./temp-unzipped
+          
+          if [ -d "./temp-unzipped/${ARTIFACT_PATH}" ]; then
+            echo "Extracting artifact path: ${ARTIFACT_PATH}"
+            mkdir -p "${OUTPUT_DIRECTORY}"
+            mv ./temp-unzipped/${ARTIFACT_PATH}/* "${OUTPUT_DIRECTORY}"/
+            rm -rf ./temp-unzipped
+          else
+            echo "::error::Could not find artifact path '${ARTIFACT_PATH}' in unzipped content"
+            echo "Available paths:"
+            ls -la ./temp-unzipped/
+            exit 1
+          fi
+        else
+          # Extract entire content
+          mkdir -p "${OUTPUT_DIRECTORY}"
+          unzip -q build.zip -d "${OUTPUT_DIRECTORY}"
+        fi
+        
+        echo "Build artifact ready in ${OUTPUT_DIRECTORY}"

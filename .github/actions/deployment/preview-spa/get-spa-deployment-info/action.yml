@@ -1,0 +1,58 @@
+name: Get SPA deployment info
+description: Retrieve SPA preview deployment information from SSM
+
+inputs:
+  service-name:
+    description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)"
+    required: true
+
+outputs:
+  preview-bucket-name:
+    description: The S3 bucket name for preview deployments
+    value: ${{ steps.get-params.outputs.preview-bucket-name }}
+  preview-domain-name:
+    description: The base domain name for preview URLs
+    value: ${{ steps.get-params.outputs.preview-domain-name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Get SPA Preview Parameters from SSM
+      id: get-params
+      shell: bash
+      run: |
+        SERVICE_NAME="${{ inputs.service-name }}"
+        SSM_PATH="/__deployment__/applications/${SERVICE_NAME}"
+        
+        echo "Retrieving parameters from: ${SSM_PATH}"
+        
+        # Get preview bucket name
+        PREVIEW_BUCKET=$(aws ssm get-parameter \
+          --name "${SSM_PATH}/preview-bucket-name" \
+          --query 'Parameter.Value' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIEW_BUCKET" ]; then
+          echo "::error::Failed to find preview-bucket-name in SSM at ${SSM_PATH}/preview-bucket-name"
+          echo "::error::Make sure terraform-aws-preview-url-spa module is deployed for service: ${SERVICE_NAME}"
+          exit 1
+        fi
+        
+        # Get preview domain name
+        PREVIEW_DOMAIN=$(aws ssm get-parameter \
+          --name "${SSM_PATH}/preview-domain-name" \
+          --query 'Parameter.Value' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIEW_DOMAIN" ]; then
+          echo "::error::Failed to find preview-domain-name in SSM at ${SSM_PATH}/preview-domain-name"
+          echo "::error::Make sure terraform-aws-preview-url-spa module is deployed with updated configuration"
+          exit 1
+        fi
+        
+        echo "preview-bucket-name=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
+        echo "preview-domain-name=${PREVIEW_DOMAIN}" >> $GITHUB_OUTPUT
+        
+        echo "Successfully retrieved deployment info:"
+        echo "  Preview Bucket: ${PREVIEW_BUCKET}"
+        echo "  Preview Domain: ${PREVIEW_DOMAIN}"

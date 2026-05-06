@@ -1,0 +1,113 @@
+name: Deploy SPA Preview
+on:
+  workflow_call:
+    inputs:
+      service-name:
+        required: true
+        type: string
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa)."
+      working-directory:
+        required: false
+        type: string
+        default: ""
+        description: "Working directory within the repository"
+      git-sha:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.head.sha || github.sha }}
+      git-event-number:
+        required: false
+        type: string
+        default: ${{ github.event.pull_request.number || github.event.issue.number || github.event.number }}
+      only-on-preview-comment:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether to check for a .preview comment before deploying"
+      artifact-path:
+        required: false
+        type: string
+        default: "dist"
+        description: "Path within the zip file where the build artifacts are located"
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Deploy SPA Preview
+    runs-on: ubuntu-latest
+    environment: Test
+    outputs:
+      deployment-successful: ${{ steps.upload-spa.conclusion == 'success' }}
+    steps:
+      - name: Check for .preview comments
+        if: inputs.only-on-preview-comment
+        id: check-comments
+        run: |
+          PR_NUMBER=${{ inputs.git-event-number }}
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "0" ]; then
+            echo "PR number is not available in this context. Skipping deployment."
+            echo "continue=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          COMMENTS=$(gh api repos/${{ github.repository }}/issues/$PR_NUMBER/comments --paginate)
+
+          if echo "$COMMENTS" | jq -e '.[] | select(.body | startswith(".preview"))' > /dev/null; then
+            echo "Found a .preview comment in PR #$PR_NUMBER"
+            echo "continue=true" >> $GITHUB_OUTPUT
+          else
+            echo "No .preview comment found in PR #$PR_NUMBER, skipping deployment."
+            echo "continue=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authenticate with AWS
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Download build artifact
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        uses: nsbno/platform-actions/.github/actions/helpers/download-build-artifact@v2
+        with:
+          github-repository-name: ${{ github.event.repository.name }}
+          working-directory: ${{ inputs.working-directory }}
+          git-sha: ${{ inputs.git-sha }}
+          artifact-path: ${{ inputs.artifact-path }}
+          output-directory: "./dist"
+
+      - name: Get SPA Deployment Information
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        id: deployment-info
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/get-spa-deployment-info@v2
+        with:
+          service-name: ${{ inputs.service-name }}
+
+      - name: Deploy SPA to Preview Bucket
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        id: upload-spa
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/upload-to-s3@v2
+        with:
+          preview-bucket-name: ${{ steps.deployment-info.outputs.preview-bucket-name }}
+          pr-number: ${{ inputs.git-event-number }}
+          git-sha: ${{ inputs.git-sha }}
+          build-directory: "./dist"
+
+      - name: Comment Preview URL on PR
+        if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
+        uses: nsbno/platform-actions/.github/actions/deployment/preview-spa/comment-preview-url@v2
+        with:
+          preview-domain-name: ${{ steps.deployment-info.outputs.preview-domain-name }}
+          pr-number: ${{ inputs.git-event-number }}
+          git-sha: ${{ inputs.git-sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-repository: ${{ github.repository }}
+
