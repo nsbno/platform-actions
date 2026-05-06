@@ -11,12 +11,6 @@ on:
         required: false
         type: string
         description: "The ECR repository name (optional, for multiple ECS services in single Terraform config)"
-      # SPA inputs
-      is-spa:
-        required: false
-        type: boolean
-        default: false
-        description: "Set to true to run SPA cleanup (S3 prefix deletion) instead of SSR cleanup (App Runner deletion)."
       service-name:
         required: false
         type: string
@@ -29,9 +23,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  cleanup-ssr:
-    name: Delete App Runner Service and Logs (SSR)
-    if: "!inputs.is-spa"
+  cleanup:
+    name: Delete Preview Resources
     runs-on: ubuntu-latest
     environment: Test
     steps:
@@ -41,9 +34,10 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
-      # Get the deployment information for the service. Need to deploy without preview once first for the bucket to be created.
+      # SSR Cleanup. Get deployment info and try to delete SSR resources
       - name: Get Application Deployment Information
         id: deployment-info
+        continue-on-error: true
         uses: nsbno/platform-actions/.github/actions/deployment/get-application-deployment-info@v2
         with:
           github-repository-name: ${{ github.repository }}
@@ -51,32 +45,42 @@ jobs:
           ecr-repository-name: ${{ inputs.ecr-repository-name }}
 
       - name: Delete App Runner Service
+        if: steps.deployment-info.outcome == 'success'
         id: delete-service
+        continue-on-error: true
         shell: bash
         run: |
-          SERVICE_NAME="pr-${{ github.event.pull_request.number }}-${{ steps.deployment-info.outputs.ecs-service-name }}"
+          PR_NUMBER="${{ github.event.pull_request.number || github.event.number }}"
+          SERVICE_NAME="pr-${PR_NUMBER}-${{ steps.deployment-info.outputs.ecs-service-name }}"
           echo "service-name=$SERVICE_NAME" >> $GITHUB_OUTPUT
 
           SERVICE_ARN=$(aws apprunner list-services --region ${{ vars.AWS_REGION }} \
             --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" --output text)
           if [ -n "$SERVICE_ARN" ]; then
             aws apprunner delete-service --service-arn "$SERVICE_ARN" --region ${{ vars.AWS_REGION }}
-            echo "Deleted App Runner service: $SERVICE_NAME"
+            echo "✅ Deleted App Runner service: $SERVICE_NAME"
+            echo "deleted=true" >> $GITHUB_OUTPUT
           else
-            echo "No App Runner service found for: $SERVICE_NAME"
+            echo "ℹ️ No App Runner service found: $SERVICE_NAME"
+            echo "deleted=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Delete App Runner CloudWatch Logs
+        if: steps.delete-service.outputs.deleted == 'true'
+        continue-on-error: true
         uses: nsbno/platform-actions/.github/actions/helpers/cleanup/delete-cloudwatch-log-groups@v2
         with:
           log-group-prefix: "/aws/apprunner/${{ steps.delete-service.outputs.service-name }}"
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Delete ECS Express Service
+        if: steps.deployment-info.outcome == 'success'
         id: delete-ecs-express-service
+        continue-on-error: true
         shell: bash
         run: |
-          SERVICE_NAME="pr-${{ github.event.number }}-${{ steps.deployment-info.outputs.ecs-service-name }}"
+          PR_NUMBER="${{ github.event.pull_request.number || github.event.number }}"
+          SERVICE_NAME="pr-${PR_NUMBER}-${{ steps.deployment-info.outputs.ecs-service-name }}"
           SERVICE_ARN="arn:aws:ecs:${{ vars.AWS_REGION }}:${{ vars.AWS_ACCOUNT_ID }}:service/default/${SERVICE_NAME}"
           echo "service-name=$SERVICE_NAME" >> $GITHUB_OUTPUT
 
@@ -88,35 +92,29 @@ jobs:
           set -e
 
           if [ $DELETE_EXIT -eq 0 ]; then
-            echo "Deleted ECS Express service: $SERVICE_NAME"
+            echo "✅ Deleted ECS Express service: $SERVICE_NAME"
+            echo "deleted=true" >> $GITHUB_OUTPUT
           elif echo "$DELETE_OUTPUT" | grep -q -i "ServiceNotFoundException\|not found"; then
-            echo "No ECS Express service found for: $SERVICE_NAME"
+            echo "ℹ️ No ECS Express service found: $SERVICE_NAME"
+            echo "deleted=false" >> $GITHUB_OUTPUT
           else
-            echo "Failed to delete ECS Express service: $DELETE_OUTPUT"
-            exit 1
+            echo "⚠️ Error checking ECS Express service: $DELETE_OUTPUT"
+            echo "deleted=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Delete ECS Express CloudWatch Logs
+        if: steps.delete-ecs-express-service.outputs.deleted == 'true'
+        continue-on-error: true
         uses: nsbno/platform-actions/.github/actions/helpers/cleanup/delete-cloudwatch-log-groups@v2
         with:
-          # ECS Express log groups are named /aws/ecs/<cluster>/<service-name>-####
           log-group-prefix: "/aws/ecs/default/${{ steps.delete-ecs-express-service.outputs.service-name }}-"
           aws-region: ${{ vars.AWS_REGION }}
 
-  cleanup-spa:
-    name: Delete S3 Preview Files (SPA)
-    if: inputs.is-spa
-    runs-on: ubuntu-latest
-    environment: Test
-    steps:
-      - name: Authenticate with AWS
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          aws-region: ${{ vars.AWS_REGION }}
-          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
-ye
-      - name: Get preview bucket name
-        id: get-config
+      # SPA Cleanup. Try to delete S3 preview files
+      - name: Get SPA preview bucket name
+        id: get-spa-config
+        continue-on-error: true
+        shell: bash
         run: |
           REPO_NAME="${{ github.repository }}"
           SERVICE_NAME="${{ inputs.service-name }}"
@@ -129,27 +127,41 @@ ye
             --query 'Parameter.Value' \
             --output text 2>/dev/null || echo "")
 
-          if [ -z "$PREVIEW_BUCKET" ] || [ "$PREVIEW_BUCKET" = "None" ]; then
-            echo "::warning::Could not find preview bucket name in SSM. Preview infrastructure may not be deployed yet."
-            echo "preview-bucket=" >> $GITHUB_OUTPUT
-          else
+          if [ -n "$PREVIEW_BUCKET" ] && [ "$PREVIEW_BUCKET" != "None" ]; then
             echo "preview-bucket=${PREVIEW_BUCKET}" >> $GITHUB_OUTPUT
-            echo "Found preview bucket: ${PREVIEW_BUCKET}"
+            echo "✅ Found SPA preview bucket: ${PREVIEW_BUCKET}"
+          else
+            echo "ℹ️ No SPA preview bucket found in SSM"
           fi
 
-      - name: Delete preview files
-        if: steps.get-config.outputs.preview-bucket != ''
+      - name: Delete SPA preview files
+        if: steps.get-spa-config.outputs.preview-bucket != ''
+        continue-on-error: true
+        shell: bash
         run: |
-          echo "Deleting s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ github.event.pull_request.number }}/"
-          aws s3 rm "s3://${{ steps.get-config.outputs.preview-bucket }}/pr-${{ github.event.pull_request.number }}/" --recursive
-          echo "Preview files deleted successfully"
+          PR_NUMBER="${{ github.event.pull_request.number || github.event.number }}"
+          BUCKET="${{ steps.get-spa-config.outputs.preview-bucket }}"
+          PREFIX="pr-${PR_NUMBER}"
+          
+          # Check if prefix exists
+          if aws s3 ls "s3://${BUCKET}/${PREFIX}/" 2>/dev/null; then
+            echo "✅ Deleting s3://${BUCKET}/${PREFIX}/"
+            aws s3 rm "s3://${BUCKET}/${PREFIX}/" --recursive
+            echo "✅ SPA preview files deleted successfully"
+          else
+            echo "ℹ️ No SPA preview files found at s3://${BUCKET}/${PREFIX}/"
+          fi
 
       - name: Comment on PR
-        if: steps.get-config.outputs.preview-bucket != ''
+        if: always()
+        continue-on-error: true
+        shell: bash
         run: |
+          PR_NUMBER="${{ github.event.pull_request.number || github.event.number }}"
+          
           gh api \
             --method POST \
-            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
             -f body="✅ Preview deployment cleaned up."
         env:
           GH_TOKEN: ${{ github.token }}

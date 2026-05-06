@@ -7,11 +7,6 @@ on:
         type: number
         description: "Number of days to keep preview deployments. Default is 5 days."
         default: 5
-      is-spa:
-        required: false
-        type: boolean
-        default: false
-        description: "Set to true to run SPA cleanup (S3 prefix deletion) instead of SSR cleanup (App Runner deletion)."
       service-name:
         required: false
         type: string
@@ -26,7 +21,6 @@ permissions:
 jobs:
   cleanup-ssr:
     name: Delete Stale App Runner Services (SSR)
-    if: "!inputs.is-spa"
     runs-on: ubuntu-latest
     environment: Test
     steps:
@@ -199,7 +193,6 @@ jobs:
 
   cleanup-spa:
     name: Delete Stale S3 Preview Files (SPA)
-    if: inputs.is-spa
     runs-on: ubuntu-latest
     environment: Test
     steps:
