@@ -107,6 +107,7 @@ jobs:
         continue-on-error: true
         uses: nsbno/platform-actions/.github/actions/helpers/cleanup/delete-cloudwatch-log-groups@v2
         with:
+          # ECS Express log groups are named /aws/ecs/<cluster>/<service-name>-####
           log-group-prefix: "/aws/ecs/default/${{ steps.delete-ecs-express-service.outputs.service-name }}-"
           aws-region: ${{ vars.AWS_REGION }}
 
