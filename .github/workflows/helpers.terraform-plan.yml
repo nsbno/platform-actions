@@ -117,10 +117,8 @@ jobs:
             fi
 
             cat << EOF > "plans/${ENVIRONMENT}.md"
-          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}
-
           <details>
-          <summary>Show Plan</summary>
+          <summary>Show Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</summary>
 
           \`\`\`terraform
           $PLAN_CONTENT
@@ -130,9 +128,12 @@ jobs:
           EOF
           else
             cat << EOF > "plans/${ENVIRONMENT}.md"
-          ### Terraform Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}
+          <details>
+          <summary>Show Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</summary>
 
           _No changes detected._
+
+          </details>
           EOF
           fi
 
@@ -171,7 +172,7 @@ jobs:
           COMMENT_FILE=$(mktemp)
 
           cat << EOF > "$COMMENT_FILE"
-          ## Terraform Plan 🔍
+          ### Terraform Plan 🔍
           *For commit ${{ inputs.git-sha }}*
           *Plan generated at: $(TZ="Europe/Oslo" date "+%Y-%m-%d %H:%M:%S %Z")*
 
