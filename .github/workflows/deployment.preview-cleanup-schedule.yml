@@ -10,7 +10,7 @@ on:
       service-name:
         required: false
         type: string
-        description: "Service name for SPA preview (from terraform-aws-preview-url-spa). Defaults to the repository name."
+        description: "Service name used for preview infrastructure. Must match the 'service_name' parameter in your terraform-aws-preview-url-spa module (https://github.com/nsbno/terraform-aws-preview-url-spa). If not provided, defaults to repository name."
         default: ""
 
 permissions:

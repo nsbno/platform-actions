@@ -49,7 +49,7 @@ runs:
         OWNER_ACCOUNT_ID=$(echo '${{ steps.find-service-account-id.outputs.response }}' | jq -r '.owner_account_id')
 
         if [ -z "$OWNER_ACCOUNT_ID" ] || [ "$OWNER_ACCOUNT_ID" = "null" ]; then
-          echo "::error::Failed to find project AWS Service Account ID. Contact Team Utviklerplattform."
+          echo "::error::Failed to find project AWS Service Account ID."
           exit 1
         fi
 
