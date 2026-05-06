@@ -47,23 +47,26 @@ runs:
         ARTIFACT_PATH: ${{ inputs.artifact-path }}
         OUTPUT_DIRECTORY: ${{ inputs.output-directory }}
         VERSION_RESPONSE: ${{ steps.find-artifact-location.outputs.response }}
+        REQUESTED_GIT_SHA: ${{ inputs.git-sha }}
+        GITHUB_REPO_NAME: ${{ inputs.github-repository-name }}
+        WORKING_DIR: ${{ inputs.working-directory }}
       run: |
-        # Extract bucket name and S3 path from version-handler response
+        # Extract bucket name from version-handler response (for service account discovery)
         SERVICE_BUCKET_NAME=$(echo "$VERSION_RESPONSE" | jq -r '.bucket_name')
-        GIT_SHA=$(echo "$VERSION_RESPONSE" | jq -r '.git_sha')
-        S3_OBJECT_PATH=$(echo "$VERSION_RESPONSE" | jq -r '.s3_object_path')
 
         if [ -z "$SERVICE_BUCKET_NAME" ] || [ "$SERVICE_BUCKET_NAME" = "null" ]; then
           echo "::error::Failed to get bucket_name from version-handler API."
           exit 1
         fi
 
-        if [ -z "$S3_OBJECT_PATH" ] || [ "$S3_OBJECT_PATH" = "null" ]; then
-          echo "::error::Failed to get s3_object_path from version-handler API."
-          exit 1
+        # Construct S3 path using the REQUESTED git-sha (not the "latest" from version-handler)
+        if [ -n "$WORKING_DIR" ] && [ "$WORKING_DIR" != "." ]; then
+          S3_OBJECT_PATH="${GITHUB_REPO_NAME}/${WORKING_DIR}/${REQUESTED_GIT_SHA}.zip"
+        else
+          S3_OBJECT_PATH="${GITHUB_REPO_NAME}/${REQUESTED_GIT_SHA}.zip"
         fi
 
-        echo "Downloading artifact: git_sha=$GIT_SHA"
+        echo "Downloading artifact: git_sha=$REQUESTED_GIT_SHA"
         echo "From: s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}"
         aws s3 cp "s3://${SERVICE_BUCKET_NAME}/${S3_OBJECT_PATH}" ./build.zip
 
