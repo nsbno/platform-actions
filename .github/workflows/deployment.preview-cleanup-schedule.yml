@@ -5,8 +5,8 @@ on:
       days-to-keep:
         required: false
         type: number
-        description: "Number of days to keep preview deployments. Default is 5 days."
-        default: 5
+        description: "Number of days to keep preview deployments. Default is 7 days."
+        default: 7
       service-name:
         required: false
         type: string
