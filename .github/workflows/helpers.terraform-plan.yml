@@ -103,7 +103,7 @@ jobs:
             WORKING_DIRECTORY_SUFFIX=""
           fi
 
-          mkdir -p plans
+          mkdir -p temp-plans
 
           if [ "$ANY_CHANGED" == "true" ]; then
             PLAN_OUTPUT=$(cat << 'PLANEOF'
@@ -116,9 +116,9 @@ jobs:
               PLAN_CONTENT="$PLAN_OUTPUT"
             fi
 
-            cat << EOF > "plans/${ENVIRONMENT}.md"
+            cat << EOF > "temp-plans/${ENVIRONMENT}.md"
           <details>
-          <summary>Show Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</summary>
+          <summary>Show Plan for <b>${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</b></summary>
 
           \`\`\`terraform
           $PLAN_CONTENT
@@ -127,9 +127,9 @@ jobs:
           </details>
           EOF
           else
-            cat << EOF > "plans/${ENVIRONMENT}.md"
+            cat << EOF > "temp-plans/${ENVIRONMENT}.md"
           <details>
-          <summary>Show Plan for ${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</summary>
+          <summary>Show Plan for <b>${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</b></summary>
 
           _No changes detected._
 
@@ -142,7 +142,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: terraform-plan-${{ matrix.environment }}
-          path: plans/${{ matrix.environment }}.md
+          path: temp-plans/${{ matrix.environment }}.md
 
   publish-plan:
     name: Publish Terraform Plan
@@ -160,7 +160,7 @@ jobs:
         uses: actions/download-artifact@v6
         with:
           pattern: terraform-plan-*
-          path: plans
+          path: temp-plans
           merge-multiple: true
 
       - name: Post combined PR comment
@@ -178,7 +178,7 @@ jobs:
 
           EOF
 
-          for plan_file in plans/*.md; do
+          for plan_file in temp-plans/*.md; do
             [ -f "$plan_file" ] || continue
             cat "$plan_file" >> "$COMMENT_FILE"
             echo "" >> "$COMMENT_FILE"
