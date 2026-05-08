@@ -27,8 +27,8 @@ on:
       version-handler-api-endpoint:
         required: false
         type: string
-        default: "https://version-handler.test.vydeployment.vydev.io"
-        description: "Version handler API endpoint. Defaults to test environment for preview deployments."
+        default: "https://version-handler.vydeployment.vydev.io"
+        description: "Version handler API endpoint. Defaults to production."
       build-output-directory:
         required: false
         type: string
