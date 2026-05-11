@@ -12,6 +12,13 @@ on:
         default: ""
         description: "Working directory for the service"
 
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+  deployments: write
+  statuses: write
+
 jobs:
   trigger:
     name: Trigger - Branch Preview
