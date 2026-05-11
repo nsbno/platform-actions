@@ -1,0 +1,43 @@
+name: Comment preview URL on PR
+description: Post preview URL as a comment on the pull request
+
+inputs:
+  preview-domain-name:
+    description: "Base domain for preview URLs (from get-spa-deployment-info)"
+    required: true
+  pr-number:
+    description: "Pull request number"
+    required: true
+  github-token:
+    description: "GitHub token to use for commenting on the PR"
+    required: true
+  github-repository:
+    description: "The GitHub repository (owner/repo)"
+    required: true
+  git-sha:
+    description: "Git SHA that was deployed"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Comment on PR with Preview URL
+      shell: bash
+      run: |
+        PREVIEW_URL="https://pr-${{ inputs.pr-number }}.${{ inputs.preview-domain-name }}"
+
+        COMMENT_BODY=$(cat <<EOF
+          ## Preview Deployment Information
+
+          Your preview environment has been deployed successfully! 🚀
+
+          **Preview URL:** ${PREVIEW_URL}
+        EOF
+        )
+
+        gh api \
+          --method POST \
+          repos/${{ inputs.github-repository }}/issues/${{ inputs.pr-number }}/comments \
+          -f body="${COMMENT_BODY}"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}

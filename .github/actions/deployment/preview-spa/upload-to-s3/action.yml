@@ -1,0 +1,43 @@
+name: Upload SPA Preview to S3
+description: Upload static build files to preview bucket with PR prefix
+
+inputs:
+  preview-bucket-name:
+    description: "Preview bucket name (from get-spa-deployment-info)"
+    required: true
+  pr-number:
+    description: "Pull request number"
+    required: true
+  git-sha:
+    description: "Git SHA to deploy"
+    required: true
+  build-directory:
+    description: "Directory containing the build artifacts to upload"
+    required: false
+    default: "./dist"
+
+runs:
+  using: composite
+  steps:
+    - name: Upload to preview bucket
+      shell: bash
+      run: |
+        echo "Uploading to s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/"
+
+        # Upload assets with long cache (JS, CSS, images)
+        aws s3 sync ${{ inputs.build-directory }} \
+          "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
+          --delete \
+          --cache-control "public, max-age=31536000, immutable" \
+          --exclude "*.html" \
+          --exclude "*.json"
+
+        # HTML/JSON files should not be cached aggressively
+        aws s3 sync ${{ inputs.build-directory }} \
+          "s3://${{ inputs.preview-bucket-name }}/pr-${{ inputs.pr-number }}/" \
+          --cache-control "public, max-age=0, must-revalidate" \
+          --exclude "*" \
+          --include "*.html" \
+          --include "*.json"
+
+        echo "Upload completed successfully"
