@@ -1,5 +1,5 @@
-name: Download build artifact from S3
-description: Download and extract build artifacts from deployment delivery pipeline S3 bucket
+name: Download pipeline artifact from S3
+description: Download and extract artifacts from deployment delivery pipeline S3 bucket
 
 inputs:
   github-repository-name:
