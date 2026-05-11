@@ -158,6 +158,7 @@ jobs:
 
       - name: Download all plan artifacts
         uses: actions/download-artifact@v6
+        continue-on-error: true
         with:
           pattern: terraform-plan-*
           path: temp-plans
@@ -168,6 +169,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PLAN_RESULT: ${{ needs.terraform-plan.result }}
         run: |
           COMMENT_FILE=$(mktemp)
 
@@ -178,14 +180,26 @@ jobs:
 
           EOF
 
+          if [ "$PLAN_RESULT" == "failure" ]; then
+            cat << EOF >> "$COMMENT_FILE"
+          > ❌ **One or more Terraform plans failed.**
+          >
+          > 🔗 [Inspect the failed run here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          EOF
+          fi
+
+          FOUND_PLANS=false
           for plan_file in temp-plans/*.md; do
             [ -f "$plan_file" ] || continue
+            FOUND_PLANS=true
             cat "$plan_file" >> "$COMMENT_FILE"
             echo "" >> "$COMMENT_FILE"
           done
 
-          if [ ! -s "$COMMENT_FILE" ]; then
+          if [ "$FOUND_PLANS" == "false" ] && [ "$PLAN_RESULT" != "failure" ]; then
             echo "No plan changes to post."
+            rm "$COMMENT_FILE"
             exit 0
           fi
 
