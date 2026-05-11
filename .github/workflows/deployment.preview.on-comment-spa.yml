@@ -13,11 +13,12 @@ on:
         description: "Working directory for the service"
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   id-token: write
   deployments: write
   statuses: write
+  checks: read
 
 jobs:
   trigger:
