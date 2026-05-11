@@ -34,7 +34,6 @@ jobs:
       git_sha: ${{ steps.get-sha.outputs.sha }}
       issue_number: ${{ steps.ids.outputs.issue_number }}
       comment_id: ${{ steps.ids.outputs.comment_id }}
-      status_comment_id: ${{ steps.status-comment.outputs.comment-id }}
       environment: ${{ steps.ids.outputs.environment || '' }}
     steps:
       - id: ids
@@ -75,18 +74,6 @@ jobs:
             --method POST \
             repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content='eyes'
-
-      - name: Comment plan is running
-        id: status-comment
-        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-        with:
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            ### Terraform plan initiated
-            
-            Commit: [${{ steps.get-sha.outputs.sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.issue.number }}/commits/${{ steps.get-sha.outputs.sha }})
-            
-            _If you see a 🚀 on your comment and no Terraform Plan output, it means no changes were detected._
 
   plan:
     needs: trigger
@@ -163,17 +150,3 @@ jobs:
             --method POST \
             repos/${{ github.repository }}/issues/comments/${{ needs.trigger.outputs.comment_id }}/reactions \
             -f content='-1'
-
-      - name: Comment plan failed
-        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-        with:
-          comment-id: ${{ needs.trigger.outputs.status_comment_id }}
-          edit-mode: 'replace'
-          body: |
-            ### ❌ Terraform plan failed
-
-            🔗 [Inspect the failed run here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            Commit: [${{ needs.trigger.outputs.git_sha }}](${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.trigger.outputs.issue_number }}/commits/${{ needs.trigger.outputs.git_sha }})
-
-            Please open the link over for details. If this was unexpected, try re-running the workflow from the Actions tab.
