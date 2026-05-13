@@ -18,6 +18,14 @@ inputs:
   api-key-secret-id:
     description: 'Pass `vars.DATADOG_CI_API_KEY_SECRET_ID` from your workflow. Is the name of the Secret in Secrets Manager, where the api key lives'
     required: true
+  git-commit-sha:
+    description: 'Git commit SHA to associate with the upload'
+    required: false
+    default: ${{ github.event.pull_request.head.sha || github.sha }}
+  git-repository-url:
+    description: 'URL of the repository'
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}
 
 runs:
   using: composite
@@ -32,10 +40,14 @@ runs:
       env:
         DATADOG_API_KEY: ${{ steps.api-key.outputs.secret-value }}
         DATADOG_SITE: ${{ inputs.datadog-site }}
+        DD_GIT_COMMIT_SHA: '${{ inputs.git-commit-sha }}'
+        DD_GIT_REPOSITORY_URL: '${{ inputs.git-repository-url }}'
       run: |
         docker run --rm \
           -e DATADOG_API_KEY \
           -e DATADOG_SITE \
+          -e DD_GIT_COMMIT_SHA \
+          -e DD_GIT_REPOSITORY_URL \
           -e GIT_CONFIG_COUNT=1 \
           -e GIT_CONFIG_KEY_0=safe.directory \
           -e GIT_CONFIG_VALUE_0=/workspace \
