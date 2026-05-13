@@ -53,6 +53,9 @@ jobs:
   get-environments:
     if: ${{ !inputs.force-deploy }}
     name: Find Relevant GH Environments
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}

@@ -35,6 +35,9 @@ on:
 jobs:
   get-environments:
     name: Find Relevant GH Environments
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments || steps.single-env.outputs.environments }}

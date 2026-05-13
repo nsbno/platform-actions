@@ -57,6 +57,9 @@ run-name: Deploy Environments
 jobs:
   get-environments:
     name: Find Relevant GH Environments
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       environments: ${{ steps.envs.outputs.environments }}
