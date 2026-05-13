@@ -15,14 +15,17 @@ inputs:
     required: false
     description: 'Version of datadog-ci to use'
     default: 'sha256:d7f52e5bef68fe283683824b41e3630274aacc8ac2540b0004eb334ebcf3e507'
+  api-key-secret-id:
+    description: 'Pass `vars.DATADOG_CI_API_KEY_SECRET_ID` from your workflow. Is the name of the Secret in Secrets Manager, where the api key lives'
+    required: true
 
 runs:
   using: composite
   steps:
-    - uses: nsbno/platform-actions/.github/actions/helpers/aws/fetch-secrets-from-secrets-manager@v2
+    - uses: nsbno/platform-actions/.github/actions/helpers/aws/fetch-secrets-from-secrets-manager@working-datadog-ci
       id: api-key
       with:
-        secret-id: ${{ vars.DATADOG_CI_API_KEY_SECRET_ID }}
+        secret-id: ${{ inputs.api-key-secret-id }}
 
     - name: Run datadog-ci
       shell: bash
@@ -33,6 +36,9 @@ runs:
         docker run --rm \
           -e DATADOG_API_KEY \
           -e DATADOG_SITE \
+          -e GIT_CONFIG_COUNT=1 \
+          -e GIT_CONFIG_KEY_0=safe.directory \
+          -e GIT_CONFIG_VALUE_0=/workspace \
           -v "${{ github.workspace }}:/workspace" \
           -w /workspace \
           public.ecr.aws/datadog/ci@${{ inputs.datadog-ci-version-sha }} \
