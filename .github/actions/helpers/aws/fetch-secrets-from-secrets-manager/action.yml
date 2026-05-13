@@ -1,0 +1,39 @@
+name: Fetch secret from AWS Secrets Manager
+description: Fetches a secret from AWS Secrets Manager and exposes it as a masked output. AWS credentials must be configured before calling this action.
+
+inputs:
+  secret-id:
+    description: 'The secret ID or ARN in AWS Secrets Manager. If the secret is in another account, you must use ARN'
+    required: true
+  aws-region:
+    description: 'The AWS region you call the CLI from'
+    required: false
+    default: 'eu-west-1'
+
+outputs:
+  secret-value:
+    description: 'The secret value as a string'
+    value: ${{ steps.fetch.outputs.secret-value }}
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch secret
+      id: fetch
+      shell: bash
+      env:
+        SECRET_ID: ${{ inputs.secret-id }}
+        AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        secret_value=$(aws secretsmanager get-secret-value \
+          --region "$AWS_REGION" \
+          --secret-id "$SECRET_ID" \
+          --query SecretString --output text)
+
+        if [[ $? -ne 0 ]]; then
+          echo "::error::Failed to fetch secret '${SECRET_ID}'"
+          exit 1
+        fi
+
+        echo "::add-mask::${secret_value}"
+        echo "secret-value=${secret_value}" >> "$GITHUB_OUTPUT"
