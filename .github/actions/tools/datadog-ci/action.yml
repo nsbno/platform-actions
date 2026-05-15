@@ -30,10 +30,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: nsbno/platform-actions/.github/actions/helpers/aws/fetch-secrets-from-secrets-manager@working-datadog-ci
+    - uses: nsbno/platform-actions/.github/actions/helpers/aws/fetch-secrets-from-secrets-manager@v2
       id: api-key
       with:
         secret-id: ${{ inputs.api-key-secret-id }}
+        json-key: api_key
 
     - name: Run datadog-ci
       shell: bash

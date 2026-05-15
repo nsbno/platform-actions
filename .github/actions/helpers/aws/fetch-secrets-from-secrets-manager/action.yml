@@ -5,6 +5,10 @@ inputs:
   secret-id:
     description: 'The secret ID or ARN in AWS Secrets Manager. If the secret is in another account, you must use ARN'
     required: true
+  json-key:
+    description: 'Optional JSON key to extract from the secret value. Use when the secret is a JSON object and you want a specific field.'
+    required: false
+    default: ''
   aws-region:
     description: 'The AWS region you call the CLI from'
     required: false
@@ -24,6 +28,7 @@ runs:
       env:
         SECRET_ID: ${{ inputs.secret-id }}
         AWS_REGION: ${{ inputs.aws-region }}
+        JSON_KEY: ${{ inputs.json-key }}
       run: |
         secret_value=$(aws secretsmanager get-secret-value \
           --region "$AWS_REGION" \
@@ -33,6 +38,14 @@ runs:
         if [[ $? -ne 0 ]]; then
           echo "::error::Failed to fetch secret '${SECRET_ID}'"
           exit 1
+        fi
+
+        if [[ -n "$JSON_KEY" ]]; then
+          secret_value=$(echo "$secret_value" | jq -r --arg key "$JSON_KEY" '.[$key]')
+          if [[ "$secret_value" == "null" ]]; then
+            echo "::error::JSON key '${JSON_KEY}' not found in secret '${SECRET_ID}'"
+            exit 1
+          fi
         fi
 
         echo "::add-mask::${secret_value}"
