@@ -93,7 +93,7 @@ jobs:
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Save plan output
-        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
+        if: steps.changed-files.outcome == 'success'
         shell: bash
         env:
           ENVIRONMENT: ${{ matrix.environment }}
@@ -141,7 +141,7 @@ jobs:
           fi
 
       - name: Upload plan artifact
-        if: github.event_name == 'pull_request' || github.event_name == 'issue_comment'
+        if: steps.changed-files.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: terraform-plan-${{ matrix.environment }}
@@ -150,7 +150,7 @@ jobs:
   publish-plan:
     name: Publish Terraform Plan
     needs: terraform-plan
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'issue_comment') && needs.terraform-plan.result != 'skipped'
+    if: always() && needs.terraform-plan.result != 'skipped'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -161,6 +161,7 @@ jobs:
 
       - name: Download all plan artifacts
         uses: actions/download-artifact@v6
+        continue-on-error: true
         with:
           pattern: terraform-plan-*
           path: temp-plans
@@ -171,6 +172,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PLAN_RESULT: ${{ needs.terraform-plan.result }}
         run: |
           COMMENT_FILE=$(mktemp)
 
@@ -181,14 +183,29 @@ jobs:
 
           EOF
 
+          if [ "$PLAN_RESULT" == "failure" ] || [ "$PLAN_RESULT" == "cancelled" ]; then
+            cat << EOF >> "$COMMENT_FILE"
+          > ❌ **One or more Terraform plans failed.**
+          >
+          > 🔗 [Inspect the failed run here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+
+            gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
+            rm "$COMMENT_FILE"
+            exit 0
+          fi
+
+          FOUND_PLANS=false
           for plan_file in temp-plans/*.md; do
             [ -f "$plan_file" ] || continue
+            FOUND_PLANS=true
             cat "$plan_file" >> "$COMMENT_FILE"
             echo "" >> "$COMMENT_FILE"
           done
 
-          if [ ! -s "$COMMENT_FILE" ]; then
+          if [ "$FOUND_PLANS" == "false" ]; then
             echo "No plan changes to post."
+            rm "$COMMENT_FILE"
             exit 0
           fi
 
