@@ -198,6 +198,13 @@ jobs:
           FOUND_PLANS=false
           for plan_file in temp-plans/*.md; do
             [ -f "$plan_file" ] || continue
+
+            if [ "$PLAN_RESULT" == "failure" ] || [ "$PLAN_RESULT" == "cancelled" ]; then
+              if ! grep -q "❌" "$plan_file"; then
+                continue
+              fi
+            fi
+
             FOUND_PLANS=true
             cat "$plan_file" >> "$COMMENT_FILE"
             echo "" >> "$COMMENT_FILE"
