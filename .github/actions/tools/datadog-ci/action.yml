@@ -1,0 +1,39 @@
+name: Datadog CI
+description: |
+  Run a `datadog-ci` command using the official Docker image.
+  AWS credentials must be configured before calling this action.
+
+inputs:
+  command:
+    description: 'The datadog-ci command to run (e.g. "sourcemaps upload ./dist --service my-app --release-version 1.0.0")'
+    required: true
+  datadog-site:
+    description: 'Datadog site. Defaults to EU'
+    required: false
+    default: 'datadoghq.eu'
+  datadog-ci-version-sha:
+    required: false
+    description: 'Version of datadog-ci to use'
+    default: 'sha256:d7f52e5bef68fe283683824b41e3630274aacc8ac2540b0004eb334ebcf3e507'
+
+runs:
+  using: composite
+  steps:
+    - uses: nsbno/platform-actions/.github/actions/helpers/aws/fetch-secrets-from-secrets-manager@v2
+      id: api-key
+      with:
+        secret-id: ${{ vars.DATADOG_CI_API_KEY_SECRET_ID }}
+
+    - name: Run datadog-ci
+      shell: bash
+      env:
+        DATADOG_API_KEY: ${{ steps.api-key.outputs.secret-value }}
+        DATADOG_SITE: ${{ inputs.datadog-site }}
+      run: |
+        docker run --rm \
+          -e DATADOG_API_KEY \
+          -e DATADOG_SITE \
+          -v "${{ github.workspace }}:/workspace" \
+          -w /workspace \
+          public.ecr.aws/datadog/ci@${{ inputs.datadog-ci-version-sha }} \
+          ${{ inputs.command }}
