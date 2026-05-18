@@ -110,14 +110,7 @@ jobs:
           mkdir -p temp-plans
 
           if [ "$PLAN_FAILED" == "true" ]; then
-            cat << EOF > "temp-plans/${ENVIRONMENT}.md"
-          <details>
-          <summary>❌ Plan failed for <b>${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}</b></summary>
-
-          🔗 [View logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-          </details>
-          EOF
+            echo "❌ Plan failed for **${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}**" > "temp-plans/${ENVIRONMENT}.md"
           elif [ "$ANY_CHANGED" == "true" ]; then
             PLAN_OUTPUT=$(cat << 'PLANEOF'
           ${{ steps.changed-files.outputs.stdout }}
