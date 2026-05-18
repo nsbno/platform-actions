@@ -93,13 +93,12 @@ jobs:
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
 
       - name: Save plan output
-        if: always()
+        if: steps.changed-files.outcome == 'success'
         shell: bash
         env:
           ENVIRONMENT: ${{ matrix.environment }}
           WORKING_DIRECTORY: ${{ inputs.working-directory }}
           ANY_CHANGED: ${{ steps.changed-files.outputs.any-changed }}
-          PLAN_FAILED: ${{ steps.changed-files.outcome == 'failure' }}
         run: |
           if [ -n "$WORKING_DIRECTORY" ] && [ "$WORKING_DIRECTORY" != "." ]; then
             WORKING_DIRECTORY_SUFFIX=" in ${WORKING_DIRECTORY}"
@@ -109,9 +108,7 @@ jobs:
 
           mkdir -p temp-plans
 
-          if [ "$PLAN_FAILED" == "true" ]; then
-            echo "❌ Plan failed for **${ENVIRONMENT}${WORKING_DIRECTORY_SUFFIX}**" > "temp-plans/${ENVIRONMENT}.md"
-          elif [ "$ANY_CHANGED" == "true" ]; then
+          if [ "$ANY_CHANGED" == "true" ]; then
             PLAN_OUTPUT=$(cat << 'PLANEOF'
           ${{ steps.changed-files.outputs.stdout }}
           PLANEOF
@@ -144,8 +141,8 @@ jobs:
           fi
 
       - name: Upload plan artifact
-        if: always()
-        uses: actions/upload-artifact@v6
+        if: steps.changed-files.outcome == 'success'
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan-${{ matrix.environment }}
           path: temp-plans/${{ matrix.environment }}.md
@@ -191,26 +188,22 @@ jobs:
           > ❌ **One or more Terraform plans failed.**
           >
           > 🔗 [Inspect the failed run here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
           EOF
+
+            gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
+            rm "$COMMENT_FILE"
+            exit 0
           fi
 
           FOUND_PLANS=false
           for plan_file in temp-plans/*.md; do
             [ -f "$plan_file" ] || continue
-
-            if [ "$PLAN_RESULT" == "failure" ] || [ "$PLAN_RESULT" == "cancelled" ]; then
-              if ! grep -q "❌" "$plan_file"; then
-                continue
-              fi
-            fi
-
             FOUND_PLANS=true
             cat "$plan_file" >> "$COMMENT_FILE"
             echo "" >> "$COMMENT_FILE"
           done
 
-          if [ "$FOUND_PLANS" == "false" ] && [ "$PLAN_RESULT" != "failure" ]; then
+          if [ "$FOUND_PLANS" == "false" ]; then
             echo "No plan changes to post."
             rm "$COMMENT_FILE"
             exit 0
