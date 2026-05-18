@@ -142,7 +142,7 @@ jobs:
 
       - name: Upload plan artifact
         if: steps.changed-files.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: terraform-plan-${{ matrix.environment }}
           path: temp-plans/${{ matrix.environment }}.md
