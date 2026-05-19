@@ -209,5 +209,14 @@ jobs:
             exit 0
           fi
 
+          # Truncate if too large for GitHub's 65536 char limit
+          if [ $(wc -c < "$COMMENT_FILE") -gt 65000 ]; then
+            head -c 64500 "$COMMENT_FILE" > "${COMMENT_FILE}.tmp"
+            printf '\n%s\n</details>\n\n---\n' '```' >> "${COMMENT_FILE}.tmp"
+            echo "⚠️ **Output truncated.** View full plan in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})." >> "${COMMENT_FILE}.tmp"
+            mv "${COMMENT_FILE}.tmp" "$COMMENT_FILE"
+          fi
+
           gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
           rm "$COMMENT_FILE"
+
