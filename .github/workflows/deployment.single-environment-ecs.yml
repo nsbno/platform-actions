@@ -114,10 +114,10 @@ jobs:
         if: steps.deployment-info.outputs.static-files-bucket-name != '' && !inputs.skip-static-files-deployment
         uses: nsbno/platform-actions/.github/actions/deployment/static-files/upload-build-to-s3@v2
         with:
-          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           git-sha: '${{ inputs.sha-to-deploy }}'
           github-repository-name: ${{ steps.normalize-paths.outputs.git-repo-name }}
           working-directory: ${{ steps.normalize-paths.outputs.working-directory }}
+          s3-bucket-name: ${{ steps.deployment-info.outputs.static-files-bucket-name }}
           s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
       - name: Deploy ECS
