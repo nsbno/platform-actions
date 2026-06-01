@@ -29,6 +29,11 @@ on:
         type: string
         default: "https://version-handler.vydeployment.vydev.io"
         description: "Version handler API endpoint. Defaults to production."
+      enroll-api-endpoint:
+        required: false
+        type: string
+        default: "https://enroll.vydeployment.vydev.io"
+        description: "Enroll API endpoint used to look up service account ID. Defaults to production."
       build-output-directory:
         required: false
         type: string
@@ -88,6 +93,7 @@ jobs:
           git-sha: ${{ inputs.git-sha }}
           output-directory: "./${{ inputs.build-output-directory }}"
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+          enroll-api-endpoint: ${{ inputs.enroll-api-endpoint }}
 
       - name: Get SPA Deployment Information
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
