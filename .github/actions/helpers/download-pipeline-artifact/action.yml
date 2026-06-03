@@ -20,10 +20,10 @@ inputs:
     description: "Directory where the extracted artifacts will be placed"
     required: false
     default: "./dist"
-  version-handler-api-endpoint:
-    description: "Version handler API endpoint. Defaults to production endpoint."
+  enroll-api-endpoint:
+    description: "Enroll API endpoint used to look up service account ID. Defaults to production endpoint."
     required: false
-    default: "https://version-handler.vydeployment.vydev.io"
+    default: "https://enroll.vydeployment.vydev.io"
 
 outputs:
   artifact-directory:
@@ -39,7 +39,7 @@ runs:
       uses: nsbno/platform-actions/.github/actions/helpers/make-aws-api-call@v2
       with:
         http-method: GET
-        endpoint: https://enroll.vydeployment.vydev.io/environment_accounts
+        endpoint: ${{ inputs.enroll-api-endpoint }}/environment_accounts
         continue-on-error: true
 
     - name: Download and unzip artifact from S3
