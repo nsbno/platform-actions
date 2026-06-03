@@ -24,11 +24,6 @@ on:
         type: boolean
         default: true
         description: "Whether to check for a .preview comment before deploying"
-      version-handler-api-endpoint:
-        required: false
-        type: string
-        default: "https://version-handler.vydeployment.vydev.io"
-        description: "Version handler API endpoint. Defaults to production."
       enroll-api-endpoint:
         required: false
         type: string
@@ -92,7 +87,6 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           git-sha: ${{ inputs.git-sha }}
           output-directory: "./${{ inputs.build-output-directory }}"
-          version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
           enroll-api-endpoint: ${{ inputs.enroll-api-endpoint }}
 
       - name: Get SPA Deployment Information

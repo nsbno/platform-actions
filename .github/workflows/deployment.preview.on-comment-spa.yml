@@ -11,11 +11,6 @@ on:
         type: string
         default: ""
         description: "Working directory for the service"
-      version-handler-api-endpoint:
-        required: false
-        type: string
-        default: "https://version-handler.vydeployment.vydev.io"
-        description: "Version handler API endpoint. Defaults to production."
       enroll-api-endpoint:
         required: false
         type: string
@@ -68,7 +63,6 @@ jobs:
       git-event-number: ${{ github.event.issue.number }}
       git-sha: ${{ needs.trigger.outputs.sha }}
       only-on-preview-comment: false
-      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       enroll-api-endpoint: ${{ inputs.enroll-api-endpoint }}
 
   comment-handler:

@@ -20,10 +20,6 @@ inputs:
     description: "Directory where the extracted artifacts will be placed"
     required: false
     default: "./dist"
-  version-handler-api-endpoint:
-    description: "Version handler API endpoint. Defaults to production endpoint."
-    required: false
-    default: "https://version-handler.vydeployment.vydev.io"
   enroll-api-endpoint:
     description: "Enroll API endpoint used to look up service account ID. Defaults to production endpoint."
     required: false
