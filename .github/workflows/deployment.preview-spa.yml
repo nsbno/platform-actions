@@ -81,7 +81,7 @@ jobs:
 
       - name: Download pipeline artifact
         if: inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true'
-        uses: nsbno/platform-actions/.github/actions/helpers/download-pipeline-artifact@fix/enroll-api-endpoint-test
+        uses: nsbno/platform-actions/.github/actions/helpers/download-pipeline-artifact@v2
         with:
           github-repository-name: ${{ github.event.repository.name }}
           working-directory: ${{ inputs.working-directory }}
