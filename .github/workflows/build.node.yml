@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         default: "" # What to upload as artifact
+      pnpm-version:
+        required: false
+        type: string
+        description: "Which version of PNPM to use."
+        default: "10"
       git-sha:
         required: false
         type: string
@@ -90,6 +95,7 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           git-sha: ${{ inputs.git-sha }}
+          pnpm-version: ${{ inputs.pnpm-version }}
 
       - name: Store build as Artifact
         uses: actions/upload-artifact@v6

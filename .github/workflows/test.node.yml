@@ -38,6 +38,11 @@ on:
         type: string
         description: "Git SHA to use for versioning"
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      pnpm-version:
+        required: false
+        type: string
+        description: "Which version of PNPM to use."
+        default: "10"
 
 jobs:
   test:
@@ -82,3 +87,4 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           git-sha: ${{ inputs.git-sha }}
+          pnpm-version: ${{ inputs.pnpm-version }}
