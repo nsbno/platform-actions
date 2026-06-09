@@ -19,8 +19,10 @@ Determine what was changed for each file:
 |---|---|
 | New input added to `workflow_call` or `action.yml` | Input syntax (see §3), backward compatibility (see §5) |
 | Input passed in `with:` to an action or called workflow | Input declared in the target definition (see §4) |
-| New job or step added | Actions used exist; inputs passed are accepted |
-| Expression or context reference changed | Syntax is valid (see §6) |
+| New job or step added | Actions used exist; inputs passed are accepted; check for security patterns (see §7) |
+| Expression or context reference changed | Syntax is valid (see §6); check for script injection (see §7.1) |
+| New `uses:` reference to a third-party action | Check pin strategy (see §7.3) |
+| `on:` trigger added or changed | Check for `pull_request_target` risk (see §7.2) |
 
 ---
 
@@ -82,7 +84,124 @@ Use WebFetch on `https://docs.github.com/en/actions/learn-github-actions/express
 
 ---
 
-## 7. Report findings
+## 7. Security checks
+
+> **False-positive policy.** Only report a security finding when you can describe a
+> concrete, realistic exploit path. Do not report theoretical risks, vague concerns, or
+> patterns already established throughout the codebase. One missed real issue is better
+> than noise that trains reviewers to ignore comments.
+>
+> Canonical reference — use WebFetch to read in full before reporting any security issue:
+> `https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions`
+
+### 7.1 Script injection — ❌ always flag if present
+
+Embedding a user-controlled event expression directly inside a `run:` step or an
+`actions/github-script` body lets an attacker inject arbitrary shell or JavaScript by
+crafting an issue title, PR body, branch name, or comment.
+
+**Vulnerable:**
+```yaml
+- run: echo "Branch is ${{ github.head_ref }}"
+- run: echo "${{ github.event.issue.title }}"
+```
+
+**Safe — assign to an env var, then reference via shell variable:**
+```yaml
+- env:
+    BRANCH: ${{ github.head_ref }}
+  run: echo "Branch is $BRANCH"
+```
+
+User-controlled context values include (non-exhaustive):
+`github.head_ref`, `github.base_ref`, `github.event.issue.title`,
+`github.event.issue.body`, `github.event.pull_request.title`,
+`github.event.pull_request.body`, `github.event.comment.body`,
+`github.event.discussion.body`, `github.event.*.name`.
+
+Values set by GitHub itself — `github.sha`, `github.repository`, `github.run_id` — are
+safe to interpolate and should not be flagged.
+
+Reference (use WebFetch): `https://securitylab.github.com/research/github-actions-untrusted-input/`
+
+---
+
+### 7.2 `pull_request_target` with untrusted code checkout — ❌ always flag if present
+
+`pull_request_target` runs in the base-branch context and has access to secrets and write
+permissions. If the same workflow also checks out the PR contributor's code and then
+executes it (e.g. `npm install`, `npm test`, any script from the checked-out tree), an
+attacker can exfiltrate secrets or gain write access to the repository.
+
+All three conditions must be present to flag this:
+1. Trigger is `pull_request_target`
+2. A checkout of the PR head ref is performed (`ref: ${{ github.event.pull_request.head.sha }}` or `ref: refs/pull/.../head`)
+3. Code from the checked-out tree is executed in the same job
+
+Reference (use WebFetch): `https://securitylab.github.com/research/github-actions-preventing-pwn-requests/`
+
+---
+
+### 7.3 Unpinned third-party actions — ⚠️ flag for new additions only
+
+A mutable version tag (`@v2`, `@main`) on a **third-party** action means any future push
+to that tag silently changes the code running in the pipeline, potentially stealing
+secrets or tampering with artifacts.
+
+Flag when a PR **introduces** a new `uses:` reference outside `nsbno/` that is pinned to
+a floating tag rather than a full commit SHA.
+
+**Do not flag:**
+- Any `uses: nsbno/platform-actions/...@v2` — the floating `@v2` strategy for internal
+  actions is an intentional design decision documented in `README.md`.
+- Third-party actions already present in the codebase before this PR — their acceptance
+  was a prior decision; only flag what is new in the diff.
+
+Reference: `https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions`
+
+---
+
+### 7.4 Overly broad `GITHUB_TOKEN` permissions — ⚠️ flag only when clearly excessive
+
+Flag `permissions: write-all` or a specific permission that is broader than what the
+job's steps actually require. You must point to the specific steps that justify the
+concern — do not flag permissions speculatively.
+
+Do not flag `id-token: write` in deployment workflows: it is required for OIDC-based AWS
+authentication, which is the standard pattern in this project.
+
+---
+
+### 7.5 Secrets interpolated into command-line arguments — ⚠️ flag when visible
+
+A secret referenced directly in a command-line argument appears in the process list and
+workflow logs before GitHub's masking takes effect.
+
+```yaml
+# Flag — secret value appears in process arguments
+- run: curl -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" https://example.com
+
+# Safe — value is in the environment, not in the command
+- env:
+    API_TOKEN: ${{ secrets.API_TOKEN }}
+  run: curl -H "Authorization: Bearer $API_TOKEN" https://example.com
+```
+
+Do not flag `secrets:` inputs declared on `workflow_call` or `jobs.<id>.secrets` — those
+are declarations, not exposures.
+
+---
+
+### What not to flag
+
+- Patterns already used throughout the existing codebase (accepted decisions)
+- `secrets: inherit` on internal reusable workflow calls (standard pattern here)
+- Vague statements like "secrets should be protected" without a specific leaked value
+- Any risk that requires the attacker to already have repository write access
+
+---
+
+## 8. Report findings
 
 Structure your report as:
 
@@ -106,4 +225,6 @@ Always prefer fetching from these sources rather than relying on memory:
 - Workflow syntax: `https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions`
 - Action metadata syntax: `https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions`
 - Expressions: `https://docs.github.com/en/actions/learn-github-actions/expressions`
-- Events that trigger workflows: `https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows`
+- Security hardening: `https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions`
+- Script injection research: `https://securitylab.github.com/research/github-actions-untrusted-input/`
+- `pull_request_target` risk: `https://securitylab.github.com/research/github-actions-preventing-pwn-requests/`
