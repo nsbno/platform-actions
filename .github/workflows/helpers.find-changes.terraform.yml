@@ -127,7 +127,7 @@ jobs:
           echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
   
       - name: Upload matrix outputs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-${{ matrix.environment }}
           path: ./matrix-outputs
@@ -151,7 +151,7 @@ jobs:
           echo "working-directory=$NAME_WITHOUT_SLASHES" >> $GITHUB_OUTPUT
 
       - name: Download matrix outputs
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: ${{ steps.without-slashes.outputs.working-directory }}-matrix-outputs-*
           merge-multiple: true
