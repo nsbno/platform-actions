@@ -270,7 +270,7 @@ To keep reviews signal-only, do **not** raise security comments for:
 
 ---
 
-## 7. Naming conventions
+## 6. Naming conventions
 
 New files must follow the established naming patterns:
 
