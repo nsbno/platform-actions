@@ -307,7 +307,7 @@ Keep findings concise. If everything is valid, a brief summary is better than a 
 
 ---
 
-## 9. Official reference URLs
+## 8. Official reference URLs
 
 Use these when verifying syntax rather than relying on memory:
 
