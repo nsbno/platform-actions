@@ -46,17 +46,24 @@ runs:
               REPO: ${{ github.repository }}
               WORKFLOW: ${{ github.workflow }}
               JOB: ${{ github.job }}
-              BRANCH: ${{ github.ref_name }}
+              BRANCH: ${{ github.head_ref || github.ref_name }}
               ACTOR: ${{ github.actor }}
               EVENT: ${{ github.event_name }}
               RUN_NUMBER: ${{ github.run_number }}
               RUN_ATTEMPT: ${{ github.run_attempt }}
               RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
-              COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-              FULL_SHA: ${{ github.sha }}
+              COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha || github.sha }}
+              FULL_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           run: |
               set -euo pipefail
 
+              if [ "${RUNNER_OS:-}" != "Linux" ]; then
+                echo "::error::This action supports Linux runners only (RUNNER_OS=${RUNNER_OS:-unknown})."
+                exit 1
+              fi
+
+              command -v jq >/dev/null 2>&1 || { echo "::error::jq is required but was not found on PATH."; exit 1; }
+              command -v curl >/dev/null 2>&1 || { echo "::error::curl is required but was not found on PATH."; exit 1; }
               if [ -z "${WEBHOOK:-}" ]; then
                 echo "::error::webhook-uri is empty."
                 exit 1
