@@ -25,11 +25,6 @@ inputs:
         required: false
         default: '[]'
 
-outputs:
-    http-status:
-        description: 'HTTP status code returned by the Teams webhook.'
-        value: ${{ steps.send.outputs.http-status }}
-
 runs:
     using: composite
     steps:
@@ -164,10 +159,7 @@ runs:
                   }]
                 }')
 
-              http_status=$(curl -fsS -o /tmp/notify-teams-response -w "%{http_code}" \
+              curl -fsS \
                 -X POST "$WEBHOOK" \
                 -H "Content-Type: application/json" \
-                --data "$payload")
-
-              echo "http-status=$http_status" >> "$GITHUB_OUTPUT"
-              echo "Teams webhook responded with HTTP $http_status"
+                --data "$payload"
