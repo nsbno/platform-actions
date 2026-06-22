@@ -1,0 +1,165 @@
+name: Notify MS Teams
+description: 'Send a rich Adaptive Card notification to a Microsoft Teams Incoming Webhook with GitHub run context. Linux-only (uses curl + jq from ubuntu-latest). Used by Data og analyse in Vy. Other teams and projects are recommended to use Slack (built-in feature)'
+
+inputs:
+    webhook-uri:
+        description: 'Microsoft Teams Incoming Webhook URL. Pass via a caller secret.'
+        required: true
+    subject:
+        description: 'What the notification is about (app name, component, job, etc.).'
+        required: true
+    target:
+        description: 'Optional target environment label (e.g. test, prod).'
+        required: false
+        default: ''
+    title:
+        description: 'Headline shown in the card. Defaults to "Pipeline".'
+        required: false
+        default: Pipeline
+    status:
+        description: 'One of `failure`, `success`, `cancelled`. Controls icon and color.'
+        required: false
+        default: failure
+    extra-facts:
+        description: 'Optional JSON array of extra facts to append, e.g. `[{"title":"Cluster","value":"abc"}]`.'
+        required: false
+        default: '[]'
+
+runs:
+    using: composite
+    steps:
+        - id: send
+          name: Send Teams notification
+          shell: bash
+          env:
+              WEBHOOK: ${{ inputs.webhook-uri }}
+              SUBJECT: ${{ inputs.subject }}
+              TARGET: ${{ inputs.target }}
+              TITLE: ${{ inputs.title }}
+              STATUS: ${{ inputs.status }}
+              EXTRA_FACTS: ${{ inputs.extra-facts }}
+              REPO: ${{ github.repository }}
+              WORKFLOW: ${{ github.workflow }}
+              JOB: ${{ github.job }}
+              BRANCH: ${{ github.head_ref || github.ref_name }}
+              ACTOR: ${{ github.actor }}
+              EVENT: ${{ github.event_name }}
+              RUN_NUMBER: ${{ github.run_number }}
+              RUN_ATTEMPT: ${{ github.run_attempt }}
+              RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+              COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha || github.sha }}
+              FULL_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          run: |
+              set -euo pipefail
+
+              if [ "${RUNNER_OS:-}" != "Linux" ]; then
+                echo "::error::This action supports Linux runners only (RUNNER_OS=${RUNNER_OS:-unknown})."
+                exit 1
+              fi
+
+              command -v jq >/dev/null 2>&1 || { echo "::error::jq is required but was not found on PATH."; exit 1; }
+              command -v curl >/dev/null 2>&1 || { echo "::error::curl is required but was not found on PATH."; exit 1; }
+              if [ -z "${WEBHOOK:-}" ]; then
+                echo "::error::webhook-uri is empty."
+                exit 1
+              fi
+
+              case "$STATUS" in
+                success)   ICON="✅"; COLOR="Good";      VERB="succeeded" ;;
+                cancelled) ICON="⚠️"; COLOR="Warning";   VERB="was cancelled" ;;
+                failure)   ICON="❌"; COLOR="Attention"; VERB="failed" ;;
+                *)
+                  echo "::warning::Unknown status '$STATUS', defaulting to failure."
+                  ICON="❌"; COLOR="Attention"; VERB="failed"
+                  ;;
+              esac
+
+              SHORT_SHA="${FULL_SHA:0:7}"
+              RUN_LABEL="#${RUN_NUMBER} (attempt ${RUN_ATTEMPT})"
+
+              if [ -n "$TARGET" ]; then
+                HEADLINE_SUFFIX=" ($TARGET)"
+              else
+                HEADLINE_SUFFIX=""
+              fi
+
+              if ! echo "$EXTRA_FACTS" | jq -e 'type == "array"' >/dev/null 2>&1; then
+                echo "::warning::extra-facts is not a valid JSON array, ignoring."
+                EXTRA_FACTS="[]"
+              fi
+
+              payload=$(jq -n \
+                --arg icon       "$ICON" \
+                --arg color      "$COLOR" \
+                --arg verb       "$VERB" \
+                --arg title      "$TITLE" \
+                --arg subject    "$SUBJECT" \
+                --arg target     "$TARGET" \
+                --arg suffix     "$HEADLINE_SUFFIX" \
+                --arg repo       "$REPO" \
+                --arg workflow   "$WORKFLOW" \
+                --arg job        "$JOB" \
+                --arg branch     "$BRANCH" \
+                --arg actor      "$ACTOR" \
+                --arg event      "$EVENT" \
+                --arg run        "$RUN_LABEL" \
+                --arg short_sha  "$SHORT_SHA" \
+                --arg run_url    "$RUN_URL" \
+                --arg commit_url "$COMMIT_URL" \
+                --argjson extra  "$EXTRA_FACTS" \
+                '
+                def base_facts:
+                  [
+                    { title: "Repository",   value: $repo },
+                    { title: "Branch",       value: $branch },
+                    { title: "Commit",       value: ("[" + $short_sha + "](" + $commit_url + ")") },
+                    { title: "Run",          value: $run },
+                    { title: "Triggered by", value: $actor },
+                    { title: "Event",        value: $event }
+                  ];
+                def env_fact:
+                  if ($target | length) > 0
+                  then [{ title: "Environment", value: $target }]
+                  else []
+                  end;
+                {
+                  type: "message",
+                  attachments: [{
+                    contentType: "application/vnd.microsoft.card.adaptive",
+                    content: {
+                      "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                      type: "AdaptiveCard",
+                      version: "1.4",
+                      msteams: { width: "Full" },
+                      body: [
+                        {
+                          type: "TextBlock",
+                          text: ($icon + " " + $title + " " + $verb + ": " + $subject + $suffix),
+                          weight: "Bolder",
+                          size: "Large",
+                          color: $color,
+                          wrap: true
+                        },
+                        {
+                          type: "TextBlock",
+                          text: ("Workflow **" + $workflow + "** in **" + $job + "**."),
+                          wrap: true,
+                          spacing: "Small"
+                        },
+                        {
+                          type: "FactSet",
+                          facts: (base_facts + env_fact + $extra)
+                        }
+                      ],
+                      actions: [
+                        { type: "Action.OpenUrl", title: "View run",    url: $run_url },
+                        { type: "Action.OpenUrl", title: "View commit", url: $commit_url }
+                      ]
+                    }
+                  }]
+                }')
+
+              curl -fsS \
+                -X POST "$WEBHOOK" \
+                -H "Content-Type: application/json" \
+                --data "$payload"
