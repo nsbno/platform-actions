@@ -1,5 +1,5 @@
-name: Notify Teams
-description: 'Send a rich Adaptive Card notification to a Microsoft Teams Incoming Webhook with GitHub run context. Linux-only (uses curl + jq from ubuntu-latest).'
+name: Notify MS Teams
+description: 'Send a rich Adaptive Card notification to a Microsoft Teams Incoming Webhook with GitHub run context. Linux-only (uses curl + jq from ubuntu-latest). Used by Data og analyse in Vy. Other teams and projects are recommended to use Slack (built-in feature)'
 
 inputs:
     webhook-uri:
