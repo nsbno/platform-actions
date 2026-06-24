@@ -98,7 +98,7 @@ jobs:
           pnpm-version: ${{ inputs.pnpm-version }}
 
       - name: Store build as Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact-name }}
           path: ${{inputs.working-directory}}/${{ inputs.artifact-path }}
