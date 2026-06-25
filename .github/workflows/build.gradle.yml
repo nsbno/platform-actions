@@ -48,7 +48,7 @@ on:
       test-report-path:
         required: false
         type: string
-        default: "${{ inputs.artifact-path }}/reports/tests/test"
+        default: "build/reports/tests/test"
 
     outputs:
       artifact-name:
