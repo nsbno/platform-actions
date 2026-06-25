@@ -84,7 +84,7 @@ jobs:
           GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
       
       - name: Store test report as Artifact on fail
-        uses: actions/upload-artifact@6
+        uses: actions/upload-artifact@v6
         if: failure() && inputs.upload-test-report
         with:
           name: Uploads gradle test report
