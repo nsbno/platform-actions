@@ -41,6 +41,14 @@ on:
         required: false
         type: string
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      upload-test-report:
+        required: false
+        type: boolean
+        default: false
+      test-report-path:
+        required: false
+        type: string
+        default: "${{ inputs.artifact-path }}/reports/tests/test"
 
     outputs:
       artifact-name:
@@ -74,6 +82,14 @@ jobs:
           BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
           BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
           GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+      
+      - name: Store test report as Artifact on fail
+        uses: actions/upload-artifact@6
+        if: failure() && inputs.upload-test-report
+        with:
+          name: Uploads gradle test report
+          path: ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
+          retention-days: 5
 
       - name: Store built JAR as Artifact
         uses: actions/upload-artifact@v6
