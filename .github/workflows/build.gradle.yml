@@ -87,9 +87,10 @@ jobs:
         uses: actions/upload-artifact@v6
         if: failure() && inputs.upload-test-report
         with:
-          name: Uploads gradle test report
+          name: ${{ inputs.artifact-name }}-test-report
           path: ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
           retention-days: 5
+          if-no-files-found: ignore
 
       - name: Store built JAR as Artifact
         uses: actions/upload-artifact@v6
