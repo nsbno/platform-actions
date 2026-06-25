@@ -78,4 +78,4 @@ jobs:
           name: ${{ inputs.artifact-name }}-test-report
           path: ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
           retention-days: 5
-          if-no-files-found: ignore
+          if-no-files-found: warn
