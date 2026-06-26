@@ -43,10 +43,12 @@ on:
         required: false
         type: boolean
         default: false
+        description: "Upload the Gradle test report as a workflow artifact when the Gradle step fails."
       test-report-path:
         required: false
         type: string
         default: "build/reports/tests/test"
+        description: "Relative path (from working-directory) to the Gradle test report directory."
 
 jobs:
   test:
@@ -71,7 +73,7 @@ jobs:
           BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
           GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
-      - name: Store test report as Artifact on fail
+      - name: Store test report as Artifact on failure
         uses: actions/upload-artifact@v6
         if: failure() && inputs.upload-test-report
         with:
