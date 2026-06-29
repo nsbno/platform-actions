@@ -23,7 +23,7 @@ on:
       s3-path:
         required: false
         type: string
-        description: "Subdirectory path under the repository name in S3. Use this when multiple artifacts are uploaded from the same working directory."
+        description: "Subdirectory path under the repository name (and working-directory, if set) in S3. Use this when multiple artifacts are uploaded from the same working directory."
         default: ""
       s3-bucket-name:
         required: false
