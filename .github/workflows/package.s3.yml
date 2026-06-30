@@ -100,7 +100,9 @@ jobs:
             SERVICE_DIR="${SERVICE_DIR%/}"
             S3_URI="$S3_URI/$SERVICE_DIR"
           fi
-          if [ "$S3_PATH" != "" ]; then
+          if [ -n "$S3_PATH" ]; then
+            S3_PATH="${S3_PATH#/}"
+            S3_PATH="${S3_PATH%/}"
             S3_URI="$S3_URI/$S3_PATH"
           fi
           S3_URI="$S3_URI/$GIT_SHA.zip"
