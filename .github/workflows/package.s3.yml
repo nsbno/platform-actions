@@ -95,7 +95,9 @@ jobs:
         run: |
           REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
           S3_URI="s3://$S3_BUCKET/$REPO_NAME_WITHOUT_OWNER"
-          if [ "$SERVICE_DIR" != "" ]; then
+          if [ -n "$SERVICE_DIR" ]; then
+            SERVICE_DIR="${SERVICE_DIR#/}"
+            SERVICE_DIR="${SERVICE_DIR%/}"
             S3_URI="$S3_URI/$SERVICE_DIR"
           fi
           if [ "$S3_PATH" != "" ]; then
