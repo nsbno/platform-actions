@@ -23,7 +23,7 @@ on:
       s3-path:
         required: false
         type: string
-        description: "Subdirectory path under the repository name (and working-directory, if set) in S3. Use this when multiple artifacts are uploaded from the same working directory."
+        description: "Subdirectory under the repository name (and working-directory, if set) in S3. Use this when multiple artifacts are uploaded from the same working directory. Then you can reference it as `path` in `vy_lambda_artifact` or `vy_frontend_artifact` in Terraform."
         default: ""
       s3-bucket-name:
         required: false
@@ -98,9 +98,6 @@ jobs:
           if [ "$SERVICE_DIR" != "" ]; then
             S3_URI="$S3_URI/$SERVICE_DIR"
           fi
-          # Normalize optional path segment to avoid accidental leading/trailing slashes
-          S3_PATH="${S3_PATH#/}"
-          S3_PATH="${S3_PATH%/}"
           if [ "$S3_PATH" != "" ]; then
             S3_URI="$S3_URI/$S3_PATH"
           fi
