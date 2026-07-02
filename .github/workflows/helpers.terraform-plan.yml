@@ -160,7 +160,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download all plan artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: terraform-plan-*
