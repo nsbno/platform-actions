@@ -33,6 +33,14 @@ inputs:
     description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
     required: false
     default: '{}'
+  subnet-ids:
+    description: "JSON array of subnet IDs for the service, e.g. '["subnet-abc"]'."
+    required: false
+    default: ''
+  security-group-ids:
+    description: "JSON array of security group IDs for the service, e.g. '["sg-abc"]'. Only used when subnet-ids is also set."
+    required: false
+    default: ''
 
 outputs:
   service-url:
@@ -170,6 +178,12 @@ runs:
         infrastructureRoleArn="${{ steps.set-service-variables.outputs.infrastructure_role_arn }}"
         taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}"
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
+
+        NETWORK_ARGS=()
+        if [ -n '${{ inputs.subnet-ids }}' ]; then
+          SECURITY_GROUPS='${{ inputs.security-group-ids }}'
+          NETWORK_ARGS=(--network-configuration "{\"subnets\":${{ inputs.subnet-ids }},\"securityGroups\":${SECURITY_GROUPS:-[]}}")
+        fi
         
         aws ecs create-express-gateway-service \
           --service-name "${{ steps.set-service-variables.outputs.service_name }}" \
@@ -179,6 +193,7 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
+          "${NETWORK_ARGS[@]}" \
           --region "${{ inputs.aws-region }}"
         
         serviceArn="arn:aws:ecs:${{ inputs.aws-region }}:${{ inputs.aws-account-id }}:service/default/${{ steps.set-service-variables.outputs.service_name }}"
