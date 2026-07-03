@@ -34,11 +34,11 @@ inputs:
     required: false
     default: '{}'
   subnet-ids:
-    description: 'JSON array of subnet IDs for the service, e.g. ["subnet-abc"].'
+    description: 'JSON array of subnet IDs for the service, e.g. ["subnet-abc"]. Must be provided together with security-group-ids.'
     required: false
     default: ''
   security-group-ids:
-    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Required when subnet-ids is set.'
+    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Must be provided together with subnet-ids.'
     required: false
     default: ''
 
