@@ -193,7 +193,7 @@ runs:
             exit 1
           fi
           jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
-          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          NETWORK_CONFIG=$(jq -cn --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
         
@@ -255,7 +255,7 @@ runs:
             exit 1
           fi
           jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
-          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          NETWORK_CONFIG=$(jq -cn --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
 
