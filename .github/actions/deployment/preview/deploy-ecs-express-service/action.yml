@@ -34,11 +34,11 @@ inputs:
     required: false
     default: '{}'
   subnet-ids:
-    description: "JSON array of subnet IDs for the service, e.g. '["subnet-abc"]'."
+    description: 'JSON array of subnet IDs for the service, e.g. ["subnet-abc"].'
     required: false
     default: ''
   security-group-ids:
-    description: "JSON array of security group IDs for the service, e.g. '["sg-abc"]'. Only used when subnet-ids is also set."
+    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Required when subnet-ids is set and the subnets belong to a shared VPC.'
     required: false
     default: ''
 
@@ -153,6 +153,8 @@ runs:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
         HEALTH_CHECK_ENDPOINT: ${{ inputs.health-endpoint }}
+        SUBNET_IDS: ${{ inputs.subnet-ids }}
+        SECURITY_GROUP_IDS: ${{ inputs.security-group-ids }}
       run: |
         secrets="$(jq -c '[to_entries[] | {name: .key, valueFrom: .value}]' <<< "$ENV_VARS_CONFIG")"
         plaintext="$(jq -c '[to_entries[] | {name: .key, value: .value}]' <<< "$PLAINTEXT_ENV_VARS")"
@@ -180,9 +182,13 @@ runs:
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
 
         NETWORK_ARGS=()
-        if [ -n '${{ inputs.subnet-ids }}' ]; then
-          SECURITY_GROUPS='${{ inputs.security-group-ids }}'
-          NETWORK_ARGS=(--network-configuration "{\"subnets\":${{ inputs.subnet-ids }},\"securityGroups\":${SECURITY_GROUPS:-[]}}")
+        if [ -n "$SUBNET_IDS" ]; then
+          if [ -z "$SECURITY_GROUP_IDS" ]; then
+            echo "Error: security-group-ids must be set when subnet-ids are provided (required for shared VPC subnets)."
+            exit 1
+          fi
+          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
         
         aws ecs create-express-gateway-service \
@@ -208,6 +214,8 @@ runs:
         ENV_VARS_CONFIG: ${{ steps.prepare-env-vars.outputs.env_vars_config }}
         PLAINTEXT_ENV_VARS: ${{ steps.prepare-env-vars.outputs.plaintext_env_vars }}
         HEALTH_CHECK_ENDPOINT: ${{ inputs.health-endpoint }}
+        SUBNET_IDS: ${{ inputs.subnet-ids }}
+        SECURITY_GROUP_IDS: ${{ inputs.security-group-ids }}
       run: |
         secrets="$(jq -c '[to_entries[] | {name: .key, valueFrom: .value}]' <<< "$ENV_VARS_CONFIG")"
         plaintext="$(jq -c '[to_entries[] | {name: .key, value: .value}]' <<< "$PLAINTEXT_ENV_VARS")"
@@ -229,6 +237,16 @@ runs:
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
+        NETWORK_ARGS=()
+        if [ -n "$SUBNET_IDS" ]; then
+          if [ -z "$SECURITY_GROUP_IDS" ]; then
+            echo "Error: security-group-ids must be set when subnet-ids are provided (required for shared VPC subnets)."
+            exit 1
+          fi
+          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
+        fi
+
         aws ecs update-express-gateway-service \
           --service-arn "$SERVICE_ARN" \
           --execution-role-arn "$executionRoleArn" \
@@ -236,6 +254,7 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
+          "${NETWORK_ARGS[@]}" \
           --region "${{ inputs.aws-region }}"
 
         echo "Update started! $SERVICE_ARN"
