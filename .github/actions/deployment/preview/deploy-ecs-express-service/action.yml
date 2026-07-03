@@ -34,11 +34,11 @@ inputs:
     required: false
     default: '{}'
   subnet-ids:
-    description: 'JSON array of subnet IDs for the service, e.g. ["subnet-abc"].'
+    description: 'JSON array of subnet IDs for the service, e.g. ["subnet-abc"]. Must be provided together with security-group-ids.'
     required: false
     default: ''
   security-group-ids:
-    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Required when subnet-ids is set and the subnets belong to a shared VPC.'
+    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Must be provided together with subnet-ids.'
     required: false
     default: ''
 
@@ -182,12 +182,18 @@ runs:
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
 
         NETWORK_ARGS=()
+        if [ -n "$SECURITY_GROUP_IDS" ] && [ -z "$SUBNET_IDS" ]; then
+          echo "Error: subnet-ids must be set when security-group-ids are provided."
+          exit 1
+        fi
         if [ -n "$SUBNET_IDS" ]; then
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null 2>&1 <<<"$SUBNET_IDS" || { echo 'Error: subnet-ids must be a non-empty JSON array of strings, e.g. ["subnet-abc"]'; exit 1; }
           if [ -z "$SECURITY_GROUP_IDS" ]; then
-            echo "Error: security-group-ids must be set when subnet-ids are provided (required for shared VPC subnets)."
+            echo "Error: security-group-ids must be set when subnet-ids are provided."
             exit 1
           fi
-          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null 2>&1 <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
+          NETWORK_CONFIG=$(jq -cn --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
         
@@ -238,12 +244,18 @@ runs:
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
         NETWORK_ARGS=()
+        if [ -n "$SECURITY_GROUP_IDS" ] && [ -z "$SUBNET_IDS" ]; then
+          echo "Error: subnet-ids must be set when security-group-ids are provided."
+          exit 1
+        fi
         if [ -n "$SUBNET_IDS" ]; then
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null 2>&1 <<<"$SUBNET_IDS" || { echo 'Error: subnet-ids must be a non-empty JSON array of strings, e.g. ["subnet-abc"]'; exit 1; }
           if [ -z "$SECURITY_GROUP_IDS" ]; then
-            echo "Error: security-group-ids must be set when subnet-ids are provided (required for shared VPC subnets)."
+            echo "Error: security-group-ids must be set when subnet-ids are provided."
             exit 1
           fi
-          NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null 2>&1 <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
+          NETWORK_CONFIG=$(jq -cn --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
 
