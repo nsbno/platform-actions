@@ -182,13 +182,17 @@ runs:
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
 
         NETWORK_ARGS=()
+        if [ -n "$SECURITY_GROUP_IDS" ] && [ -z "$SUBNET_IDS" ]; then
+          echo "Error: subnet-ids must be set when security-group-ids are provided."
+          exit 1
+        fi
         if [ -n "$SUBNET_IDS" ]; then
-          jq -e 'type == "array"' >/dev/null <<<"$SUBNET_IDS" || { echo "Error: subnet-ids must be a JSON array, e.g. [\"subnet-abc\"]"; exit 1; }
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SUBNET_IDS" || { echo 'Error: subnet-ids must be a non-empty JSON array of strings, e.g. ["subnet-abc"]'; exit 1; }
           if [ -z "$SECURITY_GROUP_IDS" ]; then
             echo "Error: security-group-ids must be set when subnet-ids are provided."
             exit 1
           fi
-          jq -e 'type == "array"' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo "Error: security-group-ids must be a JSON array, e.g. [\"sg-abc\"]"; exit 1; }
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
           NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
@@ -240,13 +244,17 @@ runs:
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
         NETWORK_ARGS=()
+        if [ -n "$SECURITY_GROUP_IDS" ] && [ -z "$SUBNET_IDS" ]; then
+          echo "Error: subnet-ids must be set when security-group-ids are provided."
+          exit 1
+        fi
         if [ -n "$SUBNET_IDS" ]; then
-          jq -e 'type == "array"' >/dev/null <<<"$SUBNET_IDS" || { echo "Error: subnet-ids must be a JSON array, e.g. [\"subnet-abc\"]"; exit 1; }
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SUBNET_IDS" || { echo 'Error: subnet-ids must be a non-empty JSON array of strings, e.g. ["subnet-abc"]'; exit 1; }
           if [ -z "$SECURITY_GROUP_IDS" ]; then
             echo "Error: security-group-ids must be set when subnet-ids are provided."
             exit 1
           fi
-          jq -e 'type == "array"' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo "Error: security-group-ids must be a JSON array, e.g. [\"sg-abc\"]"; exit 1; }
+          jq -e 'type == "array" and length > 0 and all(.[]; type == "string")' >/dev/null <<<"$SECURITY_GROUP_IDS" || { echo 'Error: security-group-ids must be a non-empty JSON array of strings, e.g. ["sg-abc"]'; exit 1; }
           NETWORK_CONFIG=$(jq -n --argjson subnets "$SUBNET_IDS" --argjson sgs "$SECURITY_GROUP_IDS" '{subnets: $subnets, securityGroups: $sgs}')
           NETWORK_ARGS=(--network-configuration "$NETWORK_CONFIG")
         fi
