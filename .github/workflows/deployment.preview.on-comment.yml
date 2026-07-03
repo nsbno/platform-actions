@@ -36,6 +36,16 @@ on:
         type: string
         default: '/'
         required: false
+      subnet-ids:
+        description: 'JSON array of subnet IDs for the ECS Express service, e.g. ["subnet-abc"]. Must be provided together with security-group-ids.'
+        required: false
+        type: string
+        default: ''
+      security-group-ids:
+        description: 'JSON array of security group IDs for the ECS Express service, e.g. ["sg-abc"]. Must be provided together with subnet-ids.'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   trigger:
@@ -66,7 +76,7 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@vpc-option-preview-deployment
     with:
       health-endpoint: ${{ inputs.health-endpoint }}
       use-ecs-express-mode: ${{ inputs.use-ecs-express-mode }}
@@ -78,6 +88,8 @@ jobs:
       skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
       s3-static-files-path: ${{ inputs.s3-static-files-path }}
       custom-env-variables: ${{ inputs.custom-env-variables }}
+      subnet-ids: ${{ inputs.subnet-ids }}
+      security-group-ids: ${{ inputs.security-group-ids }}
 
   comment-handler:
     needs: [ trigger, preview ]
