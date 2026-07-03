@@ -38,7 +38,7 @@ inputs:
     required: false
     default: ''
   security-group-ids:
-    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Required when subnet-ids is set and the subnets belong to a shared VPC.'
+    description: 'JSON array of security group IDs for the service, e.g. ["sg-abc"]. Required when subnet-ids is set.'
     required: false
     default: ''
 
