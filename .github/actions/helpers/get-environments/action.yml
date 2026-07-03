@@ -10,6 +10,10 @@ inputs:
     description: 'Skip Test environment (manual override)'
     required: false
     default: 'false'
+  skip-dev-environment:
+    description: 'Skip Dev environment (manual override)'
+    required: false
+    default: 'false'
   working-directory:
     description: 'Directory containing the project files'
     required: false
@@ -34,7 +38,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
       run: |
         set -e
-        environments=$(gh api --method GET -H "Accept: application/vnd.github+json" repos/${{ github.repository}}/environments | jq -c '[.environments[].name]')
+        environments=$(gh api --method GET -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/environments | jq -c '[.environments[].name]')
         if [ -z "$environments" ] || [ "$environments" = "[]" ]; then
           echo "::error title=No environments found::Check if you have any GitHub environments configured."
           exit 1
@@ -67,6 +71,15 @@ runs:
         working-directory: ${{ inputs.working-directory }}
         terraform-directory: ${{ inputs.terraform-directory }}
         env-mapping-directory: stage
+
+    - name: Check Dev Directory
+      id: check-dev
+      if: ${{ contains(fromJSON(steps.get-environments.outputs.all-environments), 'Development') && inputs.skip-dev-environment != 'true' }}
+      uses: nsbno/platform-actions/.github/actions/helpers/terraform-directory-autodiscovery@v2
+      with:
+        working-directory: ${{ inputs.working-directory }}
+        terraform-directory: ${{ inputs.terraform-directory }}
+        env-mapping-directory: dev
 
     - name: Check Production Directory
       id: check-production
@@ -103,6 +116,9 @@ runs:
               ;;
             Production)
               DIR_EXISTS="${{ steps.check-production.outputs.exists || 'false' }}"
+              ;;
+            Development)
+              DIR_EXISTS="${{ steps.check-dev.outputs.exists || 'false' }}"
               ;;
             *)
               echo "::warning::Unknown environment name: $env, skipping"
