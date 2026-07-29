@@ -42,6 +42,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-dev-environment:
+        description: Skip the dev environment, if the repository does not deploy to the dev environment.
+        type: boolean
+        default: false
+        required: false
       skip-static-files-deployment:
         description: Skip deployment of static files to S3 (if applicable). Used if static files is built in Dockerfile.
         type: boolean
@@ -88,6 +93,7 @@ jobs:
           terraform-directory: ${{ inputs.terraform-directory }}
           skip-production-environment: ${{ inputs.skip-production-environment }}
           skip-test-environment: ${{ inputs.skip-test-environment }}
+          skip-dev-environment: ${{ inputs.skip-dev-environment }}
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
@@ -109,6 +115,50 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+
+  dev-terraform:
+    name: Dev - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs:
+      - service-terraform
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Development')
+    strategy:
+      matrix:
+        # Matrix gives better visibility in GH UI
+        environment: [ Development ]
+    with:
+      environment: ${{ matrix.environment }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Development') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+
+  dev-ecs-service:
+    name: Dev - ECS Service
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-ecs.yml@v2
+    needs:
+      - dev-terraform
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && needs.dev-terraform.result != 'failure'
+      && contains(needs.get-environments.outputs.environments, 'Development')
+    with:
+      working-directory: ${{ inputs.working-directory }}
+      environment: Development
+      deploy-application: ${{ inputs.has-application-changes }}
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      skip-static-files-deployment: ${{ inputs.skip-static-files-deployment }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      ecr-repository-names: ${{ inputs.ecr-repository-names }}
+      s3-static-files-path: ${{ inputs.s3-static-files-path }}
 
   test-terraform:
     name: Test - Terraform
@@ -202,6 +252,7 @@ jobs:
     name: Prod - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
+      # Production does deliberately not depend on dev for any deployments
       - stage-ecs-service
       - stage-terraform
       - test-ecs-service

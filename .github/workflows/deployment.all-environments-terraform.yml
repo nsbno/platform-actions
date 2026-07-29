@@ -42,6 +42,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-dev-environment:
+        description: Skip the dev environment, if the repository does not deploy to the dev environment.
+        type: boolean
+        default: false
+        required: false
       aws-role-name-to-assume:
         description: "The AWS role name to assume. Used for migration purposes for teams using older GHA roles."
         required: false
@@ -73,6 +78,7 @@ jobs:
           terraform-directory: ${{ inputs.terraform-directory }}
           skip-production-environment: ${{ inputs.skip-production-environment }}
           skip-test-environment: ${{ inputs.skip-test-environment }}
+          skip-dev-environment: ${{ inputs.skip-dev-environment }}
 
   # Service always needs to be deployed first, and we only deploy Terraform changes.
   service-terraform:
@@ -88,6 +94,25 @@ jobs:
       environment: Service
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Service') }}
+      working-directory: ${{ inputs.working-directory }}
+      terraform-directory: ${{ inputs.terraform-directory }}
+      version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+
+  dev-terraform:
+    name: Dev - Terraform
+    uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
+    needs:
+      - service-terraform
+      - get-environments
+    if: |
+      always()
+      && !cancelled()
+      && !contains(needs.*.result, 'failure')
+      && contains(needs.get-environments.outputs.environments, 'Development')
+    with:
+      environment: Development
+      sha-to-deploy: ${{ inputs.sha-to-deploy }}
+      deploy-terraform: ${{ contains(fromJSON(inputs.terraform-changes), 'Development') }}
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
@@ -134,6 +159,8 @@ jobs:
     name: Prod - Terraform
     uses: nsbno/platform-actions/.github/workflows/deployment.single-environment-terraform.yml@v2
     needs:
+      # Production does deliberately not depend on dev for any deployments.
+      # A random error in dev shouldn't block production
       - stage-terraform
       - test-terraform
     if: |

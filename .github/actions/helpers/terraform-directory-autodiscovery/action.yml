@@ -10,7 +10,7 @@ inputs:
     required: false
     default: ""
   env-mapping-directory:
-    description: "Environment directory name (e.g., 'service', 'test', 'stage', 'prod')"
+    description: "Environment directory name (e.g., 'service', 'test', 'stage', 'prod', 'dev')"
     required: true
 
 outputs:

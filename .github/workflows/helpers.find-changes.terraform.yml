@@ -26,6 +26,11 @@ on:
         type: boolean
         default: false
         required: false
+      skip-dev-environment:
+        description: Skip the Dev environment, if the repository should not deploy to Dev.
+        type: boolean
+        default: false
+        required: false
       skip-service-environment:
         description: '[DEPRECATED] This parameter no longer has any effect. Service environment is automatically skipped if no terraform directory exists.'
         type: boolean
@@ -69,6 +74,7 @@ jobs:
           terraform-directory: ${{ inputs.terraform-directory }}
           skip-test-environment: ${{ inputs.skip-test-environment }}
           skip-production-environment: ${{ inputs.skip-production-environment }}
+          skip-dev-environment: ${{ inputs.skip-dev-environment }}
 
   has-terraform-changed:
     name: Detect Changes
