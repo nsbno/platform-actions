@@ -81,7 +81,26 @@ runs:
         for dir in "${dirs[@]}"; do
           echo "Checking directory: $dir"
           if [ -d "$dir" ]; then
-            version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+            version=""
+            dir_queue=("$dir")
+            queue_idx=0
+            while [ "$queue_idx" -lt ${#dir_queue[@]} ]; do
+              current_dir="${dir_queue[$queue_idx]}"
+              queue_idx=$((queue_idx + 1))
+
+              while IFS= read -r -d '' file; do
+                match=$(grep -Eho 'required_version *= *"[^"]+"' -- "$file" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+                if [ -n "$match" ]; then
+                  version="$match"
+                  break 2
+                fi
+              done < <(find "$current_dir" -maxdepth 1 -type f -name '*.tf' -print0)
+
+              while IFS= read -r -d '' subdir; do
+                dir_queue+=("$subdir")
+              done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -type d \
+                -not -name '.git' -not -name '.terraform' -not -name 'node_modules' -print0)
+            done
             if [ -n "$version" ]; then
               echo "Found Terraform version: $version"
               echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
