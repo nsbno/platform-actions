@@ -81,7 +81,14 @@ runs:
         for dir in "${dirs[@]}"; do
           echo "Checking directory: $dir"
           if [ -d "$dir" ]; then
-            version=$(grep -rEho 'required_version *= *"[^"]+"' "$dir" --include \*.tf | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+            version=""
+            while IFS= read -r file; do
+              match=$(grep -Eho 'required_version *= *"[^"]+"' "$file" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+              if [ -n "$match" ]; then
+                version="$match"
+                break
+              fi
+            done < <(find "$dir" -type f -name '*.tf' -print | awk -F/ '{print NF-1, $0}' | sort -n | cut -d' ' -f2-)
             if [ -n "$version" ]; then
               echo "Found Terraform version: $version"
               echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
