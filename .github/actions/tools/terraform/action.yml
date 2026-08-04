@@ -83,9 +83,10 @@ runs:
           if [ -d "$dir" ]; then
             version=""
             dir_queue=("$dir")
-            while [ ${#dir_queue[@]} -gt 0 ]; do
-              current_dir="${dir_queue[0]}"
-              dir_queue=("${dir_queue[@]:1}")
+            queue_idx=0
+            while [ "$queue_idx" -lt ${#dir_queue[@]} ]; do
+              current_dir="${dir_queue[$queue_idx]}"
+              queue_idx=$((queue_idx + 1))
 
               while IFS= read -r -d '' file; do
                 match=$(grep -Eho 'required_version *= *"[^"]+"' -- "$file" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
@@ -97,7 +98,8 @@ runs:
 
               while IFS= read -r -d '' subdir; do
                 dir_queue+=("$subdir")
-              done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -type d -print0)
+              done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -type d \
+                -not -name '.git' -not -name '.terraform' -not -name 'node_modules' -print0)
             done
             if [ -n "$version" ]; then
               echo "Found Terraform version: $version"
