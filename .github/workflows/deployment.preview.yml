@@ -165,7 +165,7 @@ jobs:
       - name: Deploy Preview (ECS)
         if: ${{ inputs.use-ecs-express-mode == true && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: deploy-ecs
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@support-shared-vpc-for-frontend-previews
         with:
           health-endpoint: ${{ inputs.health-endpoint }}
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
