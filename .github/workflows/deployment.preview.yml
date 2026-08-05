@@ -60,6 +60,11 @@ on:
         type: string
         default: '/'
         required: false
+      use-shared-vpc:
+        description: 'When true, attach the ECS Express preview service to the shared preview VPC. Only used when use-ecs-express-mode is true.'
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: read
@@ -165,7 +170,7 @@ jobs:
       - name: Deploy Preview (ECS)
         if: ${{ inputs.use-ecs-express-mode == true && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: deploy-ecs
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@support-shared-vpc-for-frontend-previews
         with:
           health-endpoint: ${{ inputs.health-endpoint }}
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
@@ -176,6 +181,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           git-event-number: ${{ inputs.git-event-number }}
           custom-env-variables: ${{ inputs.custom-env-variables }}
+          use-shared-vpc: ${{ inputs.use-shared-vpc }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
