@@ -62,7 +62,7 @@ runs:
       shell: bash
       run: |
         echo "sg_id=$(aws ssm get-parameter \
-          --name /config/shared/frontend_preview_security_group_id \
+          --name /config/${{ inputs.service-name }}/frontend_preview_security_group_id \
           --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
         echo "subnet_ids=$(aws ssm get-parameter \
           --name /config/shared/frontend_preview_subnet_ids \
