@@ -189,7 +189,7 @@ runs:
 
         VPC_ARGS=()
         if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
-          VPC_ARGS+=(--network-configuration "awsvpcConfiguration={subnets=[${{ steps.vpc-config.outputs.subnet_ids }}],securityGroups=[${{ steps.vpc-config.outputs.sg_id }}],assignPublicIp=DISABLED}")
+          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.sg_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
         fi
         
         aws ecs create-express-gateway-service \
@@ -238,7 +238,7 @@ runs:
 
         VPC_ARGS=()
         if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
-          VPC_ARGS+=(--network-configuration "awsvpcConfiguration={subnets=[${{ steps.vpc-config.outputs.subnet_ids }}],securityGroups=[${{ steps.vpc-config.outputs.sg_id }}],assignPublicIp=DISABLED}")
+          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.sg_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
         fi
 
         aws ecs update-express-gateway-service \
