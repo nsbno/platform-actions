@@ -60,6 +60,16 @@ on:
         type: string
         default: '/'
         required: false
+      subnet-ids:
+        description: 'JSON array of subnet IDs for the ECS Express service, e.g. ["subnet-abc"]. Must be provided together with security-group-ids.'
+        required: false
+        type: string
+        default: ''
+      security-group-ids:
+        description: 'JSON array of security group IDs for the ECS Express service, e.g. ["sg-abc"]. Must be provided together with subnet-ids.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -165,7 +175,7 @@ jobs:
       - name: Deploy Preview (ECS)
         if: ${{ inputs.use-ecs-express-mode == true && (inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true') }}
         id: deploy-ecs
-        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@v2
+        uses: nsbno/platform-actions/.github/actions/deployment/preview/deploy-ecs-express-service@vpc-option-preview-deployment
         with:
           health-endpoint: ${{ inputs.health-endpoint }}
           service-name: ${{ steps.deployment-info.outputs.ecs-service-name }}
@@ -176,6 +186,8 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           git-event-number: ${{ inputs.git-event-number }}
           custom-env-variables: ${{ inputs.custom-env-variables }}
+          subnet-ids: ${{ inputs.subnet-ids }}
+          security-group-ids: ${{ inputs.security-group-ids }}
 
       - name: Push Mapping to DynamoDB and Comment domain name
         if: ${{ inputs.only-on-preview-comment == false || steps.check-comments.outputs.continue == 'true' }}
