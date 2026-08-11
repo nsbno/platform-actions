@@ -277,5 +277,8 @@ runs:
           exit 1
         fi
 
-        SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r '[.service.activeConfigurations[0].ingressPaths[] | select(.accessType=="PUBLIC") | .endpoint][0] | sub("^https?://"; "") | sub("/$"; "")')
+        ACCESS_TYPE=$([[ "${{ inputs.use-shared-vpc }}" == "true" ]] && echo "PRIVATE" || echo "PUBLIC")
+        SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r --arg t "$ACCESS_TYPE" '
+          [.service.activeConfigurations[0].ingressPaths[] | select(.accessType==$t) | .endpoint][0]
+          | sub("^https?://"; "") | sub("/$"; "")')
         echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
