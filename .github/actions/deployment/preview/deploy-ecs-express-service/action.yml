@@ -259,7 +259,6 @@ runs:
       shell: bash
       run: |
         SERVICE_ARN="${{ steps.create-service.outputs.service_arn || steps.update-service.outputs.service_arn }}"
-        SERVICE_URL=""
 
         for i in {1..60}; do
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
