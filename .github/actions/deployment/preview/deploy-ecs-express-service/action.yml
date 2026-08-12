@@ -259,13 +259,16 @@ runs:
       shell: bash
       run: |
         SERVICE_ARN="${{ steps.create-service.outputs.service_arn || steps.update-service.outputs.service_arn }}"
+        SERVICE_URL=""
 
         for i in {1..60}; do
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
           STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
           STATUS_REASON=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusReason // ""')
-          echo "Current status: $STATUS ($STATUS_REASON)"
-          if [[ "$STATUS" == "ACTIVE" ]]; then
+          SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r \
+            '([.service.activeConfigurations[0].ingressPaths[]? | select(.accessType=="PUBLIC") | .endpoint][0] // "") | sub("^https?://"; "") | sub("/$"; "")')
+          echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}"
+          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]]; then
             echo "Service is active."
             break
           fi
@@ -277,8 +280,9 @@ runs:
           exit 1
         fi
 
-        ACCESS_TYPE=$([[ "${{ inputs.use-shared-vpc }}" == "true" ]] && echo "PRIVATE" || echo "PUBLIC")
-        SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r --arg t "$ACCESS_TYPE" '
-          [.service.activeConfigurations[0].ingressPaths[] | select(.accessType==$t) | .endpoint][0]
-          | sub("^https?://"; "") | sub("/$"; "")')
+        if [[ -z "$SERVICE_URL" ]]; then
+          echo "Service is ACTIVE but no public ingress URL is available."
+          exit 1
+        fi
+
         echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
