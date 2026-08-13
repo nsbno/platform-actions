@@ -96,8 +96,9 @@ This way, the correct tag will exist for the deploy stage.
 ### Deploy
 Workflows prefixed with deploy are meant to simplify the process of deploying code.
 
-There is an own workflow for deploying to "Test" in branches.
-It will need to use `actions/checkout` with the PR head commit sha, so that the correct code is deployed.
+The branch deployment workflow supports deployments to Development, Test, and Stage using
+the `.deploy dev`, `.deploy test`, and `.deploy stage` PR comments.
+It uses the PR head commit SHA so that the correct code is deployed.
 
 # Note on Pull Requests
 In pull requests, the default Git sha being used is a temporary merge commit sha (e.g. in for `actions/checkout`).
