@@ -61,7 +61,7 @@ runs:
       if: ${{ inputs.use-shared-vpc == 'true' }}
       shell: bash
       run: |
-        echo "sg_id=$(aws ssm get-parameter \
+        echo "security_group_id=$(aws ssm get-parameter \
           --name /__deployment__/${{ inputs.service-name }}/frontend_preview_security_group_id \
           --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
         echo "subnet_ids=$(aws ssm get-parameter \
