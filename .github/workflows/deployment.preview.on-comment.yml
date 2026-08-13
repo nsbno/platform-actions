@@ -71,7 +71,7 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@support-shared-vpc-for-frontend-previews
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
     with:
       health-endpoint: ${{ inputs.health-endpoint }}
       use-ecs-express-mode: ${{ inputs.use-ecs-express-mode }}
