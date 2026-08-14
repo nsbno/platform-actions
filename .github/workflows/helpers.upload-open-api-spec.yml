@@ -31,7 +31,7 @@ permissions:
 # We expect the API spec to be in YAML format.
 # Supported API Types: OpenAPI.
 jobs:
-  convert-to-yml:
+  convert-to-json:
     name: Convert YAML to JSON
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +51,7 @@ jobs:
   persist-api-spec:
     name: Persist API spec to the API portal
     needs:
-      - convert-to-yml
+      - convert-to-json
     runs-on: ubuntu-latest
     environment: 'Service'
     steps:
