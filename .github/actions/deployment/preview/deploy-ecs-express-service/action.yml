@@ -33,6 +33,10 @@ inputs:
     description: 'Custom environment variables as JSON object, e.g. {"NAME":"VALUE"}'
     required: false
     default: '{}'
+  use-shared-vpc:
+    description: "When true, fetch subnet IDs and security group ID from SSM and attach the service to the shared preview VPC"
+    required: false
+    default: 'false'
 
 outputs:
   service-url:
@@ -51,6 +55,18 @@ runs:
         echo "execution_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-execution" >> $GITHUB_OUTPUT
         echo "infrastructure_role_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-infrastructure" >> $GITHUB_OUTPUT
         echo "task_tole_arn=arn:aws:iam::${{ inputs.aws-account-id }}:role/${{inputs.service-name}}-preview-ecs-task" >> $GITHUB_OUTPUT
+
+    - name: Get shared VPC config
+      id: vpc-config
+      if: ${{ inputs.use-shared-vpc == 'true' }}
+      shell: bash
+      run: |
+        echo "security_group_id=$(aws ssm get-parameter \
+          --name /__deployment__/${{ inputs.service-name }}/frontend_preview_security_group_id \
+          --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
+        echo "subnet_ids=$(aws ssm get-parameter \
+          --name /__deployment__/${{ inputs.service-name }}/frontend_preview_subnet_ids \
+          --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
 
     - name: Check if Service exists
       id: check-service
@@ -170,6 +186,11 @@ runs:
         infrastructureRoleArn="${{ steps.set-service-variables.outputs.infrastructure_role_arn }}"
         taskRoleArn="${{ steps.set-service-variables.outputs.task_tole_arn }}"
         echo "Deploying Preview: ${{ steps.set-service-variables.outputs.service_name }} ($executionRoleArn, $infrastructureRoleArn, $taskRoleArn)..."
+
+        VPC_ARGS=()
+        if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
+          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.security_group_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
+        fi
         
         aws ecs create-express-gateway-service \
           --service-name "${{ steps.set-service-variables.outputs.service_name }}" \
@@ -179,7 +200,8 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
-          --region "${{ inputs.aws-region }}"
+          --region "${{ inputs.aws-region }}" \
+          "${VPC_ARGS[@]}"
         
         serviceArn="arn:aws:ecs:${{ inputs.aws-region }}:${{ inputs.aws-account-id }}:service/default/${{ steps.set-service-variables.outputs.service_name }}"
         echo "Deployment started! $serviceArn"
@@ -214,6 +236,11 @@ runs:
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
+        VPC_ARGS=()
+        if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
+          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.security_group_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
+        fi
+
         aws ecs update-express-gateway-service \
           --service-arn "$SERVICE_ARN" \
           --execution-role-arn "$executionRoleArn" \
@@ -221,7 +248,8 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
-          --region "${{ inputs.aws-region }}"
+          --region "${{ inputs.aws-region }}" \
+          "${VPC_ARGS[@]}"
 
         echo "Update started! $SERVICE_ARN"
         echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
@@ -236,8 +264,10 @@ runs:
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
           STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
           STATUS_REASON=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusReason // ""')
-          echo "Current status: $STATUS ($STATUS_REASON)"
-          if [[ "$STATUS" == "ACTIVE" ]]; then
+          SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r \
+            '([.service.activeConfigurations[0].ingressPaths[]? | select(.accessType=="PUBLIC") | .endpoint][0] // "") | sub("^https?://"; "") | sub("/$"; "")')
+          echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}"
+          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]]; then
             echo "Service is active."
             break
           fi
@@ -249,5 +279,9 @@ runs:
           exit 1
         fi
 
-        SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r '[.service.activeConfigurations[0].ingressPaths[] | select(.accessType=="PUBLIC") | .endpoint][0] | sub("^https?://"; "") | sub("/$"; "")')
+        if [[ -z "$SERVICE_URL" ]]; then
+          echo "Service is ACTIVE but no public ingress URL is available."
+          exit 1
+        fi
+
         echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
