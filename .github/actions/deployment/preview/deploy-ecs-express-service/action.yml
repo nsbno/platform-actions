@@ -65,7 +65,7 @@ runs:
           --name /__deployment__/${{ inputs.service-name }}/frontend_preview_security_group_id \
           --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
         echo "subnet_ids=$(aws ssm get-parameter \
-          --name /__deployment__/shared/frontend_preview_subnet_ids \
+          --name /__deployment__/${{ inputs.service-name }}/frontend_preview_subnet_ids \
           --query Parameter.Value --output text)" >> $GITHUB_OUTPUT
 
     - name: Check if Service exists
