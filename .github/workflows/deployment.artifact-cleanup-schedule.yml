@@ -1,0 +1,178 @@
+###
+# Pipeline artifact cleanup (scheduled)
+#
+# Deletes stale artifacts uploaded by package.s3.yml / package.s3.jar.yml to the
+# <account-id>-deployment-delivery-pipeline-artifacts bucket, so it doesn't grow
+# unbounded and become expensive to store.
+#
+# Artifacts are grouped by their upload "directory" (repo[/working-dir][/s3-path])
+# and then by the branch they were built from, using the branch tag that is
+# written to the object's `tags` metadata on upload. Within each group:
+#   - Trunk branches (main/master) keep the newest `trunk-revisions-to-keep`
+#     revisions. Older ones are deleted regardless of age.
+#   - All other branches keep the newest `branch-revisions-to-keep` revisions.
+#     Anything beyond that is only deleted once it is older than
+#     `branch-days-to-keep` days, so an active branch's older builds aren't
+#     deleted while it's still in use.
+#
+# Call this from a repo's own workflow with a `schedule:` trigger, the same way
+# deployment.preview-cleanup-schedule.yml is used. By default it only cleans up
+# artifacts under the calling repo's own prefix in the bucket.
+###
+on:
+  workflow_call:
+    inputs:
+      s3-bucket-name:
+        required: false
+        type: string
+        description: "Name of the S3 bucket to clean up. Defaults to '<AWS_ACCOUNT_ID>-deployment-delivery-pipeline-artifacts'."
+        default: ""
+      trunk-branches:
+        required: false
+        type: string
+        description: "Comma-separated list of branch names considered trunk."
+        default: "main,master"
+      trunk-revisions-to-keep:
+        required: false
+        type: number
+        description: "Minimum number of trunk revisions to keep before older ones are deleted."
+        default: 5
+      branch-revisions-to-keep:
+        required: false
+        type: number
+        description: "Minimum number of revisions to keep per non-trunk branch."
+        default: 2
+      branch-days-to-keep:
+        required: false
+        type: number
+        description: "Number of days to keep non-trunk branch revisions beyond branch-revisions-to-keep, before they're deleted."
+        default: 30
+      aws-region:
+        required: false
+        type: string
+        description: "AWS region to use."
+        default: 'eu-west-1'
+
+name: Pipeline artifact cleanup
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup-artifacts:
+    name: Delete Stale Pipeline Artifacts
+    runs-on: ubuntu-latest
+    environment: Service
+    steps:
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ inputs.aws-region }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Delete stale artifacts
+        env:
+          S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
+          REPO_NAME: ${{ github.repository }}
+          TRUNK_BRANCHES: ${{ inputs.trunk-branches }}
+          TRUNK_KEEP: ${{ inputs.trunk-revisions-to-keep }}
+          BRANCH_KEEP: ${{ inputs.branch-revisions-to-keep }}
+          BRANCH_DAYS: ${{ inputs.branch-days-to-keep }}
+        run: |
+          set -euo pipefail
+
+          REPO_NAME_WITHOUT_OWNER="${REPO_NAME##*/}"
+          echo "Cleaning up s3://${S3_BUCKET}/${REPO_NAME_WITHOUT_OWNER}/"
+
+          OBJECTS_JSON=$(aws s3api list-objects-v2 \
+            --bucket "${S3_BUCKET}" \
+            --prefix "${REPO_NAME_WITHOUT_OWNER}/" \
+            --query 'Contents[].{Key:Key,LastModified:LastModified}' \
+            --output json)
+
+          if [ "$OBJECTS_JSON" = "null" ] || [ -z "$OBJECTS_JSON" ]; then
+            echo "No artifacts found under ${REPO_NAME_WITHOUT_OWNER}/"
+            exit 0
+          fi
+
+          # Enrich every object with its branch (read from the `tags` metadata
+          # written on upload, e.g. '["<sha>-SHA","<branch>-branch"]') and the
+          # directory it lives in, so revisions can be grouped correctly.
+          ENRICHED="[]"
+          OBJECT_COUNT=$(echo "$OBJECTS_JSON" | jq 'length')
+          for ((i=0; i<OBJECT_COUNT; i++)); do
+            ITEM=$(echo "$OBJECTS_JSON" | jq -c ".[$i]")
+            KEY=$(echo "$ITEM" | jq -r '.Key')
+            LAST_MODIFIED=$(echo "$ITEM" | jq -r '.LastModified')
+
+            case "$KEY" in
+              *.zip|*.jar) ;;
+              *) continue ;;
+            esac
+
+            DIR="${KEY%/*}"
+
+            TAGS_RAW=$(aws s3api head-object --bucket "${S3_BUCKET}" --key "$KEY" \
+              --query 'Metadata.tags' --output text 2>/dev/null || echo "")
+            BRANCH=$(echo "$TAGS_RAW" | grep -oE '"[^"]+-branch"' | sed -E 's/^"//; s/-branch"$//' || true)
+
+            if [ -z "$BRANCH" ]; then
+              echo "::warning::Could not determine branch for $KEY, skipping"
+              continue
+            fi
+
+            ENRICHED=$(echo "$ENRICHED" | jq --arg key "$KEY" --arg dir "$DIR" --arg branch "$BRANCH" --arg lm "$LAST_MODIFIED" \
+              '. += [{"key": $key, "dir": $dir, "branch": $branch, "lastModified": $lm}]')
+          done
+
+          TO_DELETE="[]"
+          CURRENT_TIME=$(date +%s)
+          CUTOFF_SECONDS=$(( BRANCH_DAYS * 24 * 60 * 60 ))
+
+          DIRS=$(echo "$ENRICHED" | jq -r '[.[].dir] | unique | .[]')
+          for DIR in $DIRS; do
+            # Trunk revisions: keep the newest TRUNK_KEEP, delete the rest regardless of age.
+            TRUNK_ITEMS=$(echo "$ENRICHED" | jq -c --arg dir "$DIR" --arg branches "$TRUNK_BRANCHES" \
+              '($branches | split(",")) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) != null)] | sort_by(.lastModified) | reverse')
+            TRUNK_COUNT=$(echo "$TRUNK_ITEMS" | jq 'length')
+            if [ "$TRUNK_COUNT" -gt "$TRUNK_KEEP" ]; then
+              STALE=$(echo "$TRUNK_ITEMS" | jq -c ".[${TRUNK_KEEP}:]")
+              TO_DELETE=$(echo "$TO_DELETE" | jq --argjson stale "$STALE" '. + $stale')
+            fi
+
+            # Branch revisions: keep the newest BRANCH_KEEP per branch, delete the
+            # rest only once older than BRANCH_DAYS days.
+            BRANCHES_IN_DIR=$(echo "$ENRICHED" | jq -r --arg dir "$DIR" --arg branches "$TRUNK_BRANCHES" \
+              '($branches | split(",")) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) == null) | .branch] | unique | .[]')
+            for BRANCH in $BRANCHES_IN_DIR; do
+              BRANCH_ITEMS=$(echo "$ENRICHED" | jq -c --arg dir "$DIR" --arg branch "$BRANCH" \
+                '[.[] | select(.dir == $dir and .branch == $branch)] | sort_by(.lastModified) | reverse')
+              BRANCH_COUNT=$(echo "$BRANCH_ITEMS" | jq 'length')
+              if [ "$BRANCH_COUNT" -le "$BRANCH_KEEP" ]; then
+                continue
+              fi
+
+              CANDIDATES=$(echo "$BRANCH_ITEMS" | jq -c ".[${BRANCH_KEEP}:]")
+              CANDIDATE_COUNT=$(echo "$CANDIDATES" | jq 'length')
+              for ((j=0; j<CANDIDATE_COUNT; j++)); do
+                ITEM=$(echo "$CANDIDATES" | jq -c ".[$j]")
+                LM=$(echo "$ITEM" | jq -r '.lastModified')
+                LM_SECS=$(date -d "$LM" +%s)
+                AGE_SECS=$(( CURRENT_TIME - LM_SECS ))
+                if [ "$AGE_SECS" -gt "$CUTOFF_SECONDS" ]; then
+                  TO_DELETE=$(echo "$TO_DELETE" | jq --argjson item "$ITEM" '. + [$item]')
+                fi
+              done
+            done
+          done
+
+          DELETE_COUNT=$(echo "$TO_DELETE" | jq 'length')
+          echo "Found ${DELETE_COUNT} stale artifact(s) to delete"
+
+          echo "$TO_DELETE" | jq -c '.[]' | while read -r ITEM; do
+            KEY=$(echo "$ITEM" | jq -r '.key')
+            BRANCH=$(echo "$ITEM" | jq -r '.branch')
+            echo "Deleting s3://${S3_BUCKET}/${KEY} (branch: ${BRANCH})"
+            aws s3 rm "s3://${S3_BUCKET}/${KEY}"
+          done
