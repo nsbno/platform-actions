@@ -1,23 +1,9 @@
 ###
-# Pipeline artifact cleanup (scheduled)
-#
-# Deletes stale artifacts uploaded by package.s3.yml / package.s3.jar.yml to the
-# <account-id>-deployment-delivery-pipeline-artifacts bucket, so it doesn't grow
-# unbounded and become expensive to store.
-#
-# Artifacts are grouped by their upload "directory" (repo[/working-dir][/s3-path])
-# and then by the branch they were built from, using the branch tag that is
-# written to the object's `tags` metadata on upload. Within each group:
-#   - Trunk branches (main/master) keep the newest `trunk-revisions-to-keep`
-#     revisions. Older ones are deleted regardless of age.
-#   - All other branches keep the newest `branch-revisions-to-keep` revisions.
-#     Anything beyond that is only deleted once it is older than
-#     `branch-days-to-keep` days, so an active branch's older builds aren't
-#     deleted while it's still in use.
-#
-# Call this from a repo's own workflow with a `schedule:` trigger, the same way
-# deployment.preview-cleanup-schedule.yml is used. By default it only cleans up
-# artifacts under the calling repo's own prefix in the bucket.
+# Deletes stale artifacts from the deployment-delivery-pipeline-artifacts
+# bucket: trunk (main/master) keeps the newest `trunk-revisions-to-keep`,
+# other branches keep `branch-revisions-to-keep` and expire after
+# `branch-days-to-keep` days. Call from a repo's own `schedule:` workflow,
+# like deployment.preview-cleanup-schedule.yml.
 ###
 on:
   workflow_call:
@@ -134,7 +120,7 @@ jobs:
           for DIR in $DIRS; do
             # Trunk revisions: keep the newest TRUNK_KEEP, delete the rest regardless of age.
             TRUNK_ITEMS=$(echo "$ENRICHED" | jq -c --arg dir "$DIR" --arg branches "$TRUNK_BRANCHES" \
-              '($branches | split(",")) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) != null)] | sort_by(.lastModified) | reverse')
+              '($branches | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) != null)] | sort_by(.lastModified) | reverse')
             TRUNK_COUNT=$(echo "$TRUNK_ITEMS" | jq 'length')
             if [ "$TRUNK_COUNT" -gt "$TRUNK_KEEP" ]; then
               STALE=$(echo "$TRUNK_ITEMS" | jq -c ".[${TRUNK_KEEP}:]")
@@ -144,7 +130,7 @@ jobs:
             # Branch revisions: keep the newest BRANCH_KEEP per branch, delete the
             # rest only once older than BRANCH_DAYS days.
             BRANCHES_IN_DIR=$(echo "$ENRICHED" | jq -r --arg dir "$DIR" --arg branches "$TRUNK_BRANCHES" \
-              '($branches | split(",")) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) == null) | .branch] | unique | .[]')
+              '($branches | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))) as $tb | [.[] | select(.dir == $dir) | select(.branch as $b | $tb | index($b) == null) | .branch] | unique | .[]')
             for BRANCH in $BRANCHES_IN_DIR; do
               BRANCH_ITEMS=$(echo "$ENRICHED" | jq -c --arg dir "$DIR" --arg branch "$BRANCH" \
                 '[.[] | select(.dir == $dir and .branch == $branch)] | sort_by(.lastModified) | reverse')
@@ -170,9 +156,14 @@ jobs:
           DELETE_COUNT=$(echo "$TO_DELETE" | jq 'length')
           echo "Found ${DELETE_COUNT} stale artifact(s) to delete"
 
-          echo "$TO_DELETE" | jq -c '.[]' | while read -r ITEM; do
-            KEY=$(echo "$ITEM" | jq -r '.key')
-            BRANCH=$(echo "$ITEM" | jq -r '.branch')
-            echo "Deleting s3://${S3_BUCKET}/${KEY} (branch: ${BRANCH})"
-            aws s3 rm "s3://${S3_BUCKET}/${KEY}"
-          done
+          if [ "$DELETE_COUNT" -gt 0 ]; then
+            echo "$TO_DELETE" | jq -r '.[] | "  \(.key) (branch: \(.branch))"'
+
+            # Delete in batches of up to 1000 keys, the max supported by delete-objects.
+            KEYS_JSON=$(echo "$TO_DELETE" | jq -c '[.[].key]')
+            for ((start=0; start<DELETE_COUNT; start+=1000)); do
+              DELETE_PAYLOAD=$(echo "$KEYS_JSON" | jq -c --argjson start "$start" \
+                '{Objects: [.[$start:$start+1000][] | {Key: .}], Quiet: true}')
+              aws s3api delete-objects --bucket "${S3_BUCKET}" --delete "$DELETE_PAYLOAD"
+            done
+          fi
