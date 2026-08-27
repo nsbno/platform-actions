@@ -86,11 +86,11 @@ jobs:
           AUDIENCE: ${{ inputs.audience }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
-          STATUS_CODE=$(\
+          RESPONSE=$(\
             curl \
               --silent \
-              --write-out "%{http_code}" \
-              --output /dev/null \
+              --show-error \
+              --write-out "\n%{http_code}" \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --header "Content-Type: application/json" \
               --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\"}" \
@@ -98,9 +98,12 @@ jobs:
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
           )
+          STATUS_CODE=$(printf '%s' "${RESPONSE}" | tail -n1 | tr -d '\r')
+          BODY=$(printf '%s' "${RESPONSE}" | sed '$d')
 
-          if [ ${STATUS_CODE} -ne 200 ]; then
+          if [ "${STATUS_CODE}" != "200" ]; then
             echo "Failed to persist API spec. Response code: ${STATUS_CODE}"
+            echo "Response body: ${BODY}"
             exit 1
           fi
           echo "Successfully persisted API spec"
