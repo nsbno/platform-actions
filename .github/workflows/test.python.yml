@@ -24,7 +24,7 @@ on:
         required: false
         type: string
         default: "pytest"
-        description: "UV operations to run."
+        description: "UV operations passed to uv run: uv run <operations>"
 
 jobs:
   test:
