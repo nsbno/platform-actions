@@ -3,7 +3,7 @@ name: Build Python project
 on:
   workflow_call:
     inputs:
-      python-version:
+      python_version:
         required: false
         type: string
         description: "What Python version to use."
