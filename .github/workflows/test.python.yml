@@ -20,6 +20,11 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      uv-operations:
+        required: false
+        type: string
+        default: "pytest"
+        description: "UV operations passed to uv run: uv run <operations>"
 
 jobs:
   test:
@@ -41,4 +46,4 @@ jobs:
 
       - name: Run tests
         working-directory: ${{ inputs.working-directory }}
-        run: uv run pytest
+        run: uv run ${{ inputs.uv-operations }}
