@@ -24,6 +24,30 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      uv-workspace:
+        required: false
+        type: boolean
+        default: false
+        description: >-
+          Set to true if `working-directory` is a member of a uv workspace
+          (i.e. it has local path dependencies on sibling packages declared via
+          `tool.uv.sources` with `workspace = true`, such as other packages
+          under a monorepo's `libs/` directory). When enabled, all workspace
+          members are built together and the package's local (workspace)
+          dependencies are installed from the resulting wheels instead of
+          being resolved from a package index. This avoids failures for
+          private, unpublished packages, and avoids name collisions with
+          unrelated public packages that happen to share the same name.
+      python-platform:
+        required: false
+        type: string
+        default: ""
+        description: >-
+          Optional target platform to install dependencies for, passed to
+          `uv pip install --python-platform`. Useful when the build runner's
+          architecture differs from the deployment target's, e.g.
+          "aarch64-manylinux_2_28" when building on an x86_64 runner for an
+          arm64 Lambda.
 
     outputs:
       artifact-name:
@@ -47,18 +71,73 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
-          cache-dependency-glob: "${{ inputs.working-directory }}/uv.lock"
+          cache-dependency-glob: "${{ inputs.uv-workspace && 'uv.lock' || format('{0}/uv.lock', inputs.working-directory) }}"
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ inputs.python_version }}
 
       - name: Install dependencies
+        if: ${{ !inputs.uv-workspace }}
         working-directory: ${{ inputs.working-directory }}
         run: |
           uv build
-          uv pip install dist/*.whl --target ./out
+          uv pip install dist/*.whl --target ./out ${{ inputs.python-platform != '' && format('--python-platform {0}', inputs.python-platform) || '' }}
           find ./out/ -name "__pycache__" -type d -exec rm -rf {} \;
+
+      - name: Install dependencies (uv workspace)
+        if: ${{ inputs.uv-workspace }}
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+          PYTHON_PLATFORM: ${{ inputs.python-platform }}
+        run: |
+          set -euo pipefail
+
+          # `uv build`/`uv export` for a workspace member resolve the workspace
+          # root themselves, but write relative output (e.g. `dist/`) relative
+          # to the current directory, so we always run from the repo root to
+          # get a single, predictable location for every workspace member's
+          # wheel.
+          PKG_NAME="$(python3 -c "import tomllib; print(tomllib.load(open('${WORKING_DIRECTORY}/pyproject.toml','rb'))['project']['name'])")"
+
+          # Build every workspace member once, so local (path) dependencies of
+          # this package are available as real wheels alongside it.
+          uv build --all-packages --wheel
+
+          # Pin every *third-party* dependency to the exact resolved version
+          # from the lockfile. Workspace members are intentionally excluded
+          # here (`--no-emit-workspace`) - they are installed explicitly from
+          # local wheels below instead, since they aren't published to any
+          # index and their names could otherwise collide with unrelated
+          # public packages.
+          uv export --package "$PKG_NAME" --no-emit-workspace --no-dev --no-hashes -o /tmp/uv-workspace-constraints.txt
+
+          # Discover which sibling workspace packages this package actually
+          # depends on (directly or transitively), so we install exactly the
+          # matching local wheels and nothing else.
+          uv export --package "$PKG_NAME" --no-dev --no-hashes -o /tmp/uv-workspace-full-export.txt
+
+          LOCAL_WHEELS=()
+          while IFS= read -r local_dir; do
+            [ -z "$local_dir" ] && continue
+            local_name="$(python3 -c "import tomllib; print(tomllib.load(open('${local_dir}/pyproject.toml','rb'))['project']['name'])")"
+            normalized_name="$(echo "$local_name" | tr '-' '_')"
+            wheel="$(ls dist/"${normalized_name}"-*.whl 2>/dev/null | head -n1 || true)"
+            if [ -n "$wheel" ]; then
+              LOCAL_WHEELS+=("$wheel")
+            fi
+          done < <(grep -oE '^-e \./\S+' /tmp/uv-workspace-full-export.txt | sed 's/^-e //')
+
+          mkdir -p "${WORKING_DIRECTORY}/out"
+
+          INSTALL_ARGS=(-c /tmp/uv-workspace-constraints.txt --target "${WORKING_DIRECTORY}/out")
+          if [ -n "$PYTHON_PLATFORM" ]; then
+            INSTALL_ARGS+=(--python-platform "$PYTHON_PLATFORM")
+          fi
+
+          uv pip install "${INSTALL_ARGS[@]}" "${LOCAL_WHEELS[@]}"
+
+          find "${WORKING_DIRECTORY}/out" -name "__pycache__" -type d -exec rm -rf {} \;
 
       - name: Validate and build artifact name
         id: artifact-name
