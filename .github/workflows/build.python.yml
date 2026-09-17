@@ -105,9 +105,11 @@ jobs:
           # wheel.
           PKG_NAME="$(python3 -c "import tomllib; print(tomllib.load(open('${WORKING_DIRECTORY}/pyproject.toml','rb'))['project']['name'])")"
 
+          # Creates the uv environment without updating or changing uv.lock
           # Build every workspace member once, so local (path) dependencies of
           # this package are available as real wheels alongside it.
-          uv build --all-packages --wheel --frozen
+          uv sync --frozen
+          uv build --all-packages --wheel
 
           # Pin every *third-party* dependency to the exact resolved version
           # from the lockfile. Workspace members are intentionally excluded
