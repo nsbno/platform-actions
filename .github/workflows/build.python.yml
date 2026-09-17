@@ -93,6 +93,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)"; then
+            echo "uv-workspace: true requires python_version >= 3.11 (tomllib is stdlib only from 3.11)." >&2
+            exit 1
+          fi
+
           # `uv build`/`uv export` for a workspace member resolve the workspace
           # root themselves, but write relative output (e.g. `dist/`) relative
           # to the current directory, so we always run from the repo root to
