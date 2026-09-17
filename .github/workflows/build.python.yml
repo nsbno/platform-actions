@@ -38,6 +38,8 @@ on:
           being resolved from a package index. This avoids failures for
           private, unpublished packages, and avoids name collisions with
           unrelated public packages that happen to share the same name.
+          Requires the uv workspace root (the `pyproject.toml`/`uv.lock`
+          declaring `[tool.uv.workspace]`) to be at the repository root.
       python-platform:
         required: false
         type: string
@@ -98,6 +100,15 @@ jobs:
             exit 1
           fi
 
+          # `uv sync`/`uv build --all-packages` operate on the uv workspace
+          # found from the current directory upwards, and we always run them
+          # from the repo root (see below) - so the workspace root must be
+          # the repo root itself, not some nested directory.
+          if [ ! -f "uv.lock" ] || ! grep -q '^\[tool\.uv\.workspace\]' pyproject.toml 2>/dev/null; then
+            echo "uv-workspace: true requires the uv workspace root (pyproject.toml with [tool.uv.workspace], and uv.lock) to be at the repository root." >&2
+            exit 1
+          fi
+
           # `uv build`/`uv export` for a workspace member resolve the workspace
           # root themselves, but write relative output (e.g. `dist/`) relative
           # to the current directory, so we always run from the repo root to
@@ -121,7 +132,11 @@ jobs:
 
           # Discover which sibling workspace packages this package actually
           # depends on (directly or transitively), so we install exactly the
-          # matching local wheels and nothing else.
+          # matching local wheels and nothing else. Note: `uv export` also
+          # emits an `-e <path>` entry for $PKG_NAME itself (not just its
+          # workspace dependencies), so the loop below picks up and installs
+          # its own freshly-built wheel too - there's no separate, explicit
+          # install of $PKG_NAME's wheel anywhere in this script.
           uv export --frozen --package "$PKG_NAME" --no-dev --no-hashes -o /tmp/uv-workspace-full-export.txt
 
           LOCAL_WHEELS=()
