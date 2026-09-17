@@ -130,7 +130,7 @@ jobs:
               exit 1
             fi
             LOCAL_WHEELS+=("$wheel")
-          done < <(grep -oE '^-e \./\S+' /tmp/uv-workspace-full-export.txt | sed 's/^-e //')
+          done < <(awk '$1 == "-e" { print $2 }' /tmp/uv-workspace-full-export.txt)
 
           mkdir -p "${WORKING_DIRECTORY}/out"
 
