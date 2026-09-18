@@ -86,13 +86,29 @@ runs:
           echo "Service $SERVICE_NAME already exists with ARN: $SERVICE_ARN"
           echo "service_exists=true" >> $GITHUB_OUTPUT
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+          HAS_VPC=$(echo "$DESCRIBE_OUTPUT" | jq -r 'if (.service.networkConfiguration // null) != null then "true" else "false" end' 2>/dev/null || echo "false")
+          echo "has_vpc_config=$HAS_VPC" >> $GITHUB_OUTPUT
         elif echo "$DESCRIBE_OUTPUT" | grep -q -i "ServiceNotFoundException\|not found"; then
           echo "Service $SERVICE_NAME does not exist. Will create a new one."
           echo "service_exists=false" >> $GITHUB_OUTPUT
+          echo "has_vpc_config=false" >> $GITHUB_OUTPUT
         else
           echo "Failed to describe service: $DESCRIBE_OUTPUT"
           exit 1
         fi
+
+    - name: Warn if VPC config needs to change
+      id: delete-for-vpc-change
+      if: |
+        steps.check-service.outputs.service_exists == 'true' && (
+          (inputs.use-shared-vpc == 'true' && steps.check-service.outputs.has_vpc_config == 'false') ||
+          (inputs.use-shared-vpc != 'true' && steps.check-service.outputs.has_vpc_config == 'true')
+        )
+      shell: bash
+      run: |
+        echo "::warning::The preview service exists with a different VPC configuration than requested."
+        echo "::warning::AWS does not support changing the VPC of an existing ECS Express Gateway service."
+        echo "::warning::The service will be updated on its current network. After the next preview cleanup deletes it, it will be recreated with the correct VPC config on the next deployment."
 
     - name: Prepare Environment Variables Configuration
       id: prepare-env-vars
@@ -236,11 +252,6 @@ runs:
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
-        VPC_ARGS=()
-        if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
-          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.security_group_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
-        fi
-
         aws ecs update-express-gateway-service \
           --service-arn "$SERVICE_ARN" \
           --execution-role-arn "$executionRoleArn" \
@@ -248,8 +259,7 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
-          --region "${{ inputs.aws-region }}" \
-          "${VPC_ARGS[@]}"
+          --region "${{ inputs.aws-region }}"
 
         echo "Update started! $SERVICE_ARN"
         echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
@@ -260,15 +270,21 @@ runs:
       run: |
         SERVICE_ARN="${{ steps.create-service.outputs.service_arn || steps.update-service.outputs.service_arn }}"
 
+        # The top-level service status only reflects whether the gateway/load balancer
+        # infrastructure is provisioned, not whether a task is running and healthy behind
+        # it. Wait for that infra first, then wait for the actual deployment rollout
+        # (which does track task + target-group health) to finish, so we don't report
+        # success while the service is still returning 502s.
         for i in {1..60}; do
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
           STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
           STATUS_REASON=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusReason // ""')
+          DEPLOYMENT_ARN=$(echo "$SERVICE_JSON" | jq -r '.service.currentDeployment // ""')
           SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r \
             '([.service.activeConfigurations[0].ingressPaths[]? | select(.accessType=="PUBLIC") | .endpoint][0] // "") | sub("^https?://"; "") | sub("/$"; "")')
           echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}"
-          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]]; then
-            echo "Service is active."
+          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]] && [[ -n "$DEPLOYMENT_ARN" ]]; then
+            echo "Service infrastructure is active."
             break
           fi
           sleep 10
@@ -281,6 +297,36 @@ runs:
 
         if [[ -z "$SERVICE_URL" ]]; then
           echo "Service is ACTIVE but no public ingress URL is available."
+          exit 1
+        fi
+
+        if [[ -z "$DEPLOYMENT_ARN" ]]; then
+          echo "Service is ACTIVE but no current deployment ARN is available."
+          exit 1
+        fi
+
+        echo "Waiting for deployment $DEPLOYMENT_ARN to finish rolling out (task started and passing health checks)..."
+        for i in {1..60}; do
+          DEPLOYMENT_JSON=$(aws ecs describe-service-deployments --service-deployment-arns "$DEPLOYMENT_ARN" --region ${{ inputs.aws-region }})
+          DEPLOYMENT_STATUS=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].status // ""')
+          DEPLOYMENT_STATUS_REASON=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].statusReason // ""')
+          echo "Current deployment status: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON)"
+
+          if [[ "$DEPLOYMENT_STATUS" == "SUCCESSFUL" ]]; then
+            echo "Deployment is healthy and serving traffic."
+            break
+          fi
+
+          if [[ "$DEPLOYMENT_STATUS" =~ ^(STOPPED|STOP_REQUESTED|ROLLBACK_SUCCESSFUL|ROLLBACK_FAILED)$ ]]; then
+            echo "Deployment failed: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON)"
+            exit 1
+          fi
+
+          sleep 10
+        done
+
+        if [[ "$DEPLOYMENT_STATUS" != "SUCCESSFUL" ]]; then
+          echo "Deployment did not reach SUCCESSFUL status in time."
           exit 1
         fi
 

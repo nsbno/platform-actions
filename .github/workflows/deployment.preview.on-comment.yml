@@ -71,7 +71,8 @@ jobs:
 
   preview:
     needs: trigger
-    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@v2
+    # TEMP: pinned to this branch to test the ECS Express health-wait fix; revert to @v2 before merging
+    uses: nsbno/platform-actions/.github/workflows/deployment.preview.yml@fix-preview-url-comment-before-ready
     with:
       health-endpoint: ${{ inputs.health-endpoint }}
       use-ecs-express-mode: ${{ inputs.use-ecs-express-mode }}
