@@ -45,7 +45,7 @@ jobs:
       - name: Persist file between jobs
         uses: actions/upload-artifact@v6
         with:
-          name: 'open-api-spec'
+          name: 'open-api-spec-${{ inputs.application-name }}'
           path: 'converted.json'
 
   persist-api-spec:
@@ -64,7 +64,7 @@ jobs:
       - name: Download API Spec
         uses: actions/download-artifact@v7
         with:
-          name: "open-api-spec"
+          name: "open-api-spec-${{ inputs.application-name }}"
 
       - name: Upload API Spec
         env:
