@@ -270,11 +270,6 @@ runs:
       run: |
         SERVICE_ARN="${{ steps.create-service.outputs.service_arn || steps.update-service.outputs.service_arn }}"
 
-        # The top-level service status only reflects whether the gateway/load balancer
-        # infrastructure is provisioned, not whether a task is running and healthy behind
-        # it. Wait for that infra first, then wait for the actual deployment rollout
-        # (which does track task + target-group health) to finish, so we don't report
-        # success while the service is still returning 502s.
         for i in {1..60}; do
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
           STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
@@ -306,11 +301,6 @@ runs:
         fi
 
         echo "Waiting for deployment $DEPLOYMENT_ARN to finish rolling out (task started and passing health checks)..."
-        # Blue/green-style strategies (LINEAR, CANARY, BLUE_GREEN) only reach status
-        # SUCCESSFUL after the full post-shift bake time and old-revision cleanup, but
-        # production traffic is already 100% on the new revision once the lifecycle
-        # stage passes PRODUCTION_TRAFFIC_SHIFT. Treat that as ready too, so preview
-        # deploys aren't stuck waiting out a multi-minute bake window for no reason.
         for i in {1..60}; do
           DEPLOYMENT_JSON=$(aws ecs describe-service-deployments --service-deployment-arns "$DEPLOYMENT_ARN" --region ${{ inputs.aws-region }})
           DEPLOYMENT_STATUS=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].status // ""')
