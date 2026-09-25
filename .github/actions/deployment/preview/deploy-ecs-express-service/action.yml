@@ -86,13 +86,29 @@ runs:
           echo "Service $SERVICE_NAME already exists with ARN: $SERVICE_ARN"
           echo "service_exists=true" >> $GITHUB_OUTPUT
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+          HAS_VPC=$(echo "$DESCRIBE_OUTPUT" | jq -r 'if (.service.networkConfiguration // null) != null then "true" else "false" end' 2>/dev/null || echo "false")
+          echo "has_vpc_config=$HAS_VPC" >> $GITHUB_OUTPUT
         elif echo "$DESCRIBE_OUTPUT" | grep -q -i "ServiceNotFoundException\|not found"; then
           echo "Service $SERVICE_NAME does not exist. Will create a new one."
           echo "service_exists=false" >> $GITHUB_OUTPUT
+          echo "has_vpc_config=false" >> $GITHUB_OUTPUT
         else
           echo "Failed to describe service: $DESCRIBE_OUTPUT"
           exit 1
         fi
+
+    - name: Warn if VPC config needs to change
+      id: delete-for-vpc-change
+      if: |
+        steps.check-service.outputs.service_exists == 'true' && (
+          (inputs.use-shared-vpc == 'true' && steps.check-service.outputs.has_vpc_config == 'false') ||
+          (inputs.use-shared-vpc != 'true' && steps.check-service.outputs.has_vpc_config == 'true')
+        )
+      shell: bash
+      run: |
+        echo "::warning::The preview service exists with a different VPC configuration than requested."
+        echo "::warning::AWS does not support changing the VPC of an existing ECS Express Gateway service."
+        echo "::warning::The service will be updated on its current network. After the next preview cleanup deletes it, it will be recreated with the correct VPC config on the next deployment."
 
     - name: Prepare Environment Variables Configuration
       id: prepare-env-vars
@@ -236,11 +252,6 @@ runs:
         SERVICE_ARN="${{ steps.check-service.outputs.service_arn }}"
         echo "Updating Preview: ${{ steps.set-service-variables.outputs.service_name }} ($SERVICE_ARN)..."
 
-        VPC_ARGS=()
-        if [[ "${{ inputs.use-shared-vpc }}" == "true" ]]; then
-          VPC_ARGS+=(--network-configuration "securityGroups=[${{ steps.vpc-config.outputs.security_group_id }}],subnets=[${{ steps.vpc-config.outputs.subnet_ids }}]")
-        fi
-
         aws ecs update-express-gateway-service \
           --service-arn "$SERVICE_ARN" \
           --execution-role-arn "$executionRoleArn" \
@@ -248,8 +259,7 @@ runs:
           --primary-container "$primary_container" \
           --health-check-path "$HEALTH_CHECK_ENDPOINT" \
           --scaling-target '{"minTaskCount": 1, "maxTaskCount": 1}' \
-          --region "${{ inputs.aws-region }}" \
-          "${VPC_ARGS[@]}"
+          --region "${{ inputs.aws-region }}"
 
         echo "Update started! $SERVICE_ARN"
         echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
