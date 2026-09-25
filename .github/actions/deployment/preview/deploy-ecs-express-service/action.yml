@@ -274,11 +274,12 @@ runs:
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
           STATUS=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusCode')
           STATUS_REASON=$(echo "$SERVICE_JSON" | jq -r '.service.status.statusReason // ""')
+          DEPLOYMENT_ARN=$(echo "$SERVICE_JSON" | jq -r '.service.currentDeployment // ""')
           SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r \
             '([.service.activeConfigurations[0].ingressPaths[]? | select(.accessType=="PUBLIC") | .endpoint][0] // "") | sub("^https?://"; "") | sub("/$"; "")')
           echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}"
-          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]]; then
-            echo "Service is active."
+          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]] && [[ -n "$DEPLOYMENT_ARN" ]]; then
+            echo "Service infrastructure is active."
             break
           fi
           sleep 10
@@ -291,6 +292,42 @@ runs:
 
         if [[ -z "$SERVICE_URL" ]]; then
           echo "Service is ACTIVE but no public ingress URL is available."
+          exit 1
+        fi
+
+        if [[ -z "$DEPLOYMENT_ARN" ]]; then
+          echo "Service is ACTIVE but no current deployment ARN is available."
+          exit 1
+        fi
+
+        echo "Waiting for deployment $DEPLOYMENT_ARN to finish rolling out (task started and passing health checks)..."
+        for i in {1..60}; do
+          DEPLOYMENT_JSON=$(aws ecs describe-service-deployments --service-deployment-arns "$DEPLOYMENT_ARN" --region ${{ inputs.aws-region }})
+          DEPLOYMENT_STATUS=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].status // ""')
+          DEPLOYMENT_STATUS_REASON=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].statusReason // ""')
+          LIFECYCLE_STAGE=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].lifecycleStage // ""')
+          echo "Current deployment status: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON), lifecycle stage: ${LIFECYCLE_STAGE:-<none>}"
+
+          if [[ "$DEPLOYMENT_STATUS" == "SUCCESSFUL" ]]; then
+            echo "Deployment is healthy and serving traffic."
+            break
+          fi
+
+          if [[ "$LIFECYCLE_STAGE" =~ ^(POST_PRODUCTION_TRAFFIC_SHIFT|BAKE_TIME|CLEAN_UP)$ ]]; then
+            echo "Production traffic has fully shifted to the new revision."
+            break
+          fi
+
+          if [[ "$DEPLOYMENT_STATUS" =~ ^(STOPPED|STOP_REQUESTED|ROLLBACK_REQUESTED|ROLLBACK_IN_PROGRESS|ROLLBACK_SUCCESSFUL|ROLLBACK_FAILED)$ ]]; then
+            echo "Deployment failed: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON)"
+            exit 1
+          fi
+
+          sleep 10
+        done
+
+        if [[ "$DEPLOYMENT_STATUS" != "SUCCESSFUL" ]] && [[ ! "$LIFECYCLE_STAGE" =~ ^(POST_PRODUCTION_TRAFFIC_SHIFT|BAKE_TIME|CLEAN_UP)$ ]]; then
+          echo "Deployment did not become ready in time."
           exit 1
         fi
 
