@@ -88,6 +88,9 @@ runs:
           echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
           HAS_VPC=$(echo "$DESCRIBE_OUTPUT" | jq -r 'if (.service.networkConfiguration // null) != null then "true" else "false" end' 2>/dev/null || echo "false")
           echo "has_vpc_config=$HAS_VPC" >> $GITHUB_OUTPUT
+          # Needed so the wait step can detect when the new deployment (not this stale one) becomes current
+          PREVIOUS_DEPLOYMENT_ARN=$(echo "$DESCRIBE_OUTPUT" | jq -r '.service.currentDeployment // ""')
+          echo "previous_deployment_arn=$PREVIOUS_DEPLOYMENT_ARN" >> $GITHUB_OUTPUT
         elif echo "$DESCRIBE_OUTPUT" | grep -q -i "ServiceNotFoundException\|not found"; then
           echo "Service $SERVICE_NAME does not exist. Will create a new one."
           echo "service_exists=false" >> $GITHUB_OUTPUT
@@ -269,6 +272,7 @@ runs:
       shell: bash
       run: |
         SERVICE_ARN="${{ steps.create-service.outputs.service_arn || steps.update-service.outputs.service_arn }}"
+        PREVIOUS_DEPLOYMENT_ARN="${{ steps.check-service.outputs.previous_deployment_arn }}"
 
         for i in {1..60}; do
           SERVICE_JSON=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region ${{ inputs.aws-region }})
@@ -277,9 +281,9 @@ runs:
           DEPLOYMENT_ARN=$(echo "$SERVICE_JSON" | jq -r '.service.currentDeployment // ""')
           SERVICE_URL=$(echo "$SERVICE_JSON" | jq -r \
             '([.service.activeConfigurations[0].ingressPaths[]? | select(.accessType=="PUBLIC") | .endpoint][0] // "") | sub("^https?://"; "") | sub("/$"; "")')
-          echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}"
-          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]] && [[ -n "$DEPLOYMENT_ARN" ]]; then
-            echo "Service infrastructure is active."
+          echo "Current status: $STATUS ($STATUS_REASON), URL: ${SERVICE_URL:-<not yet available>}, deployment: ${DEPLOYMENT_ARN:-<none>}"
+          if [[ "$STATUS" == "ACTIVE" ]] && [[ -n "$SERVICE_URL" ]] && [[ -n "$DEPLOYMENT_ARN" ]] && [[ "$DEPLOYMENT_ARN" != "$PREVIOUS_DEPLOYMENT_ARN" ]]; then
+            echo "Service infrastructure is active with a new deployment."
             break
           fi
           sleep 10
@@ -297,6 +301,11 @@ runs:
 
         if [[ -z "$DEPLOYMENT_ARN" ]]; then
           echo "Service is ACTIVE but no current deployment ARN is available."
+          exit 1
+        fi
+
+        if [[ "$DEPLOYMENT_ARN" == "$PREVIOUS_DEPLOYMENT_ARN" ]]; then
+          echo "Service is ACTIVE but is still on the previous deployment ($PREVIOUS_DEPLOYMENT_ARN); the new deployment has not started yet."
           exit 1
         fi
 
