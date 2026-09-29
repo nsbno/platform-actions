@@ -51,6 +51,11 @@ on:
         type: string
         default: "build/reports/tests/test"
         description: "Relative path (from working-directory) to the Gradle test report directory."
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run the build on. Defaults to the recommended one, but you can choose others where needed. Make sure to consider the additional cost of bigger runners."
 
     outputs:
       artifact-name:
@@ -63,7 +68,7 @@ on:
 jobs:
   build:
     name: Gradle Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v6
