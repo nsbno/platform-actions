@@ -317,6 +317,11 @@ runs:
           LIFECYCLE_STAGE=$(echo "$DEPLOYMENT_JSON" | jq -r '.serviceDeployments[0].lifecycleStage // ""')
           echo "Current deployment status: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON), lifecycle stage: ${LIFECYCLE_STAGE:-<none>}"
 
+          if [[ "$DEPLOYMENT_STATUS" =~ ^(STOPPED|STOP_REQUESTED|ROLLBACK_REQUESTED|ROLLBACK_IN_PROGRESS|ROLLBACK_SUCCESSFUL|ROLLBACK_FAILED)$ ]]; then
+            echo "Deployment failed: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON)"
+            exit 1
+          fi
+
           if [[ "$DEPLOYMENT_STATUS" == "SUCCESSFUL" ]]; then
             echo "Deployment is healthy and serving traffic."
             break
@@ -325,11 +330,6 @@ runs:
           if [[ "$LIFECYCLE_STAGE" =~ ^(POST_PRODUCTION_TRAFFIC_SHIFT|BAKE_TIME|CLEAN_UP)$ ]]; then
             echo "Production traffic has fully shifted to the new revision."
             break
-          fi
-
-          if [[ "$DEPLOYMENT_STATUS" =~ ^(STOPPED|STOP_REQUESTED|ROLLBACK_REQUESTED|ROLLBACK_IN_PROGRESS|ROLLBACK_SUCCESSFUL|ROLLBACK_FAILED)$ ]]; then
-            echo "Deployment failed: $DEPLOYMENT_STATUS ($DEPLOYMENT_STATUS_REASON)"
-            exit 1
           fi
 
           sleep 10
