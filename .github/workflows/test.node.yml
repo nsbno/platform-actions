@@ -43,11 +43,16 @@ on:
         type: string
         description: "Which version of PNPM to use."
         default: "10"
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
 
 jobs:
   test:
     name: Test Node.js project
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v6

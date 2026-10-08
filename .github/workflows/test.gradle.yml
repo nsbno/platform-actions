@@ -53,7 +53,7 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
-        description: "The GitHub runner to run the build on. Defaults to the recommended one, but you can choose others where needed. Make sure to consider the additional cost of bigger runners."
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
 
 jobs:
   test:

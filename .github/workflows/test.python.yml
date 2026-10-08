@@ -20,6 +20,7 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
       uv-operations:
         required: false
         type: string

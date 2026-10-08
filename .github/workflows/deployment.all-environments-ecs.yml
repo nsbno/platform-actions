@@ -61,6 +61,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      terraform-runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
       ecr-repository-names:
         description: "List of ECR repository names for multi-service in one Terraform config (JSON array format)."
         type: string
@@ -115,6 +120,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      runs-on: ${{ inputs.terraform-runs-on }}
 
   dev-terraform:
     name: Dev - Terraform
@@ -137,6 +143,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      runs-on: ${{ inputs.terraform-runs-on }}
 
   dev-ecs-service:
     name: Dev - ECS Service
@@ -181,6 +188,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      runs-on: ${{ inputs.terraform-runs-on }}
 
   test-ecs-service:
     name: Test - ECS Service
@@ -225,6 +233,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      runs-on: ${{ inputs.terraform-runs-on }}
 
   stage-ecs-service:
     name: Stage - ECS Service
@@ -272,6 +281,7 @@ jobs:
       working-directory: ${{ inputs.working-directory }}
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+      runs-on: ${{ inputs.terraform-runs-on }}
 
   production-ecs-service:
     name: Prod - ECS Service
