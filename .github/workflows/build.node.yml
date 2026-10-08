@@ -47,6 +47,11 @@ on:
         type: string
         description: "Git SHA to use for versioning"
         default: ${{ github.event.pull_request.head.sha || github.sha }}
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
 
     outputs:
       artifact-name:
@@ -59,7 +64,7 @@ on:
 jobs:
   build:
     name: node build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
 
     steps:
       - uses: actions/checkout@v6
