@@ -1,3 +1,6 @@
+# This workflow is a more general replacement of helpers.upload-api-spec.yml and is meant
+# as a drop-in replacement for that workflow. The added features of this workflow is to allow
+# for handling AsyncAPI and GraphQL specs in addition to the existing support for OpenAPI specs.
 name: Upload API specs
 on:
   workflow_call:
