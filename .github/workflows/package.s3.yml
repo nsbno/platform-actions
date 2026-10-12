@@ -35,6 +35,11 @@ on:
         type: string
         description: "AWS region to use."
         default: 'eu-west-1'
+      include-hidden-files:
+        required: false
+        type: boolean
+        description: "Include hidden files and folders (dotfiles) in the zip."
+        default: false
 
 name: Package artifact to S3
 
@@ -75,7 +80,11 @@ jobs:
             fi
           fi
 
-          zip -r "$ZIP_FILE" ./*
+          if [ "${{ inputs.include-hidden-files }}" = "true" ]; then
+            zip -r "$ZIP_FILE" .
+          else
+            zip -r "$ZIP_FILE" ./*
+          fi
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v6
