@@ -1,0 +1,217 @@
+# This workflow is a more general replacement of helpers.upload-api-spec.yml and is meant
+# as a drop-in replacement for that workflow. The added features of this workflow is to allow
+# for handling AsyncAPI and GraphQL specs in addition to the existing support for OpenAPI specs.
+name: Upload API specs
+on:
+  workflow_call:
+    inputs:
+      application-name:
+        type: string
+        required: true
+        description: "Name of the service. Will be used as folder name in S3."
+      openapi-spec-path:
+        type: string
+        default: ""
+        description: "Path to your OpenAPI spec (YAML or JSON)"
+      asyncapi-spec-path:
+        type: string
+        default: ""
+        description: "Path to your AsyncAPI spec (YAML or JSON)"
+      graphql-schema-path:
+        type: string
+        default: ""
+        description: "Path to your GraphQL schema"
+      graphql-title:
+        type: string
+        default: ""
+        description: "Title of the API in the API portal. Required when the GraphQL schema is the only API spec."
+      graphql-description:
+        type: string
+        default: ""
+        description: "Description of the API in the API portal. Required when the GraphQL schema is the only API spec."
+      api-reference-persist-url:
+        description: "The domain of the persist API"
+        type: string
+        default: "api-reference-persist.common-services.vydev.io"
+      api-reference-s3-bucket:
+        description: "The S3 Bucket of the API Reference Service"
+        type: string
+        default: "727646359971-api-portal-artifacts"
+      graphql-schema-to-markdown-url:
+        description: "The domain of the GraphQL schema to Markdown conversion API"
+        type: string
+        default: "graphql-schema-to-markdown.common-services.vydev.io"
+      audience:
+        description: "Audience for the API reference (internal, external, or private)"
+        type: string
+        default: "internal"
+
+permissions:
+  contents: read
+  id-token: write
+
+# Upload API specs to the API portal.
+# Supported API Types: OpenAPI, AsyncAPI and GraphQL.
+#
+# The API portal reads the service title and description from `info` in the
+# OpenAPI or AsyncAPI spec. GraphQL schemas have no such field, so when the
+# GraphQL schema is the only spec we generate a `graphql.json` holding them.
+jobs:
+  prepare-api-specs:
+    name: Prepare API specs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check inputs
+        env:
+          OPENAPI_SPEC_PATH: ${{ inputs.openapi-spec-path }}
+          ASYNCAPI_SPEC_PATH: ${{ inputs.asyncapi-spec-path }}
+          GRAPHQL_SCHEMA_PATH: ${{ inputs.graphql-schema-path }}
+          GRAPHQL_TITLE: ${{ inputs.graphql-title }}
+          GRAPHQL_DESCRIPTION: ${{ inputs.graphql-description }}
+        run: |
+          if [ -z "${OPENAPI_SPEC_PATH}" ] && [ -z "${ASYNCAPI_SPEC_PATH}" ]; then
+            if [ -z "${GRAPHQL_SCHEMA_PATH}" ]; then
+              echo "::error::At least one of 'openapi-spec-path', 'asyncapi-spec-path' or 'graphql-schema-path' must be provided."
+              exit 1
+            fi
+            if [ -z "${GRAPHQL_TITLE}" ] || [ -z "${GRAPHQL_DESCRIPTION}" ]; then
+              echo "::error::'graphql-title' and 'graphql-description' must be provided when the GraphQL schema is the only API spec."
+              exit 1
+            fi
+          fi
+
+      - uses: actions/checkout@v6
+
+      - name: Convert OpenAPI spec to JSON
+        if: inputs.openapi-spec-path != ''
+        uses: mikefarah/yq@v4.40.5
+        with:
+          cmd: yq -o=json '.' '${{ inputs.openapi-spec-path }}' > 'openapi.json'
+
+      - name: Convert AsyncAPI spec to JSON
+        if: inputs.asyncapi-spec-path != ''
+        uses: mikefarah/yq@v4.40.5
+        with:
+          cmd: yq -o=json '.' '${{ inputs.asyncapi-spec-path }}' > 'asyncapi.json'
+
+      - name: Copy GraphQL schema
+        if: inputs.graphql-schema-path != ''
+        env:
+          GRAPHQL_SCHEMA_PATH: ${{ inputs.graphql-schema-path }}
+        run: cp "${GRAPHQL_SCHEMA_PATH}" graphql.graphql
+
+      - name: Generate GraphQL API metadata
+        if: inputs.graphql-schema-path != '' && inputs.openapi-spec-path == '' && inputs.asyncapi-spec-path == ''
+        env:
+          GRAPHQL_TITLE: ${{ inputs.graphql-title }}
+          GRAPHQL_DESCRIPTION: ${{ inputs.graphql-description }}
+        run: |
+          jq --null-input \
+            --arg title "${GRAPHQL_TITLE}" \
+            --arg description "${GRAPHQL_DESCRIPTION}" \
+            '{info: {title: $title, description: $description}}' > graphql.json
+
+      - name: Persist files between jobs
+        uses: actions/upload-artifact@v6
+        with:
+          name: 'api-specs-${{ inputs.application-name }}'
+          path: |
+            openapi.json
+            asyncapi.json
+            graphql.graphql
+            graphql.json
+          if-no-files-found: error
+
+  persist-api-specs:
+    name: Persist API specs to the API portal
+    needs:
+      - prepare-api-specs
+    runs-on: ubuntu-latest
+    environment: 'Service'
+    steps:
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
+
+      - name: Download API specs
+        uses: actions/download-artifact@v7
+        with:
+          name: "api-specs-${{ inputs.application-name }}"
+
+      # All specs must be in S3 before persisting, as the persist API registers
+      # every spec type it finds in the service's S3 folder.
+      - name: Upload API specs
+        env:
+          S3_BUCKET: ${{ inputs.api-reference-s3-bucket }}
+          S3_FOLDER: ${{ inputs.application-name }}
+        run: |
+          for SPEC_FILE in openapi.json asyncapi.json graphql.graphql graphql.json; do
+            if [ -f "${SPEC_FILE}" ]; then
+              aws s3 cp "${SPEC_FILE}" "s3://${S3_BUCKET}/${S3_FOLDER}/${SPEC_FILE}" --acl bucket-owner-full-control
+            fi
+          done
+
+      - name: Convert GraphQL schema to Markdown
+        if: inputs.graphql-schema-path != ''
+        env:
+          REGION: ${{ vars.AWS_REGION }}
+          CONVERT_URL: ${{ inputs.graphql-schema-to-markdown-url }}
+          APPLICATION_NAME: ${{ inputs.application-name }}
+        run: |
+          echo "Converting GraphQL schema for ${APPLICATION_NAME} using ${CONVERT_URL}"
+          RESPONSE=$(\
+            curl \
+              --silent \
+              --show-error \
+              --write-out "\n%{http_code}" \
+              --request GET "https://${CONVERT_URL}/${APPLICATION_NAME}/convert" \
+              --aws-sigv4 "aws:amz:${REGION}:execute-api" \
+              --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
+              --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
+          )
+          STATUS_CODE=$(printf '%s' "${RESPONSE}" | tail -n1 | tr -d '\r')
+          BODY=$(printf '%s' "${RESPONSE}" | sed '$d')
+
+          if [ "${STATUS_CODE}" != "200" ]; then
+            echo "Failed to convert GraphQL schema. Response code: ${STATUS_CODE}"
+            echo "Response body: ${BODY}"
+            exit 1
+          fi
+          echo "Successfully converted GraphQL schema"
+
+      # The title and description shown in the API portal are read from the spec
+      # matching SPEC_TYPE, so we prefer OpenAPI, then AsyncAPI, then GraphQL.
+      - name: Validate and persist the specs to the API portal
+        env:
+          REPO: ${{ github.event.repository.name }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          REGION: ${{ vars.AWS_REGION }}
+          PERSIST_URL: ${{ inputs.api-reference-persist-url }}
+          APPLICATION_NAME: ${{ inputs.application-name }}
+          SPEC_TYPE: ${{ inputs.openapi-spec-path != '' && 'openapi' || inputs.asyncapi-spec-path != '' && 'asyncapi' || 'graphql' }}
+          AUDIENCE: ${{ inputs.audience }}
+        run: |
+          echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
+          RESPONSE=$(\
+            curl \
+              --silent \
+              --show-error \
+              --write-out "\n%{http_code}" \
+              --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
+              --header "Content-Type: application/json" \
+              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\"}" \
+              --aws-sigv4 "aws:amz:${REGION}:execute-api" \
+              --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
+              --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
+          )
+          STATUS_CODE=$(printf '%s' "${RESPONSE}" | tail -n1 | tr -d '\r')
+          BODY=$(printf '%s' "${RESPONSE}" | sed '$d')
+
+          if [ "${STATUS_CODE}" != "200" ]; then
+            echo "Failed to persist API spec. Response code: ${STATUS_CODE}"
+            echo "Response body: ${BODY}"
+            exit 1
+          fi
+          echo "Successfully persisted API spec"
