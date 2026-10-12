@@ -81,7 +81,7 @@ jobs:
           fi
 
           if [ "${{ inputs.include-hidden-files }}" = "true" ]; then
-            zip -r "$ZIP_FILE" .
+            zip -r "$ZIP_FILE" . -x '.git' '.git/' '.git/*'
           else
             zip -r "$ZIP_FILE" ./*
           fi
