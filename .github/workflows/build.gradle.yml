@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         default: "build"  # Default for Gradle.
+      cache-read-only:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to only read from cache."
       gradle-operations:
         required: false
         type: string
@@ -83,6 +88,7 @@ jobs:
           java-distribution: ${{ inputs.java-distribution }}
           gradle-operations: ${{ inputs.gradle-operations }}
           working-directory: ${{ inputs.working-directory }}
+          cache-read-only: ${{ inputs.cache-read-only }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           # if exists
