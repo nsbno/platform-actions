@@ -9,10 +9,10 @@ on:
         type: string
         required: true
         description: "Name of the service. Will be used as folder name in S3."
-      sub-team-name:
+      child-team-name:
         type: string
         default: ""
-        description: "The name of the owner sub team. Used when the parent team includes multiple sub-teams like Vy Digital. Optional."
+        description: "The name of the owner child team. Used when the parent team includes multiple child-teams like Vy Digital. Optional."
       openapi-spec-path:
         type: string
         default: ""
@@ -196,7 +196,7 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: ${{ inputs.openapi-spec-path != '' && 'openapi' || inputs.asyncapi-spec-path != '' && 'asyncapi' || 'graphql' }}
           AUDIENCE: ${{ inputs.audience }}
-          SUB_TEAM_NAME: ${{ inputs.sub-team-name }}
+          CHILD_TEAM_NAME: ${{ inputs.child-team-name }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
           RESPONSE=$(\
@@ -206,7 +206,7 @@ jobs:
               --write-out "\n%{http_code}" \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --header "Content-Type: application/json" \
-              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\", \"sub_team\": \"${SUB_TEAM_NAME}\"}" \
+              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\", \"child_team\": \"${CHILD_TEAM_NAME}\"}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
