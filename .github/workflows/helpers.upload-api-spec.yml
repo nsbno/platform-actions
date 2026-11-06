@@ -9,6 +9,10 @@ on:
         type: string
         required: true
         description: "Name of the service. Will be used as folder name in S3."
+      child-team-name:
+        type: string
+        default: ""
+        description: "The name of the owner child team. Used when the parent team includes multiple child-teams like Vy Digital. Optional."
       openapi-spec-path:
         type: string
         default: ""
@@ -29,6 +33,10 @@ on:
         type: string
         default: ""
         description: "Description of the API in the API portal. Required when the GraphQL schema is the only API spec."
+      artifact-name:
+        type: string
+        default: ""
+        description: "Optional. Name of a build artifact (e.g. from build.gradle.yml) containing generated specs. When set, the artifact is downloaded and the spec paths are resolved relative to its root instead of the repository checkout."
       api-reference-persist-url:
         description: "The domain of the persist API"
         type: string
@@ -82,22 +90,29 @@ jobs:
 
       - uses: actions/checkout@v6
 
+      - name: Download build artifact
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: artifact-download
+
       - name: Convert OpenAPI spec to JSON
         if: inputs.openapi-spec-path != ''
         uses: mikefarah/yq@v4.40.5
         with:
-          cmd: yq -o=json '.' '${{ inputs.openapi-spec-path }}' > 'openapi.json'
+          cmd: yq -o=json '.' '${{ inputs.artifact-name != '' && 'artifact-download/' || '' }}${{ inputs.openapi-spec-path }}' > 'openapi.json'
 
       - name: Convert AsyncAPI spec to JSON
         if: inputs.asyncapi-spec-path != ''
         uses: mikefarah/yq@v4.40.5
         with:
-          cmd: yq -o=json '.' '${{ inputs.asyncapi-spec-path }}' > 'asyncapi.json'
+          cmd: yq -o=json '.' '${{ inputs.artifact-name != '' && 'artifact-download/' || '' }}${{ inputs.asyncapi-spec-path }}' > 'asyncapi.json'
 
       - name: Copy GraphQL schema
         if: inputs.graphql-schema-path != ''
         env:
-          GRAPHQL_SCHEMA_PATH: ${{ inputs.graphql-schema-path }}
+          GRAPHQL_SCHEMA_PATH: ${{ inputs.artifact-name != '' && 'artifact-download/' || '' }}${{ inputs.graphql-schema-path }}
         run: cp "${GRAPHQL_SCHEMA_PATH}" graphql.graphql
 
       - name: Generate GraphQL API metadata
@@ -192,8 +207,14 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
           SPEC_TYPE: ${{ inputs.openapi-spec-path != '' && 'openapi' || inputs.asyncapi-spec-path != '' && 'asyncapi' || 'graphql' }}
           AUDIENCE: ${{ inputs.audience }}
+          CHILD_TEAM_NAME: ${{ inputs.child-team-name }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
+          PAYLOAD=$(jq -n \
+            --arg repository "${REPO}" \
+            --arg audience "${AUDIENCE}" \
+            --arg child_team "${CHILD_TEAM_NAME}" \
+            '{repository: $repository, audience: $audience, child_team: $child_team}')
           RESPONSE=$(\
             curl \
               --silent \
@@ -201,7 +222,7 @@ jobs:
               --write-out "\n%{http_code}" \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --header "Content-Type: application/json" \
-              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\"}" \
+              --data "${PAYLOAD}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
