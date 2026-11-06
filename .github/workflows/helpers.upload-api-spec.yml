@@ -176,6 +176,11 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
         run: |
           echo "Converting GraphQL schema for ${APPLICATION_NAME} using ${CONVERT_URL}"
+          PAYLOAD=$(jq -n \
+            --arg repository "${REPO}" \
+            --arg audience "${AUDIENCE}" \
+            --arg child_team "${CHILD_TEAM_NAME}" \
+            '{repository: $repository, audience: $audience, child_team: $child_team}')
           RESPONSE=$(\
             curl \
               --silent \
@@ -217,7 +222,7 @@ jobs:
               --write-out "\n%{http_code}" \
               --request POST "https://${PERSIST_URL}/persist/${APPLICATION_NAME}/${AWS_ACCOUNT_ID}/${SPEC_TYPE}" \
               --header "Content-Type: application/json" \
-              --data "{\"repository\": \"${REPO}\", \"audience\": \"${AUDIENCE}\", \"child_team\": \"${CHILD_TEAM_NAME}\"}" \
+              --data "${PAYLOAD}" \
               --aws-sigv4 "aws:amz:${REGION}:execute-api" \
               --user "$AWS_ACCESS_KEY_ID:${AWS_SECRET_ACCESS_KEY}" \
               --header "X-Amz-Security-Token: ${AWS_SESSION_TOKEN}"
