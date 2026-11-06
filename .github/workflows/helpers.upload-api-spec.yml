@@ -176,11 +176,6 @@ jobs:
           APPLICATION_NAME: ${{ inputs.application-name }}
         run: |
           echo "Converting GraphQL schema for ${APPLICATION_NAME} using ${CONVERT_URL}"
-          PAYLOAD=$(jq -n \
-            --arg repository "${REPO}" \
-            --arg audience "${AUDIENCE}" \
-            --arg child_team "${CHILD_TEAM_NAME}" \
-            '{repository: $repository, audience: $audience, child_team: $child_team}')
           RESPONSE=$(\
             curl \
               --silent \
@@ -215,6 +210,11 @@ jobs:
           CHILD_TEAM_NAME: ${{ inputs.child-team-name }}
         run: |
           echo "Persisting ${SPEC_TYPE} spec for ${APPLICATION_NAME} to ${PERSIST_URL} with audience ${AUDIENCE}"
+          PAYLOAD=$(jq -n \
+            --arg repository "${REPO}" \
+            --arg audience "${AUDIENCE}" \
+            --arg child_team "${CHILD_TEAM_NAME}" \
+            '{repository: $repository, audience: $audience, child_team: $child_team}')
           RESPONSE=$(\
             curl \
               --silent \
