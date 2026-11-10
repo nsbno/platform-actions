@@ -6,7 +6,7 @@ Computes a library version from the latest `<tag-prefix>X.Y.Z` git tag and the `
 `release:minor` or `release:patch` label on the pull request. It works on its own, so it can be used by
 library workflows for any build tool (Gradle, Maven, npm, ...).
 
-Used by [`publish.gradle-library.yml`](../../workflows/publish.gradle-library.md), which also documents
+Used by [`publish-library.gradle.yml`](../../workflows/publish-library.gradle.md), which also documents
 the versioning rules in full.
 
 ## Example

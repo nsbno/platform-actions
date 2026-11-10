@@ -1,7 +1,7 @@
 # Library releases: one-time setup
 
 How to set up a library repository to publish with
-[`publish.gradle-library.yml`](../workflows/publish.gradle-library.md).
+[`publish-library.gradle.yml`](../workflows/publish-library.gradle.md).
 After this, releases happen by adding a `release:*` label to a pull request and merging it.
 
 ## 1. Create the release labels
@@ -57,7 +57,7 @@ version=0.0.0-LOCAL-SNAPSHOT
 
 ## 5. Add the workflow
 
-Add the example caller from the [workflow docs](../workflows/publish.gradle-library.md#example), and
+Add the example caller from the [workflow docs](../workflows/publish-library.gradle.md#example), and
 remove any old publish workflow so the library isn't published twice.
 
 ## Releasing

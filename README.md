@@ -97,7 +97,7 @@ This way, the correct tag will exist for the deploy stage.
 ### Publish
 Workflows prefixed with publish build, test and publish libraries.
 
-- [`publish.gradle-library.yml`](docs/workflows/publish.gradle-library.md): builds, tests and publishes
+- [`publish-library.gradle.yml`](docs/workflows/publish-library.gradle.md): builds, tests and publishes
   a Gradle library to Nexus, with automatic releases from `release:major|minor|patch` PR labels.
   First time? See the [library releases setup guide](docs/guides/library-releases.md).
 

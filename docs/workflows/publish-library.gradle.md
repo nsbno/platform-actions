@@ -1,6 +1,6 @@
 # Publish Gradle library
 
-**Workflow:** [`.github/workflows/publish.gradle-library.yml`](../../.github/workflows/publish.gradle-library.yml)
+**Workflow:** [`.github/workflows/publish-library.gradle.yml`](../../.github/workflows/publish-library.gradle.yml)
 
 Builds, tests and publishes an internal JVM library to Nexus with Gradle's `maven-publish`.
 Releases happen automatically when a pull request with a release label is merged to the default branch.
@@ -25,7 +25,7 @@ permissions:
   pull-requests: read   # read labels of the merged PR
 jobs:
   publish:
-    uses: nsbno/platform-actions/.github/workflows/publish.gradle-library.yml@v2
+    uses: nsbno/platform-actions/.github/workflows/publish-library.gradle.yml@v2
     with:
       java-version: "17"
     secrets: inherit
@@ -47,7 +47,7 @@ The `labeled` and `unlabeled` triggers make the PR run update when release label
 
 ## Inputs
 
-All inputs are optional. See the [workflow file](../../.github/workflows/publish.gradle-library.yml)
+All inputs are optional. See the [workflow file](../../.github/workflows/publish-library.gradle.yml)
 for the full list with descriptions and defaults. The most common ones:
 
 - `java-version` (default `"21"`) and `java-distribution` (default `temurin`)

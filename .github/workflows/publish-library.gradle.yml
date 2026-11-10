@@ -95,7 +95,7 @@ on:
         value: ${{ jobs.publish.outputs.is-release }}
 
 concurrency:
-  group: publish-gradle-library-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  group: publish-library-gradle-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

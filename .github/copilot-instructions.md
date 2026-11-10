@@ -75,6 +75,7 @@ Documentation is moving from `README.md` into `docs/`, one file per workflow or 
 | Test | `test.<language>.yml` | `test.python.yml` |
 | Lint | `lint.<tool>.yml` | `lint.terraform.yml` |
 | Package | `package.<target>.yml` | `package.docker.yml` |
+| Publish library | `publish-library.<language>.yml` | `publish-library.gradle.yml` |
 | Deploy | `deployment.<scope>.yml` | `deployment.single-environment.yml` |
 | Deploy (preview) | `deployment.preview*.yml` | `deployment.preview-spa.yml` |
 | Deploy (comment) | `deployment.*.on-comment.yml` | `deployment.preview.on-comment.yml` |
