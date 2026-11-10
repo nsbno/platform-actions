@@ -112,7 +112,7 @@ jobs:
           fetch-depth: '0' # Fetch all tags to find the latest release
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      - uses: nsbno/platform-actions/.github/actions/tools/library-version@v2
+      - uses: nsbno/platform-actions/.github/actions/tools/library-version@feat/publish-gradle-library
         id: version
         with:
           tag-prefix: ${{ inputs.tag-prefix }}
