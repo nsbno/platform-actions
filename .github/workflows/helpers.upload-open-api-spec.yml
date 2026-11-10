@@ -14,6 +14,10 @@ on:
         type: string
         default: ""
         description: "The name of the child team that owns the resource. Used when a parent team contains multiple child teams (e.g. Vy Digital). Optional"
+      artifact-name:
+        type: string
+        default: ""
+        description: "Optional. Name of a build artifact (e.g. from build.gradle.yml) containing the generated spec. When set, the artifact is downloaded and open-api-spec-path is resolved relative to its root instead of the repository checkout."
       api-reference-persist-url:
         description: "The domain of the persist API"
         type: string
@@ -41,10 +45,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Download build artifact
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: artifact-download
+
       - name: Convert from YAML to JSON
         uses: mikefarah/yq@v4.40.5
         with:
-          cmd: yq -o=json '.' '${{ inputs.open-api-spec-path }}' > 'converted.json'
+          cmd: yq -o=json '.' '${{ inputs.artifact-name != '' && 'artifact-download/' || '' }}${{ inputs.open-api-spec-path }}' > 'converted.json'
 
       - name: Persist file between jobs
         uses: actions/upload-artifact@v6
