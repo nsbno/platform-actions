@@ -201,7 +201,19 @@ are declarations, not exposures.
 
 ---
 
-## 8. Report findings
+## 8. Check documentation
+
+Workflows and actions are documented in `docs/` (see the "Documentation" section in
+`.github/copilot-instructions.md`):
+
+- A **new** workflow or action without a file in `docs/workflows/` or `docs/actions/` is a ⚠️ warning.
+- A change to inputs, outputs, permissions or behaviour of a workflow or action that has a docs file,
+  without a matching docs update, is a ⚠️ warning.
+- Existing workflows that are still only documented in `README.md` are not a finding.
+
+---
+
+## 9. Report findings
 
 Structure your report as:
 

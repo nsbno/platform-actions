@@ -97,73 +97,9 @@ This way, the correct tag will exist for the deploy stage.
 ### Publish
 Workflows prefixed with publish build, test and publish libraries.
 
-#### Gradle library (`publish.gradle-library.yml`)
-Builds, tests and publishes an internal JVM library to Nexus with Gradle's `maven-publish`.
-Releases happen automatically when a pull request with a release label is merged to the default branch.
-The workflow never pushes commits; the version comes from git tags and is passed to Gradle as
-`-Pversion=<version>`, which overrides `version` in `gradle.properties`.
-
-The latest tag matching `<tag-prefix>X.Y.Z` (default `v`) is the latest release. If there is none,
-`initial-version` (default `0.0.0`) is used and a warning is shown.
-Add at most one release label to the pull request (more than one fails the run, other labels are ignored):
-
-| Label           | Next version (from `2.3.0`) |
-|-----------------|-----------------------------|
-| `release:major` | `3.0.0`                     |
-| `release:minor` | `2.4.0`                     |
-| `release:patch` | `2.3.1`                     |
-| no label        | `2.3.1` (snapshot only)     |
-
-| Event                                                          | Published version         | Result                                  |
-|----------------------------------------------------------------|---------------------------|-----------------------------------------|
-| `pull_request`                                                 | `<next>-PR<number>-SNAPSHOT` | Snapshot (one per PR)                |
-| `push` to default branch, merged PR without release label      | `<X.Y.Z+1>-SNAPSHOT`      | Snapshot                                |
-| `push` to default branch, merged PR with release label         | `<next>`                  | Release, tag `<prefix><next>` and GitHub Release |
-| Any other event or branch                                      | `<next>-SNAPSHOT`         | Snapshot                                |
-
-On push, the merged PR is found from the pushed commit. Squash, merge-commit and rebase merges are all supported:
-the lookup is retried briefly (GitHub can link the commit to the PR slightly after the push), prefers the PR
-whose merge commit is exactly the pushed commit, and falls back to the PR number in the commit message
-(`... (#123)` or `Merge pull request #123 ...`) if GitHub confirms that PR was merged as that commit.
-If no PR can be found, a snapshot is published. Releases fail before publishing if
-the tag already exists, and the tag/GitHub Release is only created after a successful publish.
-Set `create-github-release: false` to only push the tag. Test results and JaCoCo coverage are written to the
-job summary, and the reports are uploaded as an artifact.
-
-The version logic is also available as a standalone composite action,
-`nsbno/platform-actions/.github/actions/tools/library-version@v2`, for other library types.
-
-```yaml
-name: Build and publish
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
-  push:
-    branches: [main]
-permissions:
-  contents: write       # create tags and GitHub Releases
-  pull-requests: read   # read labels of the merged PR
-jobs:
-  publish:
-    uses: nsbno/platform-actions/.github/workflows/publish.gradle-library.yml@v2
-    with:
-      java-version: "17"
-    secrets: inherit
-```
-
-**One-time setup per repository:**
-1. Create the labels:
-   ```shell
-   gh label create release:major --color B60205 --description "Release a new major version on merge"
-   gh label create release:minor --color FBCA04 --description "Release a new minor version on merge"
-   gh label create release:patch --color 0E8A16 --description "Release a new patch version on merge"
-   ```
-2. If there are no `vX.Y.Z` tags yet, tag the latest existing release, e.g.
-   `git tag v2.3.0 <sha> && git push origin v2.3.0`.
-3. Make sure `build.gradle.kts` selects the repository from the version suffix, e.g.
-   `if (version.toString().endsWith("SNAPSHOT")) "maven-snapshots-v2" else "maven-releases"`,
-   and reads credentials from `NEXUS_USERNAME`/`NEXUS_PASSWORD`.
-4. Set `version=0.0.0-LOCAL-SNAPSHOT` in `gradle.properties` for local builds.
+- [`publish.gradle-library.yml`](docs/workflows/publish.gradle-library.md): builds, tests and publishes
+  a Gradle library to Nexus, with automatic releases from `release:major|minor|patch` PR labels.
+  First time? See the [library releases setup guide](docs/guides/library-releases.md).
 
 ### Deploy
 Workflows prefixed with deploy are meant to simplify the process of deploying code.
