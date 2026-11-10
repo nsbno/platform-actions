@@ -52,13 +52,26 @@ for the full list with descriptions and defaults. The most common ones:
 
 - `java-version` (default `"21"`) and `java-distribution` (default `temurin`)
 - `working-directory` (default `.`)
-- `gradle-operations` (default `check jacocoTestReport publish -Dorg.gradle.caching=true --no-daemon`).
+- `gradle-operations` (default `check publish -Dorg.gradle.caching=true --no-daemon`).
   `-Pversion=<version>` is always appended.
 - `tag-prefix` (default `v`) and `initial-version` (default `0.0.0`)
 - `create-github-release` (default `true`). Set to `false` to only push the tag.
-- `jacoco-report-path`. Set to empty to skip the coverage summary.
+- `jacoco-report-path` (default empty, no coverage). See [Coverage (opt-in)](#coverage-opt-in).
 
 Outputs: `version` and `is-release` (`'true'` or `'false'`).
+
+### Coverage (opt-in)
+
+JaCoCo coverage is off by default. To opt in, apply the `jacoco` plugin in `build.gradle.kts` and
+override both inputs:
+
+```yaml
+    with:
+      gradle-operations: "check jacocoTestReport publish -Dorg.gradle.caching=true --no-daemon"
+      jacoco-report-path: "build/reports/jacoco/test/jacocoTestReport.xml"
+```
+
+The coverage table is then added to the job summary and the XML report to the artifact.
 
 ## Versioning
 
@@ -105,9 +118,9 @@ confirmed, a warning says the release label was not applied.
 ## Reports
 
 The job summary shows the latest release, the label, the published version and, on PRs, what merging
-will do. It also shows test counts with failed tests (from JUnit XML) and a JaCoCo coverage table.
-The summary is written even when the build fails. The HTML test report and the JaCoCo XML are
-uploaded as an artifact.
+will do. It also shows test counts with failed tests (from JUnit XML) and, if
+[coverage is enabled](#coverage-opt-in), a JaCoCo coverage table. The summary is written even when the
+build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded as an artifact.
 
 ## Common errors
 

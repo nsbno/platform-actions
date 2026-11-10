@@ -43,8 +43,8 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "check jacocoTestReport publish -Dorg.gradle.caching=true --no-daemon"
-        description: "Gradle operations to run. -Pversion=<computed version> is appended."
+        default: "check publish -Dorg.gradle.caching=true --no-daemon"
+        description: "Gradle operations to run. -Pversion=<computed version> is appended. To opt in to coverage, add jacocoTestReport and set jacoco-report-path."
       tag-prefix:
         required: false
         type: string
@@ -73,8 +73,8 @@ on:
       jacoco-report-path:
         required: false
         type: string
-        default: "build/reports/jacoco/test/jacocoTestReport.xml"
-        description: "Relative path (from working-directory) to the JaCoCo XML report. Empty skips the coverage summary."
+        default: ""
+        description: "Relative path (from working-directory) to the JaCoCo XML report, e.g. build/reports/jacoco/test/jacocoTestReport.xml. Empty (default) skips the coverage summary."
       cache-read-only:
         required: false
         type: boolean

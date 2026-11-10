@@ -44,7 +44,8 @@ publishing {
 }
 ```
 
-Apply the `jacoco` plugin so the `jacocoTestReport` task exists, or override `gradle-operations`.
+Coverage is opt-in. To get a JaCoCo coverage table in the job summary, apply the `jacoco` plugin and
+follow [Coverage (opt-in)](../workflows/publish-library.gradle.md#coverage-opt-in).
 
 ## 4. Set a local version
 
