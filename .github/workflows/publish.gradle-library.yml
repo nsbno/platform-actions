@@ -1,0 +1,245 @@
+name: Publish Gradle library
+# Builds, tests and publishes a Gradle library to Nexus.
+# The version is computed from git tags and the release:major|minor|patch label on the pull request.
+#
+# Callers need these permissions:
+#   permissions:
+#     contents: write       # create release tags and GitHub Releases
+#     pull-requests: read   # look up labels of the merged pull request on push
+on:
+  workflow_call:
+    secrets:
+      NEXUS_USERNAME:
+        required: true
+        description: "Nexus login username."
+      NEXUS_PASSWORD:
+        required: true
+        description: "Nexus login password."
+      BUILD_CACHE_USERNAME:
+        required: false
+        description: "Optional Gradle build cache username."
+      BUILD_CACHE_PASSWORD:
+        required: false
+        description: "Optional Gradle build cache password."
+      GRADLE_CACHE_ENCRYPTION_KEY:
+        required: false
+        description: "Key to use for encrypting the configuration cache."
+
+    inputs:
+      java-version:
+        required: false
+        type: string
+        description: "What Java version to use."
+        default: "21"
+      java-distribution:
+        required: false
+        type: string
+        default: "temurin"
+        description: "What Java distribution to use. Default is temurin (By Adoptium)."
+      working-directory:
+        required: false
+        type: string
+        default: "."
+      gradle-operations:
+        required: false
+        type: string
+        default: "check jacocoTestReport publish -Dorg.gradle.caching=true --no-daemon"
+        description: "Gradle operations to run. -Pversion=<computed version> is appended."
+      tag-prefix:
+        required: false
+        type: string
+        default: "v"
+        description: "Prefix of release tags, e.g. 'v' for v1.2.3."
+      initial-version:
+        required: false
+        type: string
+        default: "0.0.0"
+        description: "Version used as the latest release when no matching tag exists."
+      create-github-release:
+        required: false
+        type: boolean
+        default: true
+        description: "Create a GitHub Release with generated notes when releasing. If false, only the tag is pushed."
+      test-results-path:
+        required: false
+        type: string
+        default: "build/test-results/test"
+        description: "Relative path (from working-directory) to the JUnit XML test results."
+      test-report-path:
+        required: false
+        type: string
+        default: "build/reports/tests/test"
+        description: "Relative path (from working-directory) to the Gradle test report directory."
+      jacoco-report-path:
+        required: false
+        type: string
+        default: "build/reports/jacoco/test/jacocoTestReport.xml"
+        description: "Relative path (from working-directory) to the JaCoCo XML report. Empty skips the coverage summary."
+      cache-read-only:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to only read from cache."
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
+
+    outputs:
+      version:
+        description: "The published version."
+        value: ${{ jobs.publish.outputs.version }}
+      is-release:
+        description: "'true' if a release was published, otherwise 'false'."
+        value: ${{ jobs.publish.outputs.is-release }}
+
+concurrency:
+  group: publish-gradle-library-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  publish:
+    name: Publish Gradle library
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-release: ${{ steps.version.outputs.is-release }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: '0' # Fetch all tags to find the latest release
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: nsbno/platform-actions/.github/actions/tools/library-version@v2
+        id: version
+        with:
+          tag-prefix: ${{ inputs.tag-prefix }}
+          initial-version: ${{ inputs.initial-version }}
+
+      - name: Check that release tag does not exist
+        if: steps.version.outputs.is-release == 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::Tag ${TAG} already exists. Refusing to publish the release again."
+            exit 1
+          fi
+
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
+        name: Gradle Build and Publish
+        with:
+          java-version: ${{ inputs.java-version }}
+          java-distribution: ${{ inputs.java-distribution }}
+          gradle-operations: ${{ inputs.gradle-operations }} -Pversion=${{ steps.version.outputs.version }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-read-only: ${{ inputs.cache-read-only }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          # if exists
+          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
+          BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
+          GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: Test and coverage summary
+        if: ${{ !cancelled() && steps.version.outcome == 'success' }}
+        shell: python
+        env:
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+          TEST_RESULTS_PATH: ${{ inputs.test-results-path }}
+          JACOCO_REPORT_PATH: ${{ inputs.jacoco-report-path }}
+        run: |
+          import glob, os
+          import xml.etree.ElementTree as ET
+
+          wd = os.environ["WORKING_DIRECTORY"]
+          out = []
+
+          results = os.path.join(wd, os.environ["TEST_RESULTS_PATH"])
+          files = glob.glob(os.path.join(results, "**", "*.xml"), recursive=True)
+          out.append("### Tests\n")
+          if not files:
+            out.append(f"No JUnit XML found in `{results}`.\n")
+          else:
+            total = failed = skipped = 0
+            failures = []
+            for f in files:
+              try:
+                root = ET.parse(f).getroot()
+              except ET.ParseError:
+                continue
+              suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
+              for suite in suites:
+                for case in suite.iter("testcase"):
+                  total += 1
+                  if case.find("skipped") is not None:
+                    skipped += 1
+                  elif case.find("failure") is not None or case.find("error") is not None:
+                    failed += 1
+                    failures.append(f"{case.get('classname', '')}.{case.get('name', '')}")
+            passed = total - failed - skipped
+            icon = ":x:" if failed else ":white_check_mark:"
+            out.append(f"{icon} **{passed}** passed, **{failed}** failed, **{skipped}** skipped ({total} total)\n")
+            if failures:
+              out.append("\n**Failed tests:**\n")
+              out.extend(f"- `{name}`" for name in failures[:100])
+              if len(failures) > 100:
+                out.append(f"- …and {len(failures) - 100} more")
+              out.append("")
+
+          jacoco = os.environ["JACOCO_REPORT_PATH"]
+          if jacoco:
+            path = os.path.join(wd, jacoco)
+            out.append("\n### Coverage\n")
+            if not os.path.isfile(path):
+              out.append(f"No JaCoCo report found at `{path}`.\n")
+            else:
+              root = ET.parse(path).getroot()
+              counters = {c.get("type"): c for c in root.findall("counter")}
+              out.append("| Counter | Covered | Missed | Coverage |")
+              out.append("|---|---:|---:|---:|")
+              for kind in ["INSTRUCTION", "BRANCH", "LINE", "METHOD", "CLASS"]:
+                c = counters.get(kind)
+                if c is None:
+                  continue
+                covered, missed = int(c.get("covered")), int(c.get("missed"))
+                pct = f"{100.0 * covered / (covered + missed):.1f}%" if covered + missed else "n/a"
+                out.append(f"| {kind.capitalize()} | {covered} | {missed} | {pct} |")
+              out.append("")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+            summary.write("\n".join(out) + "\n")
+
+      - name: Upload test and coverage reports
+        uses: actions/upload-artifact@v6
+        if: ${{ !cancelled() && steps.version.outcome == 'success' }}
+        with:
+          name: test-reports-${{ steps.version.outputs.version }}
+          path: |
+            ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
+            ${{ inputs.jacoco-report-path && format('{0}/{1}', inputs.working-directory, inputs.jacoco-report-path) || '' }}
+          retention-days: 5
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.is-release == 'true' && inputs.create-github-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET_SHA: ${{ github.sha }}
+        run: gh release create "$TAG" --target "$TARGET_SHA" --title "$VERSION" --generate-notes
+
+      - name: Create release tag
+        if: steps.version.outputs.is-release == 'true' && !inputs.create-github-release
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          git tag "$TAG" "$TARGET_SHA"
+          git push origin "refs/tags/${TAG}"
