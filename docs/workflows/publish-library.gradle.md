@@ -124,7 +124,11 @@ pending run is replaced by a newer one:
   label, releases it.
 
 A commit that is already included in the latest release is never released again (e.g. when re-running a
-release run). At most 100 commits since the latest release are checked.
+release run). If there is no release tag yet, the whole first-parent history is checked. In both cases, at
+most the latest 100 commits are checked.
+
+If a GitHub API lookup fails for any of these commits, the run stops before publishing, so a release
+request is never skipped because of an API error. Re-run the workflow to try again.
 
 The "On merge" line in a PR's job summary only considers that PR's own label.
 
@@ -167,6 +171,7 @@ build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded a
 | `Tag vX.Y.Z already exists` | The version was already released. Check the tags, or remove a wrong tag |
 | `No tag matching 'vX.Y.Z' found` (warning) | Tag the latest existing release, see the [setup guide](../guides/library-releases.md) |
 | `Commit ... is already included in release vX.Y.Z` (notice) | The commit was already released, e.g. on a re-run. Nothing to do |
+| `Could not determine the pull request for <sha>` | A GitHub API lookup failed. Nothing was published. Re-run the workflow |
 | `PR #N has several release labels ... Using the largest` (warning) | An earlier PR had more than one release label. The largest was used |
 | `Commit message refers to PR #N, but no merged pull request could be confirmed` (warning) | The release label was not applied. Release manually or merge a new PR with the label |
 

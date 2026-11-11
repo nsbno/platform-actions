@@ -39,18 +39,23 @@ bump_rank() {
   case "$1" in major) echo 3 ;; minor) echo 2 ;; patch) echo 1 ;; *) echo 0 ;; esac
 }
 
-# Prints the merged PR (JSON) for a commit on the default branch, or nothing.
+# Prints the merged PR (JSON) for a commit on the default branch, or nothing if the commit has no PR.
+# Returns non-zero if the GitHub API fails, so the caller can stop instead of treating the commit as
+# having no PR (which could silently drop a release request).
 # Squash, merge and rebase merges all link the commit to the PR, but the link can appear slightly
 # after the push event, so the lookup is retried. The PR whose merge commit is this exact commit is
 # preferred. Fallback: the PR number in the commit message ("... (#123)" or "Merge pull request #123"),
 # only trusted if GitHub confirms that PR was merged as this exact commit.
 find_merged_pr() {
-  local commit="$1" attempts="$2" attempt pulls merged="" message message_pr candidate
+  local commit="$1" attempts="$2" attempt pulls merged="" message message_pr candidate err
   for ((attempt = 1; attempt <= attempts; attempt++)); do
-    pulls="$(gh api "repos/${REPOSITORY}/commits/${commit}/pulls")"
+    if ! pulls="$(gh api "repos/${REPOSITORY}/commits/${commit}/pulls")"; then
+      echo "::error::GitHub API lookup of pull requests for commit ${commit} failed." >&2
+      return 1
+    fi
     merged="$(jq -c --arg sha "$commit" '
       [.[] | select(.merged_at != null)] as $m
-      | ([$m[] | select(.merge_commit_sha == $sha)][0] // $m[0]) // empty' <<<"$pulls")"
+      | ([$m[] | select(.merge_commit_sha == $sha)][0] // $m[0]) // empty' <<<"$pulls")" || return 1
     [[ -n "$merged" ]] && break
     if (( attempt < attempts )); then
       echo "No merged pull request linked to ${commit} yet (attempt ${attempt}/${attempts}), retrying..." >&2
@@ -62,8 +67,19 @@ find_merged_pr() {
   message_pr="$(sed -nE '1{s/^Merge pull request #([0-9]+) .*/\1/p;s/.*\(#([0-9]+)\)[[:space:]]*$/\1/p}' <<<"$message" | head -n1)"
   if [[ -z "$merged" && -n "$message_pr" ]]; then
     echo "Looking up PR #${message_pr} from the commit message of ${commit}" >&2
-    candidate="$(gh api "repos/${REPOSITORY}/pulls/${message_pr}" 2>/dev/null || true)"
-    merged="$(jq -c --arg sha "$commit" 'select(.merged_at != null and .merge_commit_sha == $sha)' <<<"${candidate:-null}" 2>/dev/null || true)"
+    err="$(mktemp)"
+    if ! candidate="$(gh api "repos/${REPOSITORY}/pulls/${message_pr}" 2>"$err")"; then
+      # A number that isn't a PR (e.g. an issue) gives 404 and simply means "no PR". Anything else is a failure.
+      if ! grep -q "HTTP 404" "$err"; then
+        cat "$err" >&2
+        rm -f "$err"
+        echo "::error::GitHub API lookup of PR #${message_pr} failed." >&2
+        return 1
+      fi
+      candidate="null"
+    fi
+    rm -f "$err"
+    merged="$(jq -c --arg sha "$commit" 'select(.merged_at != null and .merge_commit_sha == $sha)' <<<"$candidate")" || return 1
     if [[ -z "$merged" ]]; then
       echo "::warning::Commit message of ${commit} refers to PR #${message_pr}, but no merged pull request could be confirmed. Its release label (if any) was NOT applied." >&2
     fi
@@ -96,15 +112,19 @@ elif [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/${DEFAULT_BRANCH}" ]]; 
   else
     # Every merged PR since the latest release counts, not only the one for the pushed commit.
     # Runs can finish out of order or be replaced while pending, so a release label is applied by
-    # whichever run releases first, and the largest requested bump wins.
-    if [[ -n "$latest_tag" ]]; then
-      mapfile -t commits < <(git rev-list --first-parent "${latest_tag}..${SHA}")
-    else
-      commits=("$SHA")
+    # whichever run releases first, and the largest requested bump wins. Without a release tag,
+    # the whole first-parent history is checked (subject to the limit below).
+    range="$SHA"
+    [[ -n "$latest_tag" ]] && range="${latest_tag}..${SHA}"
+    if ! rev_list="$(git rev-list --first-parent "$range")"; then
+      echo "::error::Could not list commits in ${range}. Is the checkout complete (fetch-depth: 0)?"
+      exit 1
     fi
+    mapfile -t commits <<<"$rev_list"
+    [[ -z "$rev_list" ]] && commits=()
     max_commits="${PR_LOOKUP_MAX_COMMITS:-100}"
     if (( ${#commits[@]} > max_commits )); then
-      echo "::warning::${#commits[@]} commits since ${latest_tag}. Only the latest ${max_commits} are checked for release labels."
+      echo "::warning::${#commits[@]} commits since ${latest_tag:-the beginning of the history}. Only the latest ${max_commits} are checked for release labels."
       commits=("${commits[@]:0:max_commits}")
     fi
 
@@ -112,7 +132,10 @@ elif [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/${DEFAULT_BRANCH}" ]]; 
     for commit in "${commits[@]}"; do
       attempts=1
       [[ "$commit" == "$SHA" ]] && attempts="${PR_LOOKUP_ATTEMPTS:-3}"
-      merged="$(find_merged_pr "$commit" "$attempts")"
+      if ! merged="$(find_merged_pr "$commit" "$attempts")"; then
+        echo "::error::Could not determine the pull request for ${commit}. Stopping, so that no release request is missed. Re-run the workflow to try again."
+        exit 1
+      fi
       if [[ -z "$merged" ]]; then
         [[ "$commit" == "$SHA" ]] && echo "::notice::No merged pull request found for ${SHA}."
         continue
