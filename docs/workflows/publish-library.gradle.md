@@ -35,10 +35,14 @@ The `labeled` and `unlabeled` triggers make the PR run update when release label
 
 ## Permissions and secrets
 
+The workflow limits its job to the permissions below, but a reusable workflow can't grant itself more
+than the caller allows. Declare them in the caller (as in the example), or GitHub rejects the run at
+startup with a message naming the missing permission.
+
 | Permission | Why |
 |---|---|
 | `contents: write` | Create release tags and GitHub Releases |
-| `pull-requests: read` | Read the labels of the merged PR on push |
+| `pull-requests: read` | Read the labels of merged PRs on push |
 
 | Secret | Required |
 |---|---|

@@ -2,10 +2,11 @@ name: Publish Gradle library
 # Builds, tests and publishes a Gradle library to Nexus.
 # The version is computed from git tags and the release:major|minor|patch label on the pull request.
 #
-# Callers need these permissions:
+# Callers must grant at least these permissions (a reusable workflow can only reduce the caller's
+# token permissions, not raise them). The job below is limited to exactly these:
 #   permissions:
 #     contents: write       # create release tags and GitHub Releases
-#     pull-requests: read   # look up labels of the merged pull request on push
+#     pull-requests: read   # look up labels of merged pull requests on push
 on:
   workflow_call:
     secrets:
@@ -105,6 +106,9 @@ jobs:
   publish:
     name: Publish Gradle library
     runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: write
+      pull-requests: read
     outputs:
       version: ${{ steps.version.outputs.version }}
       is-release: ${{ steps.version.outputs.is-release }}
