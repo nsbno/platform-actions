@@ -85,7 +85,7 @@ concurrency:
   # Pull requests: newer runs cancel older ones. Pushes: one run at a time per ref, never cancelled
   # while running. A pending run can still be replaced by a newer one, but no release request is
   # lost: each release run accounts for all release labels merged since the previous release.
-  group: publish-library-gradle-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  group: publish-library-gradle-${{ inputs.working-directory }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
