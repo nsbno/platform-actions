@@ -1,0 +1,159 @@
+name: Publish Gradle library
+# Publishes a Gradle library to Nexus, and tags and releases it when a release label was merged.
+# The version is computed from git tags and the release:major|minor|patch labels on pull requests.
+# This workflow does not run tests: chain it after test.gradle.yml with `needs:` in the caller.
+#
+# Callers must grant at least these permissions (a reusable workflow can only reduce the caller's
+# token permissions, not raise them). The job below is limited to exactly these:
+#   permissions:
+#     contents: write       # create release tags and GitHub Releases
+#     pull-requests: read   # look up labels of merged pull requests on push
+on:
+  workflow_call:
+    secrets:
+      NEXUS_USERNAME:
+        required: true
+        description: "Nexus login username."
+      NEXUS_PASSWORD:
+        required: true
+        description: "Nexus login password."
+      BUILD_CACHE_USERNAME:
+        required: false
+        description: "Optional Gradle build cache username."
+      BUILD_CACHE_PASSWORD:
+        required: false
+        description: "Optional Gradle build cache password."
+      GRADLE_CACHE_ENCRYPTION_KEY:
+        required: false
+        description: "Key to use for encrypting the configuration cache."
+
+    inputs:
+      java-version:
+        required: false
+        type: string
+        description: "What Java version to use."
+        default: "21"
+      java-distribution:
+        required: false
+        type: string
+        default: "temurin"
+        description: "What Java distribution to use. Default is temurin (By Adoptium)."
+      working-directory:
+        required: false
+        type: string
+        default: "."
+      gradle-operations:
+        required: false
+        type: string
+        default: "publish -Dorg.gradle.caching=true --no-daemon"
+        description: "Gradle operations to run. -Pversion=<computed version> is appended."
+      tag-prefix:
+        required: false
+        type: string
+        default: "v"
+        description: "Prefix of release tags, e.g. 'v' for v1.2.3."
+      initial-version:
+        required: false
+        type: string
+        default: "0.0.0"
+        description: "Version used as the latest release when no matching tag exists."
+      create-github-release:
+        required: false
+        type: boolean
+        default: true
+        description: "Create a GitHub Release with generated notes when releasing. If false, only the tag is pushed."
+      cache-read-only:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to only read from cache."
+      runs-on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+        description: "The GitHub runner to run this on. Defaults to ubuntu-latest, which is the recommended choice. Larger runners are faster but cost significantly more per minute, so only use them when the workload clearly needs it."
+
+    outputs:
+      version:
+        description: "The published version."
+        value: ${{ jobs.publish.outputs.version }}
+      is-release:
+        description: "'true' if a release was published, otherwise 'false'."
+        value: ${{ jobs.publish.outputs.is-release }}
+
+concurrency:
+  # Pull requests: newer runs cancel older ones. Pushes: one run at a time per ref, never cancelled
+  # while running. A pending run can still be replaced by a newer one, but no release request is
+  # lost: each release run accounts for all release labels merged since the previous release.
+  group: publish-library-gradle-${{ inputs.working-directory }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  publish:
+    name: Publish Gradle library
+    runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-release: ${{ steps.version.outputs.is-release }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: '0' # Fetch all tags to find the latest release
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: nsbno/platform-actions/.github/actions/tools/library-version@v2
+        id: version
+        with:
+          tag-prefix: ${{ inputs.tag-prefix }}
+          initial-version: ${{ inputs.initial-version }}
+
+      - name: Check that release tag does not exist
+        if: steps.version.outputs.is-release == 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::Tag ${TAG} already exists. Refusing to publish the release again."
+            exit 1
+          fi
+
+      - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
+        name: Gradle Publish
+        id: gradle
+        with:
+          java-version: ${{ inputs.java-version }}
+          java-distribution: ${{ inputs.java-distribution }}
+          gradle-operations: ${{ inputs.gradle-operations }} -Pversion=${{ steps.version.outputs.version }}
+          working-directory: ${{ inputs.working-directory }}
+          cache-read-only: ${{ inputs.cache-read-only }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          # if exists
+          BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
+          BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
+          GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.is-release == 'true' && steps.gradle.outcome == 'success' && inputs.create-github-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET_SHA: ${{ github.sha }}
+        run: gh release create "$TAG" --target "$TARGET_SHA" --title "$VERSION" --generate-notes
+
+      - name: Create release tag
+        if: steps.version.outputs.is-release == 'true' && steps.gradle.outcome == 'success' && !inputs.create-github-release
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          git tag "$TAG" "$TARGET_SHA"
+          git push origin "refs/tags/${TAG}"

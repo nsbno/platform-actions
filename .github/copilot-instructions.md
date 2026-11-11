@@ -21,7 +21,25 @@ This repository is the **shared GitHub Actions library for Vy**. Workflows and c
 |---|---|
 | `.github/workflows/` | 30 reusable workflows (`workflow_call`) consumed by other repos |
 | `.github/actions/` | 20+ composite actions called from workflows |
+| `docs/` | Per-workflow and per-action documentation, and setup guides (see below) |
 | `.opencode/skills/` | AI agent skill definitions and reference documents |
+
+## Documentation
+
+Documentation is moving from `README.md` into `docs/`, one file per workflow or action, named after it:
+
+| Source | Documentation |
+|---|---|
+| `.github/workflows/<name>.yml` | `docs/workflows/<name>.md` |
+| `.github/actions/<category>/<name>/action.yml` | `docs/actions/<category>/<name>.md` |
+| Multi-step setup or how-to | `docs/guides/<topic>.md` |
+
+- To learn how a workflow or action is used, read its file in `docs/` first, if it exists.
+- New workflows and actions must add a docs file, and the `README.md` must link to it.
+- Changes to inputs, outputs, permissions or behaviour must update the docs file in the same PR.
+- Don't copy full input tables into docs. The descriptions in the YAML are the source of truth.
+- Each workflow docs file covers: purpose, example caller, permissions and secrets, important inputs,
+  behaviour, and common errors.
 
 ## Key architectural patterns
 
@@ -57,6 +75,7 @@ This repository is the **shared GitHub Actions library for Vy**. Workflows and c
 | Test | `test.<language>.yml` | `test.python.yml` |
 | Lint | `lint.<tool>.yml` | `lint.terraform.yml` |
 | Package | `package.<target>.yml` | `package.docker.yml` |
+| Publish library | `publish-library.<language>.yml` | `publish-library.gradle.yml` |
 | Deploy | `deployment.<scope>.yml` | `deployment.single-environment.yml` |
 | Deploy (preview) | `deployment.preview*.yml` | `deployment.preview-spa.yml` |
 | Deploy (comment) | `deployment.*.on-comment.yml` | `deployment.preview.on-comment.yml` |

@@ -1,0 +1,55 @@
+name: Library version
+description: >-
+  Compute a library version from the latest <prefix>X.Y.Z git tag and the release:major|minor|patch
+  label on the pull request. Requires a checkout with tags (fetch-depth 0).
+
+inputs:
+  tag-prefix:
+    required: false
+    default: "v"
+    description: "Prefix of release tags, e.g. 'v' for v1.2.3."
+  initial-version:
+    required: false
+    default: "0.0.0"
+    description: "Version used as the latest release when no matching tag exists."
+  github-token:
+    required: false
+    default: ${{ github.token }}
+    description: "Token used to look up the merged pull request on push events. Needs pull-requests: read."
+
+outputs:
+  version:
+    description: "The computed version, e.g. 2.4.0, 2.4.0-SNAPSHOT or 2.4.0-PR64-SNAPSHOT."
+    value: ${{ steps.version.outputs.version }}
+  is-release:
+    description: "'true' if this run should publish a release, otherwise 'false'."
+    value: ${{ steps.version.outputs.is-release }}
+  tag:
+    description: "The release tag to create. Empty unless is-release is 'true'."
+    value: ${{ steps.version.outputs.tag }}
+  bump:
+    description: "The requested bump: major, minor, patch or none."
+    value: ${{ steps.version.outputs.bump }}
+  previous-version:
+    description: "The latest released version (or initial-version if there are no tags)."
+    value: ${{ steps.version.outputs.previous-version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compute version
+      id: version
+      shell: bash
+      env:
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+        INITIAL_VERSION: ${{ inputs.initial-version }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        EVENT_NAME: ${{ github.event_name }}
+        REF: ${{ github.ref }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        SHA: ${{ github.sha }}
+        REPOSITORY: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "$ACTION_PATH/compute-version.sh"

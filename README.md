@@ -17,6 +17,7 @@ or hit us up on Slack!
   * [Helpers](#helpers)
   * [Build, Test and Lint](#build-test-and-lint)
   * [Package](#package)
+  * [Publish](#publish)
   * [Deploy](#deploy)
 * [Note on Pull Requests](#note-on-pull-requests)
 <!-- TOC -->
@@ -92,6 +93,13 @@ Packaging workflows depend on build and test workflows, so they should be run af
 
 Packaging in pull requests need to use `actions/checkout` with the PR head commit sha.
 This way, the correct tag will exist for the deploy stage.
+
+### Publish
+Workflows prefixed with publish publish libraries. Run them after the matching build or test workflow.
+
+- [`publish-library.gradle.yml`](docs/workflows/publish-library.gradle.md): publishes a Gradle library
+  to Nexus after `test.gradle.yml`, with automatic releases from `release:major|minor|patch` PR labels.
+  First time? See the [library releases setup guide](docs/guides/library-releases.md).
 
 ### Deploy
 Workflows prefixed with deploy are meant to simplify the process of deploying code.
