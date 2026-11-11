@@ -95,21 +95,16 @@ on:
         value: ${{ jobs.publish.outputs.is-release }}
 
 concurrency:
-  # Pull requests: newer runs for the same PR cancel older ones.
-  # Other events get a unique group here and are serialized by the job-level queue below.
-  group: publish-library-gradle-${{ github.repository }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
-  cancel-in-progress: true
+  # Pull requests: newer runs cancel older ones. Pushes: one run at a time per ref, never cancelled
+  # while running. A pending run can still be replaced by a newer one, but no release request is
+  # lost: each release run accounts for all release labels merged since the previous release.
+  group: publish-library-gradle-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   publish:
     name: Publish Gradle library
     runs-on: ${{ inputs.runs-on }}
-    # Pushes run one at a time per ref, and pending runs wait in a queue instead of replacing
-    # each other, so no release request is dropped. Pull requests get a unique group here.
-    concurrency:
-      group: publish-library-gradle-queue-${{ github.repository }}-${{ github.event_name == 'pull_request' && github.run_id || github.ref }}
-      cancel-in-progress: false
-      queue: max
     outputs:
       version: ${{ steps.version.outputs.version }}
       is-release: ${{ steps.version.outputs.is-release }}

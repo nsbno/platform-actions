@@ -27,6 +27,8 @@ steps:
 ```
 
 The job needs `pull-requests: read` to look up the merged PR on push.
+On push to the default branch, all PRs merged since the latest release tag are checked, and the
+largest requested bump wins.
 The action only computes the version. Creating tags and releases is up to the caller.
 
 ## Inputs

@@ -106,33 +106,50 @@ ignored, including other `release:`-prefixed labels such as `release:notes`.
 | Event | Published version | Result |
 |---|---|---|
 | `pull_request` | `<next>-PR<number>-SNAPSHOT` | Snapshot (one per PR, PRs don't overwrite each other) |
-| `push` to default branch, merged PR without release label (or no PR found) | `<X.Y.Z+1>-SNAPSHOT` | Snapshot |
-| `push` to default branch, merged PR with release label | `<next>` | Release, tag `<prefix><next>` and GitHub Release |
+| `push` to default branch, no release labels since the latest release | `<X.Y.Z+1>-SNAPSHOT` | Snapshot |
+| `push` to default branch, at least one release label since the latest release | `<next>` | Release, tag `<prefix><next>` and GitHub Release |
 | Any other event or branch | `<next>-SNAPSHOT` | Snapshot |
+
+### Release labels since the latest release
+
+On push, the workflow looks at **every** PR merged since the latest release tag
+(`git rev-list --first-parent <latest-tag>..<sha>`), not only the PR of the pushed commit. The largest
+requested bump wins. This way a release label is never lost, even if runs finish out of order or a
+pending run is replaced by a newer one:
+
+- PR #1 (`release:major`) and PR #2 (`release:patch`) are merged quickly after each other, and #2's run
+  finishes first: it releases `3.0.0` (major), containing both PRs. #1's run then finds its commit already
+  included in `v3.0.0` and publishes a snapshot.
+- A PR with a release label is merged, but its run fails or is replaced: the next push, even without a
+  label, releases it.
+
+A commit that is already included in the latest release is never released again (e.g. when re-running a
+release run). At most 100 commits since the latest release are checked.
+
+The "On merge" line in a PR's job summary only considers that PR's own label.
 
 ### Finding the merged PR
 
-On push, the merged PR is found from the pushed commit. Squash, merge-commit and rebase merges are all
+For each commit, the merged PR is found as follows. Squash, merge-commit and rebase merges are all
 supported:
 
-1. `gh api repos/{repo}/commits/{sha}/pulls` is tried up to 3 times, because GitHub can link the commit
-   to the PR slightly after the push.
+1. `gh api repos/{repo}/commits/{sha}/pulls`. For the pushed commit, this is tried up to 3 times, because
+   GitHub can link the commit to the PR slightly after the push.
 2. The PR whose merge commit is exactly the pushed commit is preferred.
 3. Fallback: the PR number in the commit message (`... (#123)` or `Merge pull request #123 ...`),
    only if GitHub confirms that PR was merged as that exact commit.
 
-If no PR is found, a snapshot is published. If the commit message mentions a PR that can't be
-confirmed, a warning says the release label was not applied.
+Commits without a PR are skipped. If a commit message mentions a PR that can't be confirmed, a warning
+says its release label was not applied.
 
 ## Releases
 
 - The run fails before publishing if the release tag already exists.
 - The tag and GitHub Release (with generated notes) are created directly after `publish` succeeds,
   before the report steps, so a report failure can't leave a published release without a tag.
-- A commit that is already included in the latest release is not released again. This covers
-  re-running a successful release run: it publishes a snapshot instead and shows a warning.
-- Runs on the default branch are never cancelled. They wait in a queue (`concurrency.queue: max`) and
-  run one at a time, so no release label is lost when several PRs are merged in quick succession.
+- Runs on the default branch run one at a time and are never cancelled while running. A pending run can be
+  replaced by a newer one, but its release label is picked up by the newer run
+  (see [Release labels since the latest release](#release-labels-since-the-latest-release)).
 - PR runs cancel older runs for the same PR.
 
 ## Reports
@@ -149,7 +166,8 @@ build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded a
 | `Only one release label is allowed` | Remove all but one `release:*` label from the PR |
 | `Tag vX.Y.Z already exists` | The version was already released. Check the tags, or remove a wrong tag |
 | `No tag matching 'vX.Y.Z' found` (warning) | Tag the latest existing release, see the [setup guide](../guides/library-releases.md) |
-| `Commit ... is already included in release vX.Y.Z` (warning) | The commit was already released, e.g. on a re-run. Nothing to do |
+| `Commit ... is already included in release vX.Y.Z` (notice) | The commit was already released, e.g. on a re-run. Nothing to do |
+| `PR #N has several release labels ... Using the largest` (warning) | An earlier PR had more than one release label. The largest was used |
 | `Commit message refers to PR #N, but no merged pull request could be confirmed` (warning) | The release label was not applied. Release manually or merge a new PR with the label |
 
 ## Skipping bot pull requests
