@@ -2,8 +2,12 @@
 
 **Workflow:** [`.github/workflows/publish-library.gradle.yml`](../../.github/workflows/publish-library.gradle.yml)
 
-Builds, tests and publishes an internal JVM library to Nexus with Gradle's `maven-publish`.
-Releases happen automatically when a pull request with a release label is merged to the default branch.
+Publishes an internal JVM library to Nexus with Gradle's `maven-publish`. Releases happen automatically
+when a pull request with a release label is merged to the default branch.
+
+This workflow only publishes. Building and testing are done by
+[`test.gradle.yml`](../../.github/workflows/test.gradle.yml), which the caller runs first and chains with
+`needs:`, so nothing is published if the tests fail.
 
 The workflow never pushes commits. The version comes from git tags and is passed to Gradle as
 `-Pversion=<version>`, which overrides `version` in `gradle.properties`. This works with a protected
@@ -24,14 +28,24 @@ permissions:
   contents: write       # create tags and GitHub Releases
   pull-requests: read   # read labels of the merged PR
 jobs:
+  test:
+    uses: nsbno/platform-actions/.github/workflows/test.gradle.yml@v2
+    with:
+      java-version: "17"
+    secrets: inherit
+
   publish:
+    needs: test
     uses: nsbno/platform-actions/.github/workflows/publish-library.gradle.yml@v2
     with:
       java-version: "17"
     secrets: inherit
 ```
 
-The `labeled` and `unlabeled` triggers make the PR run update when release labels change.
+- The `labeled` and `unlabeled` triggers make the PR run update when release labels change.
+- The publish job runs Gradle again, but with the build cache it reuses the compiled classes. `publish`
+  doesn't depend on the test task, so tests don't run twice.
+- Inputs like `java-version` and `working-directory` must be set the same way on both jobs.
 
 ## Permissions and secrets
 
@@ -56,41 +70,12 @@ for the full list with descriptions and defaults. The most common ones:
 
 - `java-version` (default `"21"`) and `java-distribution` (default `temurin`)
 - `working-directory` (default `.`)
-- `gradle-operations` (default `check publish -Dorg.gradle.caching=true --no-daemon`).
+- `gradle-operations` (default `publish -Dorg.gradle.caching=true --no-daemon`).
   `-Pversion=<version>` is always appended.
 - `tag-prefix` (default `v`) and `initial-version` (default `0.0.0`)
 - `create-github-release` (default `true`). Set to `false` to only push the tag.
-- `jacoco-report-path` (default empty, no coverage). See [Coverage (opt-in)](#coverage-opt-in).
 
 Outputs: `version` and `is-release` (`'true'` or `'false'`).
-
-### Coverage (opt-in)
-
-JaCoCo coverage is off by default. To opt in, apply the `jacoco` plugin in `build.gradle.kts` and enable
-the XML report, which Gradle doesn't generate by default:
-
-```kotlin
-plugins {
-    jacoco
-}
-
-tasks.jacocoTestReport {
-    dependsOn(tasks.test)
-    reports {
-        xml.required = true
-    }
-}
-```
-
-Then override both inputs:
-
-```yaml
-    with:
-      gradle-operations: "check jacocoTestReport publish -Dorg.gradle.caching=true --no-daemon"
-      jacoco-report-path: "build/reports/jacoco/test/jacocoTestReport.xml"
-```
-
-The coverage table is then added to the job summary and the XML report to the artifact.
 
 ## Versioning
 
@@ -153,19 +138,17 @@ says its release label was not applied.
 ## Releases
 
 - The run fails before publishing if the release tag already exists.
-- The tag and GitHub Release (with generated notes) are created directly after `publish` succeeds,
-  before the report steps, so a report failure can't leave a published release without a tag.
+- The tag and GitHub Release (with generated notes) are created directly after `publish` succeeds.
 - Runs on the default branch run one at a time and are never cancelled while running. A pending run can be
   replaced by a newer one, but its release label is picked up by the newer run
   (see [Release labels since the latest release](#release-labels-since-the-latest-release)).
 - PR runs cancel older runs for the same PR.
 
-## Reports
+## Job summary
 
-The job summary shows the latest release, the label, the published version and, on PRs, what merging
-will do. It also shows test counts with failed tests (from JUnit XML) and, if
-[coverage is enabled](#coverage-opt-in), a JaCoCo coverage table. The summary is written even when the
-build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded as an artifact.
+The job summary shows the latest release, the release labels, the published version and, on PRs, what
+merging will do. Test reports come from the test job (see `upload-test-report` in
+[`test.gradle.yml`](../../.github/workflows/test.gradle.yml)).
 
 ## Common errors
 
@@ -182,12 +165,13 @@ build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded a
 ## Skipping bot pull requests
 
 Every PR publishes a `-PR<number>-SNAPSHOT`, including PRs from bots such as Renovate. To skip those,
-add a condition to the calling job. A skipped job counts as successful for required status checks, so note
-that the library's tests then don't run for those PRs either.
+add a condition to the publish job. The test job still runs, and a skipped job counts as successful for
+required status checks.
 
 ```yaml
 jobs:
   publish:
+    needs: test
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'renovate[bot]'
     uses: nsbno/platform-actions/.github/workflows/publish-library.gradle.yml@v2
 ```

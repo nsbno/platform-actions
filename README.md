@@ -95,10 +95,10 @@ Packaging in pull requests need to use `actions/checkout` with the PR head commi
 This way, the correct tag will exist for the deploy stage.
 
 ### Publish
-Workflows prefixed with publish build, test and publish libraries.
+Workflows prefixed with publish publish libraries. Run them after the matching build or test workflow.
 
-- [`publish-library.gradle.yml`](docs/workflows/publish-library.gradle.md): builds, tests and publishes
-  a Gradle library to Nexus, with automatic releases from `release:major|minor|patch` PR labels.
+- [`publish-library.gradle.yml`](docs/workflows/publish-library.gradle.md): publishes a Gradle library
+  to Nexus after `test.gradle.yml`, with automatic releases from `release:major|minor|patch` PR labels.
   First time? See the [library releases setup guide](docs/guides/library-releases.md).
 
 ### Deploy

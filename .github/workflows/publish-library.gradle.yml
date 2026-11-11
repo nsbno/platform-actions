@@ -1,6 +1,7 @@
 name: Publish Gradle library
-# Builds, tests and publishes a Gradle library to Nexus.
-# The version is computed from git tags and the release:major|minor|patch label on the pull request.
+# Publishes a Gradle library to Nexus, and tags and releases it when a release label was merged.
+# The version is computed from git tags and the release:major|minor|patch labels on pull requests.
+# This workflow does not run tests: chain it after test.gradle.yml with `needs:` in the caller.
 #
 # Callers must grant at least these permissions (a reusable workflow can only reduce the caller's
 # token permissions, not raise them). The job below is limited to exactly these:
@@ -44,8 +45,8 @@ on:
       gradle-operations:
         required: false
         type: string
-        default: "check publish -Dorg.gradle.caching=true --no-daemon"
-        description: "Gradle operations to run. -Pversion=<computed version> is appended. To opt in to coverage, add jacocoTestReport and set jacoco-report-path."
+        default: "publish -Dorg.gradle.caching=true --no-daemon"
+        description: "Gradle operations to run. -Pversion=<computed version> is appended."
       tag-prefix:
         required: false
         type: string
@@ -61,21 +62,6 @@ on:
         type: boolean
         default: true
         description: "Create a GitHub Release with generated notes when releasing. If false, only the tag is pushed."
-      test-results-path:
-        required: false
-        type: string
-        default: "build/test-results/test"
-        description: "Relative path (from working-directory) to the JUnit XML test results."
-      test-report-path:
-        required: false
-        type: string
-        default: "build/reports/tests/test"
-        description: "Relative path (from working-directory) to the Gradle test report directory."
-      jacoco-report-path:
-        required: false
-        type: string
-        default: ""
-        description: "Relative path (from working-directory) to the JaCoCo XML report, e.g. build/reports/jacoco/test/jacocoTestReport.xml. Empty (default) skips the coverage summary."
       cache-read-only:
         required: false
         type: boolean
@@ -137,7 +123,7 @@ jobs:
           fi
 
       - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
-        name: Gradle Build and Publish
+        name: Gradle Publish
         id: gradle
         with:
           java-version: ${{ inputs.java-version }}
@@ -153,7 +139,6 @@ jobs:
           GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
       - name: Create GitHub Release
-        # Directly after publishing, so a failing report step can't leave a published release untagged
         if: steps.version.outputs.is-release == 'true' && steps.gradle.outcome == 'success' && inputs.create-github-release
         shell: bash
         env:
@@ -172,83 +157,3 @@ jobs:
         run: |
           git tag "$TAG" "$TARGET_SHA"
           git push origin "refs/tags/${TAG}"
-
-      - name: Test and coverage summary
-        if: ${{ !cancelled() && steps.version.outcome == 'success' }}
-        shell: python
-        env:
-          WORKING_DIRECTORY: ${{ inputs.working-directory }}
-          TEST_RESULTS_PATH: ${{ inputs.test-results-path }}
-          JACOCO_REPORT_PATH: ${{ inputs.jacoco-report-path }}
-        run: |
-          import glob, os
-          import xml.etree.ElementTree as ET
-
-          wd = os.environ["WORKING_DIRECTORY"]
-          out = []
-
-          results = os.path.join(wd, os.environ["TEST_RESULTS_PATH"])
-          files = glob.glob(os.path.join(results, "**", "*.xml"), recursive=True)
-          out.append("### Tests\n")
-          if not files:
-            out.append(f"No JUnit XML found in `{results}`.\n")
-          else:
-            total = failed = skipped = 0
-            failures = []
-            for f in files:
-              try:
-                root = ET.parse(f).getroot()
-              except ET.ParseError:
-                continue
-              suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
-              for suite in suites:
-                for case in suite.iter("testcase"):
-                  total += 1
-                  if case.find("skipped") is not None:
-                    skipped += 1
-                  elif case.find("failure") is not None or case.find("error") is not None:
-                    failed += 1
-                    failures.append(f"{case.get('classname', '')}.{case.get('name', '')}")
-            passed = total - failed - skipped
-            icon = ":x:" if failed else ":white_check_mark:"
-            out.append(f"{icon} **{passed}** passed, **{failed}** failed, **{skipped}** skipped ({total} total)\n")
-            if failures:
-              out.append("\n**Failed tests:**\n")
-              out.extend(f"- `{name}`" for name in failures[:100])
-              if len(failures) > 100:
-                out.append(f"- …and {len(failures) - 100} more")
-              out.append("")
-
-          jacoco = os.environ["JACOCO_REPORT_PATH"]
-          if jacoco:
-            path = os.path.join(wd, jacoco)
-            out.append("\n### Coverage\n")
-            if not os.path.isfile(path):
-              out.append(f"No JaCoCo report found at `{path}`.\n")
-            else:
-              root = ET.parse(path).getroot()
-              counters = {c.get("type"): c for c in root.findall("counter")}
-              out.append("| Counter | Covered | Missed | Coverage |")
-              out.append("|---|---:|---:|---:|")
-              for kind in ["INSTRUCTION", "BRANCH", "LINE", "METHOD", "CLASS"]:
-                c = counters.get(kind)
-                if c is None:
-                  continue
-                covered, missed = int(c.get("covered")), int(c.get("missed"))
-                pct = f"{100.0 * covered / (covered + missed):.1f}%" if covered + missed else "n/a"
-                out.append(f"| {kind.capitalize()} | {covered} | {missed} | {pct} |")
-              out.append("")
-
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-            summary.write("\n".join(out) + "\n")
-
-      - name: Upload test and coverage reports
-        uses: actions/upload-artifact@v6
-        if: ${{ !cancelled() && steps.version.outcome == 'success' }}
-        with:
-          name: test-reports-${{ steps.version.outputs.version }}
-          path: |
-            ${{ inputs.working-directory }}/${{ inputs.test-report-path }}
-            ${{ inputs.jacoco-report-path && format('{0}/{1}', inputs.working-directory, inputs.jacoco-report-path) || '' }}
-          retention-days: 5
-          if-no-files-found: warn

@@ -44,9 +44,6 @@ publishing {
 }
 ```
 
-Coverage is opt-in. To get a JaCoCo coverage table in the job summary, apply the `jacoco` plugin and
-follow [Coverage (opt-in)](../workflows/publish-library.gradle.md#coverage-opt-in).
-
 ## 4. Set a local version
 
 The workflow always passes `-Pversion=<version>`. For local builds, set a version that can never be
@@ -58,8 +55,9 @@ version=0.0.0-LOCAL-SNAPSHOT
 
 ## 5. Add the workflow
 
-Add the example caller from the [workflow docs](../workflows/publish-library.gradle.md#example), and
-remove any old publish workflow so the library isn't published twice.
+Add the example caller from the [workflow docs](../workflows/publish-library.gradle.md#example). It runs
+`test.gradle.yml` first and only publishes if the tests pass. Remove any old publish workflow so the
+library isn't published twice.
 
 ## Releasing
 
