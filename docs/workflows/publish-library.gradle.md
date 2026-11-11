@@ -62,8 +62,23 @@ Outputs: `version` and `is-release` (`'true'` or `'false'`).
 
 ### Coverage (opt-in)
 
-JaCoCo coverage is off by default. To opt in, apply the `jacoco` plugin in `build.gradle.kts` and
-override both inputs:
+JaCoCo coverage is off by default. To opt in, apply the `jacoco` plugin in `build.gradle.kts` and enable
+the XML report, which Gradle doesn't generate by default:
+
+```kotlin
+plugins {
+    jacoco
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+    }
+}
+```
+
+Then override both inputs:
 
 ```yaml
     with:
@@ -78,7 +93,8 @@ The coverage table is then added to the job summary and the XML report to the ar
 The latest tag matching `<tag-prefix>X.Y.Z` is the latest release. If there is none, `initial-version` is
 used and a warning is shown.
 
-Add at most one release label to the pull request. More than one fails the run. Other labels are ignored.
+Add at most one release label to the pull request. More than one fails the run. All other labels are
+ignored, including other `release:`-prefixed labels such as `release:notes`.
 
 | Label           | Next version (from `2.3.0`) |
 |-----------------|-----------------------------|
@@ -111,9 +127,13 @@ confirmed, a warning says the release label was not applied.
 ## Releases
 
 - The run fails before publishing if the release tag already exists.
-- The tag and GitHub Release (with generated notes) are created only after `publish` succeeds.
-- Releases on the default branch are never cancelled by newer runs, so they happen one at a time.
-  PR runs cancel older runs for the same PR.
+- The tag and GitHub Release (with generated notes) are created directly after `publish` succeeds,
+  before the report steps, so a report failure can't leave a published release without a tag.
+- A commit that is already included in the latest release is not released again. This covers
+  re-running a successful release run: it publishes a snapshot instead and shows a warning.
+- Runs on the default branch are never cancelled. They wait in a queue (`concurrency.queue: max`) and
+  run one at a time, so no release label is lost when several PRs are merged in quick succession.
+- PR runs cancel older runs for the same PR.
 
 ## Reports
 
@@ -129,7 +149,23 @@ build fails. The HTML test report (and the JaCoCo XML, if enabled) is uploaded a
 | `Only one release label is allowed` | Remove all but one `release:*` label from the PR |
 | `Tag vX.Y.Z already exists` | The version was already released. Check the tags, or remove a wrong tag |
 | `No tag matching 'vX.Y.Z' found` (warning) | Tag the latest existing release, see the [setup guide](../guides/library-releases.md) |
+| `Commit ... is already included in release vX.Y.Z` (warning) | The commit was already released, e.g. on a re-run. Nothing to do |
 | `Commit message refers to PR #N, but no merged pull request could be confirmed` (warning) | The release label was not applied. Release manually or merge a new PR with the label |
+
+## Skipping bot pull requests
+
+Every PR publishes a `-PR<number>-SNAPSHOT`, including PRs from bots such as Renovate. To skip those,
+add a condition to the calling job. A skipped job counts as successful for required status checks, so note
+that the library's tests then don't run for those PRs either.
+
+```yaml
+jobs:
+  publish:
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'renovate[bot]'
+    uses: nsbno/platform-actions/.github/workflows/publish-library.gradle.yml@v2
+```
+
+The push after merging still runs, so a merged Renovate PR publishes a snapshot (or a release, if labelled).
 
 ## Related
 

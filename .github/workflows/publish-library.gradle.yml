@@ -95,13 +95,21 @@ on:
         value: ${{ jobs.publish.outputs.is-release }}
 
 concurrency:
-  group: publish-library-gradle-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Pull requests: newer runs for the same PR cancel older ones.
+  # Other events get a unique group here and are serialized by the job-level queue below.
+  group: publish-library-gradle-${{ github.repository }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   publish:
     name: Publish Gradle library
     runs-on: ${{ inputs.runs-on }}
+    # Pushes run one at a time per ref, and pending runs wait in a queue instead of replacing
+    # each other, so no release request is dropped. Pull requests get a unique group here.
+    concurrency:
+      group: publish-library-gradle-queue-${{ github.repository }}-${{ github.event_name == 'pull_request' && github.run_id || github.ref }}
+      cancel-in-progress: false
+      queue: max
     outputs:
       version: ${{ steps.version.outputs.version }}
       is-release: ${{ steps.version.outputs.is-release }}
@@ -131,6 +139,7 @@ jobs:
 
       - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
         name: Gradle Build and Publish
+        id: gradle
         with:
           java-version: ${{ inputs.java-version }}
           java-distribution: ${{ inputs.java-distribution }}
@@ -143,6 +152,27 @@ jobs:
           BUILD_CACHE_PASSWORD: ${{ secrets.BUILD_CACHE_PASSWORD }}
           BUILD_CACHE_USERNAME: ${{ secrets.BUILD_CACHE_USERNAME }}
           GRADLE_CACHE_ENCRYPTION_KEY: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: Create GitHub Release
+        # Directly after publishing, so a failing report step can't leave a published release untagged
+        if: steps.version.outputs.is-release == 'true' && steps.gradle.outcome == 'success' && inputs.create-github-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET_SHA: ${{ github.sha }}
+        run: gh release create "$TAG" --target "$TARGET_SHA" --title "$VERSION" --generate-notes
+
+      - name: Create release tag
+        if: steps.version.outputs.is-release == 'true' && steps.gradle.outcome == 'success' && !inputs.create-github-release
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          git tag "$TAG" "$TARGET_SHA"
+          git push origin "refs/tags/${TAG}"
 
       - name: Test and coverage summary
         if: ${{ !cancelled() && steps.version.outcome == 'success' }}
@@ -223,23 +253,3 @@ jobs:
             ${{ inputs.jacoco-report-path && format('{0}/{1}', inputs.working-directory, inputs.jacoco-report-path) || '' }}
           retention-days: 5
           if-no-files-found: warn
-
-      - name: Create GitHub Release
-        if: steps.version.outputs.is-release == 'true' && inputs.create-github-release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-          VERSION: ${{ steps.version.outputs.version }}
-          TARGET_SHA: ${{ github.sha }}
-        run: gh release create "$TAG" --target "$TARGET_SHA" --title "$VERSION" --generate-notes
-
-      - name: Create release tag
-        if: steps.version.outputs.is-release == 'true' && !inputs.create-github-release
-        shell: bash
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-          TARGET_SHA: ${{ github.sha }}
-        run: |
-          git tag "$TAG" "$TARGET_SHA"
-          git push origin "refs/tags/${TAG}"

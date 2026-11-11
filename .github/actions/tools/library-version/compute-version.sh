@@ -82,7 +82,7 @@ elif [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/${DEFAULT_BRANCH}" ]]; 
   fi
 fi
 
-mapfile -t release_labels < <(jq -r '.[] | select(startswith("release:"))' <<<"$labels_json")
+mapfile -t release_labels < <(jq -r '.[] | select(. == "release:major" or . == "release:minor" or . == "release:patch")' <<<"$labels_json")
 if (( ${#release_labels[@]} > 1 )); then
   echo "::error::Only one release label is allowed, found: ${release_labels[*]}"
   exit 1
@@ -90,15 +90,16 @@ fi
 
 bump="none"
 if (( ${#release_labels[@]} == 1 )); then
-  case "${release_labels[0]}" in
-    release:major) bump="major" ;;
-    release:minor) bump="minor" ;;
-    release:patch) bump="patch" ;;
-    *)
-      echo "::error::Unknown release label '${release_labels[0]}'. Use release:major, release:minor or release:patch."
-      exit 1
-      ;;
-  esac
+  bump="${release_labels[0]#release:}"
+fi
+
+# A commit that is already part of the latest release must not be released again. This covers
+# re-runs of a successful release and queued runs for older commits that finish after a newer release.
+if [[ "$is_default_push" == "true" && "$bump" != "none" && -n "$latest_tag" ]] \
+  && git merge-base --is-ancestor "$SHA" "$latest_tag" 2>/dev/null; then
+  echo "::warning::Commit ${SHA} is already included in release ${latest_tag}. Not releasing again; publishing a snapshot instead."
+  already_released="$latest_tag"
+  bump="none"
 fi
 
 IFS=. read -r major minor patch <<<"$previous_version"
@@ -138,10 +139,13 @@ fi
   echo ""
   echo "| | |"
   echo "|---|---|"
-  echo "| Latest release | ${latest_tag:-none (using ${INITIAL_VERSION})} |"
-  echo "| Release label | ${release_labels[0]:-none} |"
+  echo "| Latest release | $([[ -n "$latest_tag" ]] && echo "\`${previous_version}\` (tag \`${latest_tag}\`)" || echo "none (using \`${INITIAL_VERSION}\`)") |"
+  echo "| Release label | $([[ ${#release_labels[@]} -eq 1 ]] && echo "\`${release_labels[0]}\`" || echo none) |"
   echo "| Version | \`${version}\` |"
   echo "| Type | $([[ "$is_release" == "true" ]] && echo "release (tag \`${tag}\`)" || echo snapshot) |"
+  if [[ -n "${already_released:-}" ]]; then
+    echo "| Note | Commit is already included in \`${already_released}\`, not released again |"
+  fi
   if [[ -n "${on_merge:-}" ]]; then
     echo "| On merge | ${on_merge} |"
   fi
