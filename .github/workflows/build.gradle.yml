@@ -115,6 +115,7 @@ jobs:
             echo "DATASOURCE_URL=jdbc:postgresql://localhost:5432/ci"
             echo "DATASOURCE_USERNAME=ci"
             echo "DATASOURCE_PASSWORD=password"
+            echo "AWS_REGION=eu-west-1"
           } >> "$GITHUB_ENV"
 
       - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
