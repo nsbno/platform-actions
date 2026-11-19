@@ -41,17 +41,17 @@ on:
         required: false
         type: string
         default: "assemble -Dorg.gradle.caching=true --no-daemon"
-        description: "Gradle operations to run. Do not add the OpenAPI generation task (resolve / generateOpenApiDocs) here, use openapi-generator instead."
-      openapi-generator:
+        description: "Gradle operations to run. You can set active profile or add OpenAPI generation tasks here"
+      openapi-db:
         required: false
-        type: string
-        default: ""
-        description: "Optional. Generate the OpenAPI spec as part of the build. Supported values: 'swagger' (runs the 'resolve' task, for Jersey/JAX-RS) and 'springdoc' (runs the 'generateOpenApiDocs' task, for Spring MVC; starts a Postgres container for the app). Leave empty if the spec is checked in or not used. The spec ends up in the build artifact, e.g. generated/openapi-definition.json."
-      openapi-generator-profile:
+        type: boolean
+        default: false
+        description: "Start a Postgres container and set SPRING_PROFILES_ACTIVE and DATASOURCE_* env vars for the Gradle step. Enable when 'generateOpenApiDocs' (springdoc) starts the application, which needs a database."
+      openapi-db-profile:
         required: false
         type: string
         default: "ci"
-        description: "Spring profile activated while the 'springdoc' generator starts the application (SPRING_PROFILES_ACTIVE). Only used when openapi-generator is 'springdoc'."
+        description: "Spring profile activated as SPRING_PROFILES_ACTIVE. Only used when openapi-db is true."
       git-sha:
         required: false
         type: string
@@ -91,23 +91,11 @@ jobs:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
           ref: ${{ inputs.git-sha }}
 
-      - name: Validate openapi-generator
-        env:
-          OPENAPI_GENERATOR: ${{ inputs.openapi-generator }}
-        run: |
-          case "${OPENAPI_GENERATOR}" in
-            ""|swagger|springdoc) ;;
-            *)
-              echo "::error::Unsupported openapi-generator '${OPENAPI_GENERATOR}'. Supported values: swagger, springdoc (or leave empty)."
-              exit 1
-              ;;
-          esac
-
       # springdoc generates the spec by starting the application, which needs a database.
-      - name: Start Postgres for springdoc
-        if: inputs.openapi-generator == 'springdoc'
+      - name: Start Postgres for OpenAPI generation
+        if: inputs.openapi-db
         env:
-          GENERATOR_PROFILE: ${{ inputs.openapi-generator-profile }}
+          GENERATOR_PROFILE: ${{ inputs.openapi-db-profile }}
         run: |
           docker run -d --name openapi-postgres -p 5432:5432 \
             -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=password -e POSTGRES_DB=ci \
@@ -130,7 +118,7 @@ jobs:
         with:
           java-version: ${{ inputs.java-version }}
           java-distribution: ${{ inputs.java-distribution }}
-          gradle-operations: ${{ inputs.gradle-operations }} ${{ inputs.openapi-generator == 'swagger' && 'resolve' || inputs.openapi-generator == 'springdoc' && 'generateOpenApiDocs' || '' }}
+          gradle-operations: ${{ inputs.gradle-operations }}
           working-directory: ${{ inputs.working-directory }}
           cache-read-only: ${{ inputs.cache-read-only }}
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
