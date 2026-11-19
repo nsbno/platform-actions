@@ -41,7 +41,17 @@ on:
         required: false
         type: string
         default: "assemble -Dorg.gradle.caching=true --no-daemon"
-        description: "Gradle operations to run."
+        description: "Gradle operations to run. You can set active profile or add OpenAPI generation tasks here"
+      openapi-db:
+        required: false
+        type: boolean
+        default: false
+        description: "Start a Postgres container and set SPRING_PROFILES_ACTIVE and DATASOURCE_* env vars for the Gradle step. Enable when 'generateOpenApiDocs' (springdoc) starts the application, which needs a database."
+      openapi-db-profile:
+        required: false
+        type: string
+        default: "ci"
+        description: "Spring profile activated as SPRING_PROFILES_ACTIVE. Only used when openapi-db is true."
       git-sha:
         required: false
         type: string
@@ -80,6 +90,28 @@ jobs:
         with:
           fetch-depth: '0' # Fetch all history for all branches and tags (for branches)
           ref: ${{ inputs.git-sha }}
+
+      # springdoc generates the spec by starting the application, which needs a database.
+      - name: Start Postgres for OpenAPI generation
+        if: inputs.openapi-db
+        env:
+          GENERATOR_PROFILE: ${{ inputs.openapi-db-profile }}
+        run: |
+          docker run -d --name openapi-postgres -p 5432:5432 \
+            -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=password -e POSTGRES_DB=ci \
+            postgres:16
+          for i in $(seq 1 30); do
+            docker exec openapi-postgres pg_isready -U ci && break
+            sleep 2
+          done
+          docker exec openapi-postgres pg_isready -U ci
+          {
+            echo "SPRING_PROFILES_ACTIVE=${GENERATOR_PROFILE}"
+            echo "DATASOURCE_URL=jdbc:postgresql://localhost:5432/ci"
+            echo "DATASOURCE_USERNAME=ci"
+            echo "DATASOURCE_PASSWORD=password"
+            echo "AWS_REGION=eu-west-1"
+          } >> "$GITHUB_ENV"
 
       - uses: nsbno/platform-actions/.github/actions/tools/gradle@v2
         name: Gradle Build
