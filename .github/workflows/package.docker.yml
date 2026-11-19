@@ -43,6 +43,11 @@ on:
         required: false
         type: string
         description: "Git SHA to checkout at, and to use as image tag. Falls back to SHA of the workflow context if not provided."
+      tag-as-latest:
+        required: false
+        type: boolean
+        default: true
+        description: "When `true` the image gets the 'latest' tag. Must be false when ECR repo is immutable, or you don't want it"
       runs-on:
         required: false
         type: string
@@ -102,7 +107,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repo-name }}:${{ inputs.git-sha || github.event.pull_request.head.sha || github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.ecr-repo-name }}:latest
+            ${{ inputs.tag-as-latest && format('{0}/{1}:latest', steps.login-ecr.outputs.registry, inputs.ecr-repo-name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # provenance and sbom are not supported for lambda images
