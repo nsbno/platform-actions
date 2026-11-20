@@ -72,9 +72,11 @@ jobs:
     strategy:
       matrix:
         environment: ${{ fromJson(needs.get-environments.outputs.environments) }}
-    # Needed to avoid conflicts with terraform state
+    # Needed to avoid conflicts with terraform state.
+    # queue: max keeps every run waiting in order, so a plan can never replace a queued deployment.
     concurrency:
       group: ${{ inputs.working-directory }}-${{ matrix.environment }}-terraform
+      queue: max
     environment: ${{ matrix.environment }}
     steps:
       - name: Checkout code
