@@ -44,6 +44,7 @@ permissions:
 
 concurrency:
   group: ${{ inputs.working-directory }}-${{ inputs.environment }}-terraform
+  queue: max
 
 jobs:
   terraform-apply:
