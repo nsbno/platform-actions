@@ -31,6 +31,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      concurrency-queue:
+        description: "Concurrency queue mode. Defaults to single. Set to max to queue all pending runs for ordered execution."
+        type: string
+        required: false
+        default: "single"
       runs-on:
         required: false
         type: string
@@ -76,7 +81,7 @@ jobs:
     # queue: max keeps every run waiting in order, so a plan can never replace a queued deployment.
     concurrency:
       group: ${{ inputs.working-directory }}-${{ matrix.environment }}-terraform
-      queue: max
+      queue: ${{ inputs.concurrency-queue }}
     environment: ${{ matrix.environment }}
     steps:
       - name: Checkout code
