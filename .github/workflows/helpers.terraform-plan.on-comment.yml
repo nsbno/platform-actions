@@ -21,6 +21,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      concurrency-queue:
+        description: "Concurrency queue mode. Defaults to single. Set to max to queue all pending runs for ordered execution."
+        type: string
+        required: false
+        default: "single"
       runs-on:
         required: false
         type: string
@@ -90,6 +95,7 @@ jobs:
       environment: ${{ needs.trigger.outputs.environment || '' }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   reaction-handling:
     name: Remove eyes, React rocket

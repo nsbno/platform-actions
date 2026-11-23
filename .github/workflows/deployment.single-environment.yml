@@ -25,6 +25,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      concurrency-queue:
+        description: "Concurrency queue mode. Defaults to single. Set to max to queue all pending runs for ordered execution."
+        type: string
+        required: false
+        default: "single"
       terraform-runs-on:
         required: false
         type: string
@@ -66,6 +71,7 @@ jobs:
       sha-to-deploy: ${{ inputs.sha-to-deploy }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.terraform-runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   deploy-application:
     name: Deploy Application

@@ -56,6 +56,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      concurrency-queue:
+        description: "Concurrency queue mode. Defaults to single. Set to max to queue all pending runs for ordered execution."
+        type: string
+        required: false
+        default: "single"
       runs-on:
         required: false
         type: string
@@ -103,6 +108,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   dev-terraform:
     name: Dev - Terraform
@@ -123,6 +129,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   test-terraform:
     name: Test - Terraform
@@ -143,6 +150,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   stage-terraform:
     name: Stage - Terraform
@@ -163,6 +171,7 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
 
   production-terraform:
     name: Prod - Terraform
@@ -186,3 +195,4 @@ jobs:
       terraform-directory: ${{ inputs.terraform-directory }}
       version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
       runs-on: ${{ inputs.runs-on }}
+      concurrency-queue: ${{ inputs.concurrency-queue }}
