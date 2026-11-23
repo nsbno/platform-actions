@@ -30,6 +30,11 @@ on:
         description: "Version handler API endpoint for artifact versioning. Use ONLY if testing the deployment pipeline"
         required: false
         type: string
+      concurrency-queue:
+        description: "Concurrency queue mode. Defaults to single. Set to max to queue all pending runs for ordered execution."
+        type: string
+        required: false
+        default: "single"
       runs-on:
         required: false
         type: string
@@ -44,7 +49,7 @@ permissions:
 
 concurrency:
   group: ${{ inputs.working-directory }}-${{ inputs.environment }}-terraform
-  queue: max
+  queue: ${{ inputs.concurrency-queue }}
 
 jobs:
   terraform-apply:
