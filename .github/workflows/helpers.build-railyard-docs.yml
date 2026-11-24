@@ -9,14 +9,10 @@ on:
         type: string
         default: .
         description: "The directory containing mkdocs.yml"
-      openapi-directory:
+      openapi-spec-path:
         type: string
-        default: "generated"
-        description: "The folder path where the OpenAPI spec is generated"
-      openapi-spec-filename:
-        type: string
-        default: openapi-definition.yaml
-        description: "The file name for openapi-spec"
+        default: generated/openapi-definition.yaml
+        description: "Path to the OpenAPI spec, relative to the root of the build artifact"
       aws-region:
         required: false
         type: string
@@ -29,7 +25,15 @@ on:
       skip-openapi-spec:
         type: boolean
         default: false
-        description: "Optional. Skip updating OpenAPI spec"
+        description: "Optional. Skip uploading the OpenAPI spec to Railyard and Stasjon. Otherwise the workflow fails if the spec file is missing."
+      team-name:
+        type: string
+        default: ""
+        description: "Optional. The team that owns the API (used for uploading to Stasjon)"
+      audience:
+        type: string
+        default: "internal"
+        description: "Audience for the API reference: internal, external, or private (used for uploading to Stasjon)"
       use-plantuml:
         type: boolean
         default: false
@@ -112,40 +116,43 @@ jobs:
           path: artifact-download
 
       - name: Check OpenAPI spec exists
-        id: check-file
         run: |
-          # Check for the OpenAPI spec file
-          FILE_PATH="artifact-download/${{ inputs.openapi-directory }}/${{ inputs.openapi-spec-filename }}"
-          
+          FILE_PATH="artifact-download/${{ inputs.openapi-spec-path }}"
           echo "Checking for OpenAPI spec at: $FILE_PATH"
-          if [ -f "$FILE_PATH" ]; then
-            echo "file_exists=true" >> $GITHUB_OUTPUT
-            echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
-            echo "✓ Found OpenAPI spec file"
-          else
-            echo "file_exists=false" >> $GITHUB_OUTPUT
-            echo "SKIPPING: OpenAPI spec file not found: ${{ inputs.openapi-spec-filename }}"
+          if [ ! -f "$FILE_PATH" ]; then
+            echo "::error::OpenAPI spec file not found: ${{ inputs.openapi-spec-path }}"
+            exit 1
           fi
 
       - name: Create the railyard openapi folder if it doesn't exist
-        if: steps.check-file.outputs.file_exists == 'true'
         run: mkdir -p railyard/openapi/${{inputs.entity-name}}
 
       - name: Copy openapi-spec to railyard/openapi/${{inputs.entity-name}}
-        if: steps.check-file.outputs.file_exists == 'true'
-        run: cp "${{ steps.check-file.outputs.file_path }}" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
+        run: cp "artifact-download/${{ inputs.openapi-spec-path }}" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
 
       - name: Authenticate with AWS
-        if: steps.check-file.outputs.file_exists == 'true'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
       - name: Upload OpenAPI spec to S3
-        if: steps.check-file.outputs.file_exists == 'true'
         env:
           S3_BUCKET: "471112960535-railyard-artifacts"
           ENTITY_NAME: ${{inputs.entity-name}}
         run: |
           aws s3 sync "./railyard/openapi/${{inputs.entity-name}}" "s3://$S3_BUCKET/openapi/$ENTITY_NAME/"
+
+  upload-to-stasjon:
+    name: Upload OpenAPI spec to Stasjon
+    if: ${{ !inputs.skip-openapi-spec }}
+    uses: nsbno/platform-actions/.github/workflows/helpers.upload-open-api-spec.yml@v2
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      open-api-spec-path: ${{ inputs.openapi-spec-path }}
+      application-name: ${{ inputs.entity-name }}
+      artifact-name: ${{ inputs.artifact-name }}
+      child-team-name: ${{ inputs.team-name }}
+      audience: ${{ inputs.audience }}
