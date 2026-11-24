@@ -34,6 +34,11 @@ on:
         type: string
         description: "AWS region to use."
         default: 'eu-west-1'
+      git-sha:
+        required: false
+        type: string
+        description: "Git SHA to checkout at, and to use as S3 file name. Defaults to PR head SHA or the triggering commit SHA."
+        default: '${{ github.event.pull_request.head.sha || github.sha }}'
 
 name: Package JAR to S3
 
@@ -52,6 +57,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.git-sha }}
 
       - name: Download artifacts
         id: download-artifacts
@@ -69,7 +76,7 @@ jobs:
       - name: Upload to S3
         env:
           S3_BUCKET: ${{ inputs.s3-bucket-name != '' && inputs.s3-bucket-name || format('{0}-deployment-delivery-pipeline-artifacts', vars.AWS_ACCOUNT_ID) }}
-          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GIT_SHA: ${{ inputs.git-sha }}
           SERVICE_DIR: ${{ inputs.working-directory }}
           REPO_NAME: ${{ github.repository }}
           SOURCE_FILE_NAME: ${{ inputs.file-path }}
