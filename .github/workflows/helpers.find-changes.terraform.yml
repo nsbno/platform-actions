@@ -113,6 +113,7 @@ jobs:
           working-directory: ${{ inputs.working-directory }}
           terraform-directory: ${{ inputs.terraform-directory }}
           version-handler-api-endpoint: ${{ inputs.version-handler-api-endpoint }}
+          git-sha: ${{ inputs.git-sha }}
 
       - name: Notify about changes
         shell: bash
