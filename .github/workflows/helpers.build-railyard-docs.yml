@@ -40,8 +40,12 @@ on:
         description: "Install PlantUML for diagram rendering"
       plantuml-version:
         type: string
-        default: "1.2025.2"
+        default: "1.2026.10"
         description: "PlantUML version to install (only used when use-plantuml is true)"
+      plantuml-sha256:
+        type: string
+        default: "e9bc9e6b2eb715e8c0c929f3dcb5fc1923be13f37599b09c293c66d354e88686"
+        description: "SHA-256 of the PlantUML jar. Must be updated together with plantuml-version."
 
 
 name: Build Railyard TechDocs
@@ -66,11 +70,26 @@ jobs:
       - name: Install mkdocs and plugins
         run: |
           python -m pip install --upgrade pip && pip install mkdocs mkdocs-techdocs-core
+      - name: Cache PlantUML
+        if: ${{ inputs.use-plantuml }}
+        id: plantuml-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/plantuml.jar
+          key: plantuml-${{ inputs.plantuml-version }}-${{ inputs.plantuml-sha256 }}
+
+      - name: Download PlantUML
+        if: ${{ inputs.use-plantuml && steps.plantuml-cache.outputs.cache-hit != 'true' }}
+        run: |
+          curl -sSLf "https://github.com/plantuml/plantuml/releases/download/v${{ inputs.plantuml-version }}/plantuml-${{ inputs.plantuml-version }}.jar" -o "$HOME/plantuml.jar"
+
       - name: Install PlantUML
         if: ${{ inputs.use-plantuml }}
+        env:
+          PLANTUML_SHA256: ${{ inputs.plantuml-sha256 }}
         run: |
+          echo "$PLANTUML_SHA256  $HOME/plantuml.jar" | sha256sum --check --strict
           mkdir -p $HOME/bin
-          curl -sSL "https://github.com/plantuml/plantuml/releases/download/v${{ inputs.plantuml-version }}/plantuml-${{ inputs.plantuml-version }}.jar" -o $HOME/plantuml.jar
           printf '#!/bin/sh\njava -jar %s/plantuml.jar "$@"\n' "$HOME" > $HOME/bin/plantuml
           chmod +x $HOME/bin/plantuml
           echo "$HOME/bin" >> $GITHUB_PATH
