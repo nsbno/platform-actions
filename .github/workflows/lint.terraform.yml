@@ -15,7 +15,12 @@ on:
       terraform-version:
         required: false
         type: string
-        description: "What Terraform version to use"
+        description: "What Terraform version to use. Takes priority over use-required-version. Defaults to the latest version"
+      use-required-version:
+        required: false
+        type: boolean
+        default: false
+        description: "Set to true to use the first `required_version` found in working-directory, infrastructure, terraform/template or terraform when terraform-version is not set. Falls back to the latest version if none is found. Defaults to false"
       run-fmt:
         required: false
         type: boolean
@@ -44,9 +49,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Find Terraform version
+        id: terraform-version
+        if: ${{ inputs.use-required-version && inputs.terraform-version == '' }}
+        uses: nsbno/platform-actions/.github/actions/helpers/find-terraform-version@v2
+        with:
+          directories: |
+            ${{ inputs.working-directory }}
+            infrastructure
+            terraform/template
+            terraform
+
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0
         with:
-          terraform_version: ${{ inputs.terraform-version }}
+          terraform_version: ${{ inputs.terraform-version || steps.terraform-version.outputs.version }}
 
       - name: Check formatting
         run: terraform fmt -check -diff -recursive
@@ -62,9 +78,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Find Terraform version
+        id: terraform-version
+        if: ${{ inputs.use-required-version && inputs.terraform-version == '' }}
+        uses: nsbno/platform-actions/.github/actions/helpers/find-terraform-version@v2
+        with:
+          directories: |
+            ${{ inputs.working-directory }}
+            infrastructure
+            terraform/template
+            terraform
+
       - uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0
         with:
-          terraform_version: ${{ inputs.terraform-version }}
+          terraform_version: ${{ inputs.terraform-version || steps.terraform-version.outputs.version }}
 
       - name: Terraform Init
         run: terraform init -backend=false
