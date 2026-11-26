@@ -11,8 +11,16 @@ on:
         description: "The directory containing mkdocs.yml"
       openapi-spec-path:
         type: string
-        default: generated/openapi-definition.yaml
-        description: "Path to the OpenAPI spec, relative to the root of the build artifact"
+        default: ""
+        description: "Path to the OpenAPI spec, relative to the root of the build artifact. New services should use this. Takes precedence over openapi-directory and openapi-spec-filename when set."
+      openapi-directory:
+        type: string
+        default: "generated"
+        description: "Deprecated, kept for backward compatibility. New services should use openapi-spec-path instead. The folder path where the OpenAPI spec is generated. Ignored when openapi-spec-path is set."
+      openapi-spec-filename:
+        type: string
+        default: openapi-definition.yaml
+        description: "Deprecated, kept for backward compatibility. New services should use openapi-spec-path instead. The file name for openapi-spec. Ignored when openapi-spec-path is set."
       aws-region:
         required: false
         type: string
@@ -118,6 +126,8 @@ jobs:
     if: ${{ !inputs.skip-openapi-spec }}
     environment: Service
     runs-on: ubuntu-latest
+    env:
+      OPENAPI_SPEC_PATH: ${{ inputs.openapi-spec-path != '' && inputs.openapi-spec-path || format('{0}/{1}', inputs.openapi-directory, inputs.openapi-spec-filename) }}
     permissions:
       id-token: write
       contents: read
@@ -130,10 +140,10 @@ jobs:
 
       - name: Check OpenAPI spec exists
         run: |
-          FILE_PATH="artifact-download/${{ inputs.openapi-spec-path }}"
+          FILE_PATH="artifact-download/$OPENAPI_SPEC_PATH"
           echo "Checking for OpenAPI spec at: $FILE_PATH"
           if [ ! -f "$FILE_PATH" ]; then
-            echo "::error::OpenAPI spec file not found: ${{ inputs.openapi-spec-path }}"
+            echo "::error::OpenAPI spec file not found: $OPENAPI_SPEC_PATH"
             exit 1
           fi
 
@@ -141,7 +151,7 @@ jobs:
         run: mkdir -p railyard/openapi/${{inputs.entity-name}}
 
       - name: Copy OpenAPI spec to railyard/openapi/${{inputs.entity-name}}
-        run: cp "artifact-download/${{ inputs.openapi-spec-path }}" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
+        run: cp "artifact-download/$OPENAPI_SPEC_PATH" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
 
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@v6
@@ -192,7 +202,7 @@ jobs:
       id-token: write
       contents: read
     with:
-      open-api-spec-path: ${{ inputs.openapi-spec-path }}
+      open-api-spec-path: ${{ inputs.openapi-spec-path != '' && inputs.openapi-spec-path || format('{0}/{1}', inputs.openapi-directory, inputs.openapi-spec-filename) }}
       application-name: ${{ inputs.entity-name }}
       artifact-name: ${{ inputs.artifact-name }}
       child-team-name: ${{ inputs.team-name != '' && inputs.team-name || needs.resolve-team-name.outputs.team-name }}
