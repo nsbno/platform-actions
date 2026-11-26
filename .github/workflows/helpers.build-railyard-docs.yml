@@ -29,7 +29,7 @@ on:
       team-name:
         type: string
         default: ""
-        description: "Optional. The team that owns the API (used for uploading to Stasjon)"
+        description: "Optional. Overrides the team read from the owner of the openapi API in railyard-info.yaml (used for uploading to Stasjon)"
       audience:
         type: string
         default: "internal"
@@ -38,15 +38,6 @@ on:
         type: boolean
         default: false
         description: "Install PlantUML for diagram rendering"
-      plantuml-version:
-        type: string
-        default: "1.2026.10"
-        description: "PlantUML version to install (only used when use-plantuml is true)"
-      plantuml-sha256:
-        type: string
-        default: "e9bc9e6b2eb715e8c0c929f3dcb5fc1923be13f37599b09c293c66d354e88686"
-        description: "SHA-256 of the PlantUML jar. Must be updated together with plantuml-version."
-
 
 name: Build Railyard TechDocs
 
@@ -59,6 +50,11 @@ jobs:
     name: Build mkdocs
     environment: Service
     runs-on: ubuntu-latest
+    env:
+      MKDOCS_VERSION: "1.6.1"
+      MKDOCS_TECHDOCS_CORE_VERSION: "1.7.1"
+      PLANTUML_VERSION: "1.2026.10"
+      PLANTUML_SHA256: "e9bc9e6b2eb715e8c0c929f3dcb5fc1923be13f37599b09c293c66d354e88686"
     permissions:
       id-token: write
       contents: read
@@ -69,24 +65,22 @@ jobs:
           python-version: '3.12'
       - name: Install mkdocs and plugins
         run: |
-          python -m pip install --upgrade pip && pip install mkdocs mkdocs-techdocs-core
+          python -m pip install "mkdocs==${MKDOCS_VERSION}" "mkdocs-techdocs-core==${MKDOCS_TECHDOCS_CORE_VERSION}"
       - name: Cache PlantUML
         if: ${{ inputs.use-plantuml }}
         id: plantuml-cache
         uses: actions/cache@v5
         with:
           path: ~/plantuml.jar
-          key: plantuml-${{ inputs.plantuml-version }}-${{ inputs.plantuml-sha256 }}
+          key: plantuml-${{ env.PLANTUML_VERSION }}-${{ env.PLANTUML_SHA256 }}
 
       - name: Download PlantUML
         if: ${{ inputs.use-plantuml && steps.plantuml-cache.outputs.cache-hit != 'true' }}
         run: |
-          curl -sSLf "https://github.com/plantuml/plantuml/releases/download/v${{ inputs.plantuml-version }}/plantuml-${{ inputs.plantuml-version }}.jar" -o "$HOME/plantuml.jar"
+          curl -sSLf "https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar" -o "$HOME/plantuml.jar"
 
       - name: Install PlantUML
         if: ${{ inputs.use-plantuml }}
-        env:
-          PLANTUML_SHA256: ${{ inputs.plantuml-sha256 }}
         run: |
           echo "$PLANTUML_SHA256  $HOME/plantuml.jar" | sha256sum --check --strict
           mkdir -p $HOME/bin
@@ -162,9 +156,37 @@ jobs:
         run: |
           aws s3 sync "./railyard/openapi/${{inputs.entity-name}}" "s3://$S3_BUCKET/openapi/$ENTITY_NAME/"
 
+  resolve-team-name:
+    name: Resolve team name
+    if: ${{ !inputs.skip-openapi-spec && inputs.team-name == '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      team-name: ${{ steps.owner.outputs.result }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.54.3
+          YQ_SHA256: "129534601871538efe0ba4c5e62a34fb1d5f469bcb975c4fddeb467d82974973"
+        run: |
+          curl -sSLf "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "$RUNNER_TEMP/yq"
+          echo "$YQ_SHA256  $RUNNER_TEMP/yq" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Read owner of the OpenAPI API from railyard-info.yaml
+        id: owner
+        run: |
+          OWNER=$(yq 'select(.kind == "API" and .spec.type == "openapi") | .spec.owner' railyard-info.yaml)
+          echo "result=$OWNER" >> "$GITHUB_OUTPUT"
+
   persist-openapi-spec-to-stasjon:
     name: Persist OpenAPI spec to API portal in Stasjon
-    if: ${{ !inputs.skip-openapi-spec }}
+    needs: resolve-team-name
+    if: ${{ !cancelled() && !failure() && !inputs.skip-openapi-spec }}
     uses: nsbno/platform-actions/.github/workflows/helpers.upload-open-api-spec.yml@v2
     permissions:
       id-token: write
@@ -173,5 +195,5 @@ jobs:
       open-api-spec-path: ${{ inputs.openapi-spec-path }}
       application-name: ${{ inputs.entity-name }}
       artifact-name: ${{ inputs.artifact-name }}
-      child-team-name: ${{ inputs.team-name }}
+      child-team-name: ${{ inputs.team-name != '' && inputs.team-name || needs.resolve-team-name.outputs.team-name }}
       audience: ${{ inputs.audience }}
