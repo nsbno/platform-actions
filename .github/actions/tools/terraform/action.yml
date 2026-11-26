@@ -68,53 +68,32 @@ runs:
         echo "dir=${{ steps.tf-dir-autodiscovery.outputs.directory }}" >> $GITHUB_OUTPUT
 
     - name: Find Terraform version
+      id: terraform-version
+      uses: nsbno/platform-actions/.github/actions/helpers/find-terraform-version@v2
+      with:
+        directories: |
+          ${{ steps.tf-dir.outputs.dir }}
+          ${{ inputs.working-directory }}/infrastructure
+          ${{ inputs.working-directory }}/terraform/template
+          ${{ inputs.working-directory }}/terraform
+
+    - name: Validate Terraform version was found
+      if: steps.terraform-version.outputs.version == ''
       shell: bash
       run: |
-        set -e
-        dirs=(
-          "${{ steps.tf-dir.outputs.dir }}"
-          "${{ inputs.working-directory }}/infrastructure"
-          "${{ inputs.working-directory }}/terraform/template"
-          "${{ inputs.working-directory }}/terraform"
-        )
-        echo "Searching for Terraform version in directories: ${dirs[*]}"
-        for dir in "${dirs[@]}"; do
-          echo "Checking directory: $dir"
-          if [ -d "$dir" ]; then
-            version=""
-            dir_queue=("$dir")
-            queue_idx=0
-            while [ "$queue_idx" -lt ${#dir_queue[@]} ]; do
-              current_dir="${dir_queue[$queue_idx]}"
-              queue_idx=$((queue_idx + 1))
-
-              while IFS= read -r -d '' file; do
-                match=$(grep -Eho 'required_version *= *"[^"]+"' -- "$file" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
-                if [ -n "$match" ]; then
-                  version="$match"
-                  break 2
-                fi
-              done < <(find "$current_dir" -maxdepth 1 -type f -name '*.tf' -print0)
-
-              while IFS= read -r -d '' subdir; do
-                dir_queue+=("$subdir")
-              done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -type d \
-                -not -name '.git' -not -name '.terraform' -not -name 'node_modules' -print0)
-            done
-            if [ -n "$version" ]; then
-              echo "Found Terraform version: $version"
-              echo "TERRAFORM_VERSION=$version" >> $GITHUB_ENV
-              exit 0
-            fi
-          fi
-        done
         echo "::error title=Terraform version not found::Could not determine required Terraform version."
         exit 1
+
+    - name: Export Terraform version
+      shell: bash
+      env:
+        TERRAFORM_VERSION: ${{ steps.terraform-version.outputs.version }}
+      run: echo "TERRAFORM_VERSION=$TERRAFORM_VERSION" >> "$GITHUB_ENV"
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4
       with:
-        terraform_version: ${{ env.TERRAFORM_VERSION }}
+        terraform_version: ${{ steps.terraform-version.outputs.version }}
 
     - name: Cache Terraform
       id: terraform-cache
