@@ -9,14 +9,18 @@ on:
         type: string
         default: .
         description: "The directory containing mkdocs.yml"
+      openapi-spec-path:
+        type: string
+        default: ""
+        description: "Path to the OpenAPI spec, relative to the root of the build artifact. New services should use this. Takes precedence over openapi-directory and openapi-spec-filename when set."
       openapi-directory:
         type: string
         default: "generated"
-        description: "The folder path where the OpenAPI spec is generated"
+        description: "Deprecated, kept for backward compatibility. New services should use openapi-spec-path instead. The folder path where the OpenAPI spec is generated. Ignored when openapi-spec-path is set."
       openapi-spec-filename:
         type: string
         default: openapi-definition.yaml
-        description: "The file name for openapi-spec"
+        description: "Deprecated, kept for backward compatibility. New services should use openapi-spec-path instead. The file name for openapi-spec. Ignored when openapi-spec-path is set."
       aws-region:
         required: false
         type: string
@@ -29,16 +33,19 @@ on:
       skip-openapi-spec:
         type: boolean
         default: false
-        description: "Optional. Skip updating OpenAPI spec"
+        description: "Optional. Skip uploading the OpenAPI spec to Railyard and Stasjon. Otherwise the workflow fails if the spec file is missing."
+      team-name:
+        type: string
+        default: ""
+        description: "Optional. Overrides the team read from the owner of the openapi API in railyard-info.yaml (used for uploading to Stasjon)"
+      audience:
+        type: string
+        default: "internal"
+        description: "Audience for the API reference: internal, external, or private (used for uploading to Stasjon)"
       use-plantuml:
         type: boolean
         default: false
         description: "Install PlantUML for diagram rendering"
-      plantuml-version:
-        type: string
-        default: "1.2025.2"
-        description: "PlantUML version to install (only used when use-plantuml is true)"
-
 
 name: Build Railyard TechDocs
 
@@ -51,6 +58,11 @@ jobs:
     name: Build mkdocs
     environment: Service
     runs-on: ubuntu-latest
+    env:
+      MKDOCS_VERSION: "1.6.1"
+      MKDOCS_TECHDOCS_CORE_VERSION: "1.7.1"
+      PLANTUML_VERSION: "1.2026.10"
+      PLANTUML_SHA256: "e9bc9e6b2eb715e8c0c929f3dcb5fc1923be13f37599b09c293c66d354e88686"
     permissions:
       id-token: write
       contents: read
@@ -61,12 +73,25 @@ jobs:
           python-version: '3.12'
       - name: Install mkdocs and plugins
         run: |
-          python -m pip install --upgrade pip && pip install mkdocs mkdocs-techdocs-core
+          python -m pip install "mkdocs==${MKDOCS_VERSION}" "mkdocs-techdocs-core==${MKDOCS_TECHDOCS_CORE_VERSION}"
+      - name: Cache PlantUML
+        if: ${{ inputs.use-plantuml }}
+        id: plantuml-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/plantuml.jar
+          key: plantuml-${{ env.PLANTUML_VERSION }}-${{ env.PLANTUML_SHA256 }}
+
+      - name: Download PlantUML
+        if: ${{ inputs.use-plantuml && steps.plantuml-cache.outputs.cache-hit != 'true' }}
+        run: |
+          curl -sSLf "https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar" -o "$HOME/plantuml.jar"
+
       - name: Install PlantUML
         if: ${{ inputs.use-plantuml }}
         run: |
+          echo "$PLANTUML_SHA256  $HOME/plantuml.jar" | sha256sum --check --strict
           mkdir -p $HOME/bin
-          curl -sSL "https://github.com/plantuml/plantuml/releases/download/v${{ inputs.plantuml-version }}/plantuml-${{ inputs.plantuml-version }}.jar" -o $HOME/plantuml.jar
           printf '#!/bin/sh\njava -jar %s/plantuml.jar "$@"\n' "$HOME" > $HOME/bin/plantuml
           chmod +x $HOME/bin/plantuml
           echo "$HOME/bin" >> $GITHUB_PATH
@@ -77,7 +102,7 @@ jobs:
       - name: Build mkdocs
         run: cd ${{ inputs.mkdocs-directory }} && python -m mkdocs build
 
-      - name: Create the railyard folder if it doesn't exist
+      - name: Create Railyard folder structure if it doesn't exist
         run: mkdir -p railyard/default/component/${{inputs.entity-name}}
 
       - name: Save the new site
@@ -96,11 +121,13 @@ jobs:
         run: |
           aws s3 sync "./railyard/default/component/${{inputs.entity-name}}" "s3://$S3_BUCKET/default/component/$ENTITY_NAME/"
 
-  update-openapi-spec:
-    name: Update OpenAPI Spec
+  persist-openapi-spec-to-railyard:
+    name: Persist OpenAPI spec to Railyard
     if: ${{ !inputs.skip-openapi-spec }}
     environment: Service
     runs-on: ubuntu-latest
+    env:
+      OPENAPI_SPEC_PATH: ${{ inputs.openapi-spec-path != '' && inputs.openapi-spec-path || format('{0}/{1}', inputs.openapi-directory, inputs.openapi-spec-filename) }}
     permissions:
       id-token: write
       contents: read
@@ -112,40 +139,71 @@ jobs:
           path: artifact-download
 
       - name: Check OpenAPI spec exists
-        id: check-file
         run: |
-          # Check for the OpenAPI spec file
-          FILE_PATH="artifact-download/${{ inputs.openapi-directory }}/${{ inputs.openapi-spec-filename }}"
-          
+          FILE_PATH="artifact-download/$OPENAPI_SPEC_PATH"
           echo "Checking for OpenAPI spec at: $FILE_PATH"
-          if [ -f "$FILE_PATH" ]; then
-            echo "file_exists=true" >> $GITHUB_OUTPUT
-            echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
-            echo "✓ Found OpenAPI spec file"
-          else
-            echo "file_exists=false" >> $GITHUB_OUTPUT
-            echo "SKIPPING: OpenAPI spec file not found: ${{ inputs.openapi-spec-filename }}"
+          if [ ! -f "$FILE_PATH" ]; then
+            echo "::error::OpenAPI spec file not found: $OPENAPI_SPEC_PATH"
+            exit 1
           fi
 
-      - name: Create the railyard openapi folder if it doesn't exist
-        if: steps.check-file.outputs.file_exists == 'true'
+      - name: Create Railyard OpenAPI folder if it doesn't exist
         run: mkdir -p railyard/openapi/${{inputs.entity-name}}
 
-      - name: Copy openapi-spec to railyard/openapi/${{inputs.entity-name}}
-        if: steps.check-file.outputs.file_exists == 'true'
-        run: cp "${{ steps.check-file.outputs.file_path }}" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
+      - name: Copy OpenAPI spec to railyard/openapi/${{inputs.entity-name}}
+        run: cp "artifact-download/$OPENAPI_SPEC_PATH" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
 
       - name: Authenticate with AWS
-        if: steps.check-file.outputs.file_exists == 'true'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: "arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/${{ vars.AWS_DEPLOYMENT_ROLE_NAME }}"
 
       - name: Upload OpenAPI spec to S3
-        if: steps.check-file.outputs.file_exists == 'true'
         env:
           S3_BUCKET: "471112960535-railyard-artifacts"
           ENTITY_NAME: ${{inputs.entity-name}}
         run: |
           aws s3 sync "./railyard/openapi/${{inputs.entity-name}}" "s3://$S3_BUCKET/openapi/$ENTITY_NAME/"
+
+  resolve-team-name:
+    name: Resolve team name
+    if: ${{ !inputs.skip-openapi-spec && inputs.team-name == '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      team-name: ${{ steps.owner.outputs.result }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.54.3
+          YQ_SHA256: "129534601871538efe0ba4c5e62a34fb1d5f469bcb975c4fddeb467d82974973"
+        run: |
+          curl -sSLf "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "$RUNNER_TEMP/yq"
+          echo "$YQ_SHA256  $RUNNER_TEMP/yq" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/yq"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Read owner of the OpenAPI API from railyard-info.yaml
+        id: owner
+        run: |
+          OWNER=$(yq 'select(.kind == "API" and .spec.type == "openapi") | .spec.owner' railyard-info.yaml)
+          echo "result=$OWNER" >> "$GITHUB_OUTPUT"
+
+  persist-openapi-spec-to-stasjon:
+    name: Persist OpenAPI spec to API portal in Stasjon
+    needs: resolve-team-name
+    if: ${{ !cancelled() && !failure() && !inputs.skip-openapi-spec }}
+    uses: nsbno/platform-actions/.github/workflows/helpers.upload-open-api-spec.yml@v2
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      open-api-spec-path: ${{ inputs.openapi-spec-path != '' && inputs.openapi-spec-path || format('{0}/{1}', inputs.openapi-directory, inputs.openapi-spec-filename) }}
+      application-name: ${{ inputs.entity-name }}
+      artifact-name: ${{ inputs.artifact-name }}
+      child-team-name: ${{ inputs.team-name != '' && inputs.team-name || needs.resolve-team-name.outputs.team-name }}
+      audience: ${{ inputs.audience }}
