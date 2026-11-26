@@ -1,0 +1,61 @@
+name: Find Terraform version
+description: "Finds the Terraform version from the first `required_version` in the given directories. Each directory is searched breadth-first, including subdirectories."
+
+inputs:
+  directories:
+    description: "Directories to search, one per line, in order of priority"
+    required: true
+
+outputs:
+  version:
+    description: "The Terraform version, such as `1.17.2`, or an empty string if no `required_version` was found"
+    value: ${{ steps.find-version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Find Terraform version
+      id: find-version
+      shell: bash
+      env:
+        DIRECTORIES: ${{ inputs.directories }}
+      run: |
+        set -e
+        dirs=()
+        while IFS= read -r dir; do
+          dirs+=("$dir")
+        done <<< "$DIRECTORIES"
+        echo "Searching for Terraform version in directories: ${dirs[*]}"
+        for dir in "${dirs[@]}"; do
+          [ -n "$dir" ] || continue
+          echo "Checking directory: $dir"
+          if [ -d "$dir" ]; then
+            version=""
+            dir_queue=("$dir")
+            queue_idx=0
+            while [ "$queue_idx" -lt ${#dir_queue[@]} ]; do
+              current_dir="${dir_queue[$queue_idx]}"
+              queue_idx=$((queue_idx + 1))
+
+              while IFS= read -r -d '' file; do
+                match=$(grep -Eho 'required_version *= *"[^"]+"' -- "$file" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || true)
+                if [ -n "$match" ]; then
+                  version="$match"
+                  break 2
+                fi
+              done < <(find "$current_dir" -maxdepth 1 -type f -name '*.tf' -print0)
+
+              while IFS= read -r -d '' subdir; do
+                dir_queue+=("$subdir")
+              done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -type d \
+                -not -name '.git' -not -name '.terraform' -not -name 'node_modules' -print0)
+            done
+            if [ -n "$version" ]; then
+              echo "Found Terraform version: $version"
+              echo "version=$version" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+        done
+        echo "No required_version found"
+        echo "version=" >> "$GITHUB_OUTPUT"
