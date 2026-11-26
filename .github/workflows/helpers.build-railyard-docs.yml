@@ -100,7 +100,7 @@ jobs:
       - name: Build mkdocs
         run: cd ${{ inputs.mkdocs-directory }} && python -m mkdocs build
 
-      - name: Create the railyard folder if it doesn't exist
+      - name: Create Railyard folder structure if it doesn't exist
         run: mkdir -p railyard/default/component/${{inputs.entity-name}}
 
       - name: Save the new site
@@ -119,8 +119,8 @@ jobs:
         run: |
           aws s3 sync "./railyard/default/component/${{inputs.entity-name}}" "s3://$S3_BUCKET/default/component/$ENTITY_NAME/"
 
-  update-openapi-spec:
-    name: Update OpenAPI Spec
+  persist-openapi-spec-to-railyard:
+    name: Persist OpenAPI spec to Railyard
     if: ${{ !inputs.skip-openapi-spec }}
     environment: Service
     runs-on: ubuntu-latest
@@ -143,10 +143,10 @@ jobs:
             exit 1
           fi
 
-      - name: Create the railyard openapi folder if it doesn't exist
+      - name: Create Railyard OpenAPI folder if it doesn't exist
         run: mkdir -p railyard/openapi/${{inputs.entity-name}}
 
-      - name: Copy openapi-spec to railyard/openapi/${{inputs.entity-name}}
+      - name: Copy OpenAPI spec to railyard/openapi/${{inputs.entity-name}}
         run: cp "artifact-download/${{ inputs.openapi-spec-path }}" railyard/openapi/${{inputs.entity-name}}/openapi-definition.yaml
 
       - name: Authenticate with AWS
@@ -162,8 +162,8 @@ jobs:
         run: |
           aws s3 sync "./railyard/openapi/${{inputs.entity-name}}" "s3://$S3_BUCKET/openapi/$ENTITY_NAME/"
 
-  upload-to-stasjon:
-    name: Upload OpenAPI spec to Stasjon
+  persist-openapi-spec-to-stasjon:
+    name: Persist OpenAPI spec to API portal in Stasjon
     if: ${{ !inputs.skip-openapi-spec }}
     uses: nsbno/platform-actions/.github/workflows/helpers.upload-open-api-spec.yml@v2
     permissions:
